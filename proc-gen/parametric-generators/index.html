@@ -2064,9 +2064,9 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
         const data = computeTextureData(TEXTURE_EXPORT_SIZE, state);
         const exportCanvas = document.createElement("canvas");
         paintHeightMap(exportCanvas, data, TEXTURE_EXPORT_SIZE, TEXTURE_EXPORT_SIZE);
-        downloadDataUrl(exportCanvas.toDataURL("image/png"), "texture_" + state.pattern + "_" + state.seed + ".png");
-        statusLine.textContent = "Height/bump map downloaded";
-        setTimeout(() => statusLine.textContent = "", 2500);
+        openPngInNewTab(exportCanvas, "texture_" + state.pattern + "_" + state.seed + ".png");
+        statusLine.textContent = "Height/bump map opened in a new tab \u2014 save it from there";
+        setTimeout(() => statusLine.textContent = "", 3500);
       }, 10);
     });
 
@@ -2079,8 +2079,8 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
         const data = computeTextureData(TEXTURE_EXPORT_SIZE, state);
         const exportCanvas = document.createElement("canvas");
         paintBumpPreview(exportCanvas, data, TEXTURE_EXPORT_SIZE, TEXTURE_EXPORT_SIZE, state.bumpStrength, state.lightAngle);
-        downloadDataUrl(exportCanvas.toDataURL("image/png"), "bump_preview_" + state.pattern + "_" + state.seed + ".png");
-        statusLine.textContent = "Preview render downloaded (not a texture map — visual only)";
+        openPngInNewTab(exportCanvas, "bump_preview_" + state.pattern + "_" + state.seed + ".png");
+        statusLine.textContent = "Preview render opened in a new tab (not a texture map — visual only)";
         setTimeout(() => statusLine.textContent = "", 3500);
       }, 10);
     });
@@ -2249,6 +2249,38 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     const a = document.createElement("a");
     a.href = url; a.download = filename;
     document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  // Open a canvas as a PNG in a new tab, sidestepping download restrictions.
+  // Uses a blob: URL (NOT a data: URL — browsers block top-frame navigation to
+  // data: URLs) and writes a tiny host page with the image + a working save
+  // link. Works on Pages, locally, and even inside sandboxes (with popups
+  // allowed); falls back to a direct download if the popup is blocked.
+  function openPngInNewTab(canvas, filename) {
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        if (!blob) { resolve(false); return; }
+        const url = URL.createObjectURL(blob);
+        const w = window.open("", "_blank");
+        if (!w) { // popup blocked — fall back to a direct download
+          downloadDataUrl(url, filename);
+          setTimeout(() => URL.revokeObjectURL(url), 60000);
+          resolve(true); return;
+        }
+        w.document.title = filename;
+        w.document.body.style.cssText =
+          "margin:0;min-height:100vh;background:#0a0f16;color:#e8e8e0;display:flex;" +
+          "flex-direction:column;align-items:center;gap:16px;padding:24px;" +
+          "font-family:'IBM Plex Mono','Courier New',monospace";
+        w.document.body.innerHTML =
+          '<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7a7f83">' + filename + '</div>' +
+          '<a href="' + url + '" download="' + filename + '" style="color:#E8792E;font-size:12px;text-decoration:none;border:1px solid #E8792E;padding:8px 16px">↓ Save PNG</a>' +
+          '<div style="font-size:10px;color:#7a7f83">… or right-click the image below and “Save image as…”</div>' +
+          '<img src="' + url + '" alt="' + filename + '" style="max-width:94vw;max-height:78vh;border:1px solid #1c2733"/>';
+        setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
+        resolve(true);
+      }, "image/png");
+    });
   }
 
   let gifWorkerBlobUrlPromise = null;

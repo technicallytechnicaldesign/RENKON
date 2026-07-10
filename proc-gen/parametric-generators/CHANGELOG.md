@@ -26,9 +26,18 @@ Versioning: informal `vN` milestones tagged in git as `paramgen-vN`.
   before — all motion is gated behind the `animate` flag. Pause returns to the
   canonical static frame.
 
+### Changed — PNG export opens in a new tab
+- Both texture exports now render to a `blob:` URL and open a small host page in
+  a new tab (image + a working "Save PNG" link), instead of triggering a direct
+  download. This sidesteps download restrictions (sandboxed iframes, etc.) and
+  the `data:`-URL top-frame-navigation block, and works on Pages/local/sandbox.
+  Falls back to a direct download if the popup is blocked.
+
 ### Still to do (next)
 - Animated **export** (§6.3): PNG frame-sequence first (the KeyShot-friendly
-  deliverable), then WebM. Export currently remains a single static frame.
+  deliverable) via the same new-tab pattern (a numbered gallery of blob-URL
+  frames), then optionally WebM via `MediaRecorder`. Export is currently a
+  single static frame.
 - The open GIF-export bug (§3) — unchanged; deprioritized in favor of the
   Worker-free frame-sequence path.
 

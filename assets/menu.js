@@ -44,14 +44,14 @@
 
   // --- styles ------------------------------------------------------------
   var css = ''
-    + '.rk-nav{position:fixed;top:14px;right:16px;z-index:9999;'
-    + 'font-family:"IBM Plex Mono","Courier New",monospace;display:flex;gap:8px;align-items:flex-start}'
+    + '.rk-nav{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:9999;'
+    + 'font-family:"IBM Plex Mono","Courier New",monospace;display:flex;gap:12px;align-items:flex-start}'
     + '.rk-nav *{box-sizing:border-box}'
     + '.rk-btn{-webkit-appearance:none;appearance:none;cursor:pointer;border:1px solid var(--line,#1c2733);'
-    + 'background:var(--panel-bg,#0d1520);color:var(--text,#e8e8e0);width:40px;height:40px;padding:8px;'
+    + 'background:var(--panel-bg,#0d1520);color:var(--text,#e8e8e0);width:54px;height:54px;padding:11px;'
     + 'display:flex;align-items:center;justify-content:center;border-radius:0;'
     + 'transition:transform .18s cubic-bezier(.34,1.56,.64,1),background .15s,border-color .15s,box-shadow .15s}'
-    + '.rk-btn svg{width:22px;height:22px;display:block}'
+    + '.rk-btn svg{width:30px;height:30px;display:block}'
     + '.rk-btn:hover{transform:translateY(-2px)}'
     + '.rk-btn:active{transform:translateY(0) scale(.92)}'
     + '.rk-btn:focus-visible{outline:2px solid var(--c-accent,#E8792E);outline-offset:2px}'
@@ -60,7 +60,7 @@
     + '.rk-home svg{transition:transform .18s cubic-bezier(.34,1.56,.64,1)}'
     + '.rk-home:hover svg{transform:translateY(-2px)}'
     + '.rk-menu-btn[aria-expanded="true"]{border-color:var(--c-accent,#E8792E);color:var(--c-accent,#E8792E)}'
-    + '.rk-pop{position:absolute;top:48px;right:0;min-width:220px;background:var(--panel-bg,#0d1520);'
+    + '.rk-pop{position:absolute;top:62px;right:0;min-width:230px;background:var(--panel-bg,#0d1520);'
     + 'border:1px solid var(--line,#1c2733);transform-origin:top right;'
     + 'opacity:0;transform:scale(.9) translateY(-6px);pointer-events:none;'
     + 'transition:opacity .16s ease,transform .18s cubic-bezier(.34,1.56,.64,1)}'
@@ -86,7 +86,7 @@
     + 'font-family:inherit;font-size:9px}'
     + '@media (prefers-reduced-motion:reduce){.rk-btn,.rk-home svg,.rk-pop,.rk-item{transition:none}'
     + '.rk-btn:hover,.rk-home:hover svg{transform:none}}'
-    + '@media (max-width:480px){.rk-nav{top:10px;right:10px}}';
+    + '@media (max-width:480px){.rk-nav{top:8px;gap:10px}.rk-btn{width:48px;height:48px;padding:10px}.rk-btn svg{width:26px;height:26px}}';
 
   var style = document.createElement("style");
   style.textContent = css;
