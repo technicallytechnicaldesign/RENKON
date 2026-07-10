@@ -1,0 +1,10 @@
+# Git LFS — raster render outputs, scoped to keyshot/ only.
+# KeyShot renders and raster texture/bump maps are raster by nature; everywhere
+# else in the repo is SVG-first (see /CLAUDE.md), so these rules live here
+# rather than repo-wide. Inert until a matching file is committed; run
+# `git lfs install` first.
+*.png  filter=lfs diff=lfs merge=lfs -text
+*.jpg  filter=lfs diff=lfs merge=lfs -text
+*.jpeg filter=lfs diff=lfs merge=lfs -text
+*.tif  filter=lfs diff=lfs merge=lfs -text
+*.tiff filter=lfs diff=lfs merge=lfs -text
