@@ -11,6 +11,39 @@ Versioning: informal `vN` milestones tagged in git as `paramgen-vN`.
 
 ## [Unreleased]
 
+### Added — animated frame-sequence export (BLOB-URL-GALL)
+- **Export Frame Sequence (PNG)** on the Texture & Bump Map Generator. Renders
+  N frames (12/24/48, selectable) across one `state.time` loop at
+  `TEXTURE_EXPORT_SIZE`, each painted to a `blob:` URL PNG, and opens one new
+  tab hosting a numbered gallery — a `<img>` + per-frame Save link for each
+  frame (`<pattern>_<seed>_0001.png … _000N.png`), plus a "Download All" that
+  sequentially triggers each frame's own download link. No zip dependency —
+  stays consistent with the Worker-free, dependency-minimal export path.
+  This is priority (1) from `docs/ANIMATED_EXPORT.md` and the actual
+  deliverable a render engine wants for an animated bump channel (a numbered
+  image sequence, not a GIF/video).
+
+### Fixed — Droplet Stream (and other multi-particle `animateMotion`) GIF export
+- `bakeSmilFreeze()` was reading `liveEl.transform.baseVal` to capture each
+  `animateMotion`-driven particle's position when freezing a frame for GIF
+  capture. `animateMotion`'s supplemental transform is never reflected in
+  `baseVal` (the static, non-animated attribute) — verified empirically it's
+  not in `animVal` either — so the freeze silently produced no transform at
+  all, leaving the particle at its untransformed local origin. For Droplet
+  Stream's three particles (staggered `begin` at 0, dur/3, 2dur/3) this meant
+  particles popped in from the top-left corner of the viewBox instead of
+  riding the guide path; single always-on particles (e.g. Traveling Pulse)
+  were silently frozen at the wrong spot every frame instead.
+- Fix: derive the frozen matrix from `getCTM()` (element relative to the SVG
+  root) instead of `baseVal` — the only DOM read that actually reflects a live
+  `animateMotion` transform.
+- Also fixed the GIF frame-sampling window: it previously scrubbed
+  `time ∈ [0, dur)`, which for staggered-begin particles includes a stretch
+  before their own `begin` has elapsed (SMIL semantics: no motion applied
+  yet). Now sampling starts at `max(begin)` across the asset's
+  `animateMotion` elements — the system is periodic with period `dur` from
+  that point on, so this captures one clean, pop-in-free loop.
+
 ### Added — animated texture/bump preview (handoff §6.1 + §6.2)
 - **Time-parametrized generators.** Each of the four generators takes an
   `animate` flag + `time` (0–1, one loop) and has its own seamless-looping
@@ -34,13 +67,15 @@ Versioning: informal `vN` milestones tagged in git as `paramgen-vN`.
   Falls back to a direct download if the popup is blocked.
 
 ### Still to do (next)
-- Animated **export** (§6.3): PNG frame-sequence first (the KeyShot-friendly
-  deliverable) via the same new-tab pattern (a numbered gallery of blob-URL
-  frames — "BLOB-URL-GALL"), then optionally WebM via `MediaRecorder`. Export
-  is currently a single static frame. **Full plan:**
+- Optional WebM export via `MediaRecorder` + `canvas.captureStream()` (§6.3
+  priority 2) — nice-to-have single-file preview, not needed for the
+  KeyShot-facing deliverable which the frame sequence above now covers. See
   [`docs/ANIMATED_EXPORT.md`](docs/ANIMATED_EXPORT.md).
-- The open GIF-export bug (§3) — unchanged; deprioritized in favor of the
-  Worker-free frame-sequence path.
+- Remove the dead `gif.js` CDN dependency and GIF-export code path from the
+  Overlay Asset Customizer per the plan's §3 recommendation ("GIF — drop it")
+  — the Droplet Stream freeze bug is fixed, but the underlying Worker/CSP
+  fragility this plan flagged is still the right reason to eventually retire
+  it in favor of a frame-sequence gallery there too.
 
 ## [v7] — 2026-07-10
 

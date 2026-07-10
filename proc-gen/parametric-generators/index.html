@@ -1908,7 +1908,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
 
     main.appendChild(buildPageHead(
       "Texture & Bump Map Generator",
-      "Procedural grayscale texture and bump previews, driven by a few seeded generation criteria. Hit Play for a live, seamless-looping animation of any pattern — each has its own motion (noise breathes, grid shimmers, scratches flicker, splotches boil). Animated frame-sequence export is the next step; PNG export is still a single static frame for now.",
+      "Procedural grayscale texture and bump previews, driven by a few seeded generation criteria. Hit Play for a live, seamless-looping animation of any pattern — each has its own motion (noise breathes, grid shimmers, scratches flicker, splotches boil). Export a single static PNG, or the full animated loop as a numbered frame sequence.",
       { label: "Parametric Generators", hash: "" }
     ));
 
@@ -2085,12 +2085,70 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
       }, 10);
     });
 
+    const frameCountSelect = document.createElement("select");
+    frameCountSelect.className = "btn";
+    [12, 24, 48].forEach(n => {
+      const opt = document.createElement("option");
+      opt.value = String(n);
+      opt.textContent = n + " frames";
+      if (n === 24) opt.selected = true;
+      frameCountSelect.appendChild(opt);
+    });
+
+    const exportFramesBtn = document.createElement("button");
+    exportFramesBtn.className = "btn";
+    exportFramesBtn.textContent = "Export Frame Sequence (PNG)";
+    exportFramesBtn.addEventListener("click", () => {
+      exportFrameSequence(parseInt(frameCountSelect.value, 10));
+    });
+
+    async function exportFrameSequence(frameCount) {
+      const wasAnimating = animate;
+      if (wasAnimating) setAnimate(false);
+      const savedTime = state.time;
+      const savedAnimate = state.animate;
+      state.animate = true;
+      exportFramesBtn.disabled = true;
+      frameCountSelect.disabled = true;
+      const seedTag = state.pattern + "_" + state.seed;
+      const frames = [];
+      try {
+        const exportCanvas = document.createElement("canvas");
+        for (let k = 0; k < frameCount; k++) {
+          state.time = k / frameCount;
+          const data = computeTextureData(TEXTURE_EXPORT_SIZE, state);
+          paintHeightMap(exportCanvas, data, TEXTURE_EXPORT_SIZE, TEXTURE_EXPORT_SIZE);
+          const blob = await new Promise(res => exportCanvas.toBlob(res, "image/png"));
+          if (!blob) throw new Error("toBlob failed");
+          const url = URL.createObjectURL(blob);
+          const filename = seedTag + "_" + String(k + 1).padStart(4, "0") + ".png";
+          frames.push({ url, filename });
+          statusLine.textContent = "Rendering frame " + (k + 1) + "/" + frameCount + "…";
+          await new Promise(r => setTimeout(r, 0));
+        }
+        openFrameGalleryInNewTab(frames, seedTag);
+        statusLine.textContent = "Frame sequence (" + frameCount + ") opened in a new tab — save from there";
+      } catch (e) {
+        statusLine.textContent = "Frame sequence export failed";
+        frames.forEach(f => URL.revokeObjectURL(f.url));
+      } finally {
+        state.time = savedTime;
+        state.animate = savedAnimate;
+        regenerate();
+        exportFramesBtn.disabled = false;
+        frameCountSelect.disabled = false;
+        setTimeout(() => statusLine.textContent = "", 3500);
+      }
+    }
+
     actions.appendChild(exportTextureBtn);
     actions.appendChild(exportPreviewBtn);
+    actions.appendChild(frameCountSelect);
+    actions.appendChild(exportFramesBtn);
 
     const foot = document.createElement("footer");
     foot.className = "note";
-    foot.innerHTML = `The Height/Bump Map export is the actual grayscale data — usable directly in a bump/height texture slot. The Preview Render is a simulated relief shading of that same data so you can judge depth and light direction before exporting; it is not itself a texture map.`;
+    foot.innerHTML = `The Height/Bump Map export is the actual grayscale data — usable directly in a bump/height texture slot. The Preview Render is a simulated relief shading of that same data so you can judge depth and light direction before exporting; it is not itself a texture map. Export Frame Sequence renders the animated height map across one full loop as a numbered PNG sequence (opens in a new tab) — the deliverable a render engine wants for an animated bump channel.`;
     main.appendChild(foot);
 
     function regenerate() {
@@ -2195,12 +2253,21 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
       });
       // Bake any number of animateMotion-driven elements, e.g. flow-pulse-wave's
       // single glow or flow-droplet-stream's three particles.
+      //
+      // animateMotion's supplemental transform is never reflected in
+      // transform.baseVal (that's the static, non-animated attribute) or even
+      // transform.animVal (verified empirically — both stay null throughout).
+      // getCTM() is the only reliable read of the live motion transform, so
+      // derive the matrix from the target's CTM relative to the SVG root
+      // (their common ancestor's own CTM cancels out via the inverse-multiply,
+      // so this is robust regardless of viewBox/width/height scaling).
       const liveMotion = svgEl.querySelectorAll('[data-role="motion-target"]');
       const cloneMotion = clone.querySelectorAll('[data-role="motion-target"]');
+      const rootCtm = svgEl.getCTM();
       liveMotion.forEach((liveEl, i) => {
         const cloneEl = cloneMotion[i];
-        const mat = liveEl.transform.baseVal.numberOfItems
-          ? liveEl.transform.baseVal.consolidate().matrix : null;
+        const elCtm = liveEl.getCTM();
+        const mat = (rootCtm && elCtm) ? rootCtm.inverse().multiply(elCtm) : null;
         if (mat) cloneEl.setAttribute("transform", matrixToString(mat));
         const animEl = cloneEl.querySelector("animateMotion");
         if (animEl) animEl.remove();
@@ -2281,6 +2348,69 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
         resolve(true);
       }, "image/png");
     });
+  }
+
+  // BLOB-URL-GALL: open a numbered gallery of already-rendered blob: URL PNG
+  // frames in a new tab — one Save link per frame plus a Download All that
+  // sequentially triggers each frame's own download link (no zip dependency,
+  // in keeping with the Worker-free, dependency-minimal export path).
+  function openFrameGalleryInNewTab(frames, title) {
+    const w = window.open("", "_blank");
+    if (!w) { // popup blocked — fall back to sequential direct downloads
+      frames.forEach((f, i) => setTimeout(() => downloadDataUrl(f.url, f.filename), i * 150));
+      setTimeout(() => frames.forEach(f => URL.revokeObjectURL(f.url)), 60000);
+      return false;
+    }
+    w.document.title = title + " — frame sequence";
+    w.document.body.style.cssText =
+      "margin:0;min-height:100vh;background:#0a0f16;color:#e8e8e0;" +
+      "font-family:'IBM Plex Mono','Courier New',monospace;padding:24px";
+
+    const header = w.document.createElement("div");
+    header.style.cssText = "display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap";
+    const label = w.document.createElement("div");
+    label.style.cssText = "font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7a7f83";
+    label.textContent = title + " — " + frames.length + " frames";
+    const dlAllBtn = w.document.createElement("button");
+    dlAllBtn.textContent = "↓ Download All";
+    dlAllBtn.style.cssText =
+      "color:#E8792E;font-size:12px;background:none;border:1px solid #E8792E;" +
+      "padding:8px 16px;cursor:pointer;font-family:inherit;letter-spacing:.04em";
+    dlAllBtn.addEventListener("click", () => {
+      dlAllBtn.disabled = true;
+      frames.forEach((f, i) => {
+        setTimeout(() => {
+          const a = w.document.createElement("a");
+          a.href = f.url; a.download = f.filename;
+          w.document.body.appendChild(a); a.click(); a.remove();
+          if (i === frames.length - 1) dlAllBtn.disabled = false;
+        }, i * 150);
+      });
+    });
+    header.appendChild(label);
+    header.appendChild(dlAllBtn);
+    w.document.body.appendChild(header);
+
+    const grid = w.document.createElement("div");
+    grid.style.cssText = "display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px";
+    frames.forEach(f => {
+      const cell = w.document.createElement("div");
+      cell.style.cssText =
+        "border:1px solid #1c2733;padding:8px;display:flex;flex-direction:column;" +
+        "gap:6px;align-items:center;background:#0d1520";
+      const img = w.document.createElement("img");
+      img.src = f.url; img.alt = f.filename;
+      img.style.cssText = "max-width:100%;border:1px solid #1c2733";
+      const link = w.document.createElement("a");
+      link.href = f.url; link.download = f.filename; link.textContent = f.filename;
+      link.style.cssText = "color:#7a7f83;font-size:10px;text-decoration:none";
+      cell.appendChild(img); cell.appendChild(link);
+      grid.appendChild(cell);
+    });
+    w.document.body.appendChild(grid);
+
+    setTimeout(() => frames.forEach(f => URL.revokeObjectURL(f.url)), 5 * 60 * 1000);
+    return true;
   }
 
   let gifWorkerBlobUrlPromise = null;
@@ -2368,8 +2498,17 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
         anims.forEach(a => a.cancel());
       } else if (asset.engine === "smil") {
         svgEl.pauseAnimations();
+        // Some assets stagger multiple animateMotion starts (e.g.
+        // flow-droplet-stream's three particles, begin 0/dur/3/2dur/3). Sampling
+        // from t=0 would capture particles before their own begin delay has
+        // elapsed, popping them in from an unanimated origin. Once every
+        // animation has begun the system is periodic with period `dur`, so
+        // start the capture window there instead — a clean loop with no pop-in.
+        const motionBegins = Array.from(svgEl.querySelectorAll("animateMotion"))
+          .map(el => parseFloat(el.getAttribute("begin")) || 0);
+        const startOffset = motionBegins.length ? Math.max(...motionBegins) : 0;
         for (let i = 0; i < frameCount; i++) {
-          const t = (effectiveDurationMs / 1000 / frameCount) * i;
+          const t = startOffset + (effectiveDurationMs / 1000 / frameCount) * i;
           svgEl.setCurrentTime(t);
           const frozen = bakeSmilFreeze(svgEl);
           const markup = resolvedSvgMarkup(frozen);
