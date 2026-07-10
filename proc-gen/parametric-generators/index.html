@@ -1734,8 +1734,8 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     return top + (bot - top) * sys;
   }
 
-  function generateNoise(w, h, p) {
-    const rng = mulberry32(p.seed);
+  function noiseData(w, h, p, seed) {
+    const rng = mulberry32(seed);
     const octaves = Math.max(1, Math.round(p.octaves));
     const fields = [];
     let freq = Math.max(4, p.scale);
@@ -1756,17 +1756,33 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     return data;
   }
 
+  function generateNoise(w, h, p) {
+    const data = noiseData(w, h, p, p.seed);
+    if (!p.animate) return data;
+    // Animated: cyclically blend toward a second independent field and back.
+    // weight = 0 at time 0 and 1, peaks at 0.5 -> guaranteed-seamless loop; the
+    // static (time 0 / animation-off) frame is identical to the un-animated output.
+    const dataB = noiseData(w, h, p, (p.seed ^ 0x9e3779b9) >>> 0);
+    const wgt = 0.5 - 0.5 * Math.cos(2 * Math.PI * (p.time || 0));
+    for (let i = 0; i < data.length; i++) data[i] = data[i] * (1 - wgt) + dataB[i] * wgt;
+    return data;
+  }
+
   function generateGrid(w, h, p) {
     const rng = mulberry32(p.seed);
     const count = Math.max(2, Math.round(p.count));
     const spacing = Math.max(4, w / count);
     const thickness = Math.min(spacing * 0.4, Math.max(1, p.scale * 0.08 * p.contrast));
     const jitter = p.roughness * spacing * 0.15;
+    // Animated: a phase-shifted sinusoidal displacement of the sampling coords
+    // reads as heat-shimmer / vibration. Period 1 in time -> seamless loop.
+    const tm = p.time || 0;
+    const shimmer = p.animate ? spacing * 0.18 : 0;
     const data = new Float32Array(w * h);
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
-        const jx = x + (rng() - 0.5) * jitter;
-        const jy = y + (rng() - 0.5) * jitter;
+        const jx = x + (rng() - 0.5) * jitter + shimmer * Math.sin(2 * Math.PI * tm + y * 0.06);
+        const jy = y + (rng() - 0.5) * jitter + shimmer * Math.cos(2 * Math.PI * tm + x * 0.06);
         const mx = ((jx % spacing) + spacing) % spacing;
         const my = ((jy % spacing) + spacing) % spacing;
         data[y * w + x] = (mx < thickness || my < thickness) ? 1 : 0.15;
@@ -1779,12 +1795,17 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     const rng = mulberry32(p.seed);
     const data = new Float32Array(w * h).fill(0.5);
     const count = Math.max(1, Math.round(p.count));
+    // Animated: each streak fades in/out once per loop on its own staggered
+    // phase (film-grain / static flicker). Envelope is periodic -> seamless.
+    const tm = p.time || 0;
     for (let i = 0; i < count; i++) {
       const x0 = rng() * w;
       const y0 = rng() * h;
       const len = h * (0.2 + rng() * 0.65) * (p.scale / 60);
       const drift = (rng() - 0.5) * w * 0.25;
       const depth = (0.25 + rng() * 0.5) * Math.min(2, p.contrast);
+      const env = p.animate ? Math.pow(0.5 + 0.5 * Math.sin(2 * Math.PI * (tm - i / count)), 1.6) : 1;
+      const depthA = depth * env;
       const steps = Math.max(1, Math.round(len));
       for (let s = 0; s < steps; s++) {
         const t = s / steps;
@@ -1792,7 +1813,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
         const yy = Math.round(y0 + t * len);
         if (xx >= 0 && xx < w && yy >= 0 && yy < h) {
           const idx = yy * w + xx;
-          data[idx] = Math.max(0, data[idx] - depth * 0.5);
+          data[idx] = Math.max(0, data[idx] - depthA * 0.5);
         }
       }
     }
@@ -1804,10 +1825,18 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     const data = new Float32Array(w * h).fill(0.35);
     const count = Math.max(1, Math.round(p.count));
     const maxR = Math.max(4, p.scale);
+    // Animated: each blob pulses size + strength on its own staggered phase
+    // (boiling / bubbling surface). Period 1 in time -> seamless loop.
+    const tm = p.time || 0;
     for (let i = 0; i < count; i++) {
       const cx = rng() * w, cy = rng() * h;
-      const r = maxR * (0.15 + rng() * (0.15 + p.roughness * 0.25));
-      const strength = 0.35 + rng() * 0.5;
+      let r = maxR * (0.15 + rng() * (0.15 + p.roughness * 0.25));
+      let strength = 0.35 + rng() * 0.5;
+      if (p.animate) {
+        const pulse = 0.5 + 0.5 * Math.sin(2 * Math.PI * (tm - i / count));
+        r *= 0.6 + 0.4 * pulse;
+        strength *= 0.5 + 0.5 * pulse;
+      }
       const x0 = Math.max(0, Math.floor(cx - r)), x1 = Math.min(w, Math.ceil(cx + r));
       const y0 = Math.max(0, Math.floor(cy - r)), y1 = Math.min(h, Math.ceil(cy + r));
       for (let y = y0; y < y1; y++) {
@@ -1879,7 +1908,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
 
     main.appendChild(buildPageHead(
       "Texture & Bump Map Generator",
-      "Procedural grayscale texture and bump previews, driven by a few seeded generation criteria. This is early infrastructure — more pattern types, tiling and normal-map export are the obvious next steps.",
+      "Procedural grayscale texture and bump previews, driven by a few seeded generation criteria. Hit Play for a live, seamless-looping animation of any pattern — each has its own motion (noise breathes, grid shimmers, scratches flicker, splotches boil). Animated frame-sequence export is the next step; PNG export is still a single static frame for now.",
       { label: "Parametric Generators", hash: "" }
     ));
 
@@ -1893,7 +1922,9 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
       bumpStrength: 1,
       lightAngle: 135,
       invert: false,
-      seed: Math.floor(Math.random() * 1e9)
+      seed: Math.floor(Math.random() * 1e9),
+      animate: false,
+      time: 0
     };
 
     const controls = document.createElement("div");
@@ -2067,6 +2098,61 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
       paintHeightMap(textureCanvas, data, TEXTURE_PREVIEW_SIZE, TEXTURE_PREVIEW_SIZE);
       paintBumpPreview(bumpCanvas, data, TEXTURE_PREVIEW_SIZE, TEXTURE_PREVIEW_SIZE, state.bumpStrength, state.lightAngle);
     }
+
+    // --- Animation: live rAF preview (§6.2). Static export is unchanged; this
+    // only drives the on-screen preview. state.time cycles 0..1 per loop. ---
+    let animate = false, rafId = null, loopMs = 3000;
+    const animRow = document.createElement("div");
+    animRow.className = "param-row";
+    animRow.style.display = "flex";
+    animRow.style.alignItems = "center";
+    animRow.style.gap = "12px";
+    animRow.style.flexWrap = "wrap";
+    const animLabel = document.createElement("label");
+    animLabel.textContent = "Animate";
+    const playBtn = document.createElement("button");
+    playBtn.className = "btn";
+    playBtn.type = "button";
+    playBtn.textContent = "▶ Play";
+    const loopInput = document.createElement("input");
+    loopInput.type = "range";
+    loopInput.min = 0.5; loopInput.max = 8; loopInput.step = 0.5; loopInput.value = 3;
+    loopInput.style.flex = "1";
+    loopInput.setAttribute("aria-label", "Loop duration (seconds)");
+    const loopVal = document.createElement("span");
+    loopVal.className = "param-value";
+    loopVal.textContent = "3.0s loop";
+    loopInput.addEventListener("input", () => {
+      loopMs = parseFloat(loopInput.value) * 1000;
+      loopVal.textContent = parseFloat(loopInput.value).toFixed(1) + "s loop";
+    });
+    function frame() {
+      // Self-cleanup: stop the loop once the tool is navigated away from.
+      if (!document.body.contains(textureCanvas)) { rafId = null; return; }
+      state.time = (performance.now() / loopMs) % 1;
+      regenerate();
+      rafId = requestAnimationFrame(frame);
+    }
+    function setAnimate(on) {
+      animate = on;
+      state.animate = on;
+      playBtn.textContent = on ? "⏸ Pause" : "▶ Play";
+      playBtn.classList.toggle("primary", on);
+      if (on) {
+        if (rafId == null) rafId = requestAnimationFrame(frame);
+      } else {
+        if (rafId != null) cancelAnimationFrame(rafId);
+        rafId = null;
+        state.time = 0;
+        regenerate();
+      }
+    }
+    playBtn.addEventListener("click", () => setAnimate(!animate));
+    animRow.appendChild(animLabel);
+    animRow.appendChild(playBtn);
+    animRow.appendChild(loopInput);
+    animRow.appendChild(loopVal);
+    controls.appendChild(animRow);
 
     regenerate();
   }

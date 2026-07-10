@@ -11,8 +11,26 @@ Versioning: informal `vN` milestones tagged in git as `paramgen-vN`.
 
 ## [Unreleased]
 
-_Work in progress — see `docs/HANDOFF_BRIEF_v2.md` §6 for the roadmap
-(animated bump/texture maps) and §3 for the open GIF-export bug._
+### Added — animated texture/bump preview (handoff §6.1 + §6.2)
+- **Time-parametrized generators.** Each of the four generators takes an
+  `animate` flag + `time` (0–1, one loop) and has its own seamless-looping
+  motion: noise *breathes* (cyclic blend to a second field and back), grid
+  *shimmers* (phase-shifted sinusoidal coord displacement), scratches *flicker*
+  (per-streak fade in/out on staggered phase), splotches *boil* (per-blob
+  size/strength pulse). Loops are seamless (`time 0` frame == `time 1` frame)
+  and verified to have no boundary seam.
+- **Live rAF preview.** Play/Pause button + loop-duration slider (0.5–8s) drive
+  a `requestAnimationFrame` loop that cycles `time` and repaints both canvases.
+  Self-cleans when you navigate away from the tool.
+- **No regression.** With animation off, generator output is byte-identical to
+  before — all motion is gated behind the `animate` flag. Pause returns to the
+  canonical static frame.
+
+### Still to do (next)
+- Animated **export** (§6.3): PNG frame-sequence first (the KeyShot-friendly
+  deliverable), then WebM. Export currently remains a single static frame.
+- The open GIF-export bug (§3) — unchanged; deprioritized in favor of the
+  Worker-free frame-sequence path.
 
 ## [v7] — 2026-07-10
 
