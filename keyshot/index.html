@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>KeyShot Scripts — RENKON</title>
+<style>
+  :root {
+    --bg: #0a0f16;
+    --panel-bg: #0d1520;
+    --panel-bg-raised: #101a27;
+    --line: #1c2733;
+    --text: #e8e8e0;
+    --muted: #7a7f83;
+
+    --c-structural: #002F67;
+    --c-fluid: #2FA8B0;
+    --c-accent: #E8792E;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: "IBM Plex Mono", "Courier New", monospace;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh; display: flex; flex-direction: column;
+  }
+  a { color: inherit; text-decoration: none; }
+  :focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
+
+  header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 18px 28px; border-bottom: 1px solid var(--line);
+  }
+  header .wordmark { font-size: 14px; letter-spacing: 0.28em; font-weight: 500; }
+  header .wordmark b { color: var(--c-accent); font-weight: 500; }
+  header .wordmark:hover { color: var(--text); }
+  header .meta { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+
+  main { flex: 1; padding: 32px 28px 56px; max-width: 900px; margin: 0 auto; width: 100%; }
+
+  .up-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--c-accent); font-size: 10px; letter-spacing: 0.06em;
+    text-transform: uppercase; margin-bottom: 18px;
+  }
+  .up-link:hover { text-decoration: underline; }
+
+  .page-head { margin-bottom: 28px; }
+  .page-head h1 {
+    font-size: 17px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text); margin: 0 0 8px 0; font-weight: 500;
+  }
+  .page-head p { color: var(--muted); font-size: 12px; margin: 0; max-width: 68ch; line-height: 1.7; }
+
+  .empty {
+    border: 1px dashed var(--line); background: var(--panel-bg);
+    padding: 48px 28px; text-align: center; margin-bottom: 28px;
+  }
+  .empty .icon { width: 48px; height: 48px; color: var(--muted); opacity: 0.7; margin: 0 auto 16px; }
+  .empty .icon svg { width: 100%; height: 100%; display: block; }
+  .empty h2 { font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; margin: 0 0 8px; font-weight: 500; color: var(--muted); }
+  .empty p { font-size: 11px; color: var(--muted); margin: 0 auto; max-width: 52ch; line-height: 1.7; }
+  .empty code { color: var(--c-fluid); }
+
+  .notes {
+    border: 1px solid var(--line); background: var(--panel-bg);
+    padding: 22px 24px;
+  }
+  .notes h3 {
+    font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text); margin: 0 0 14px; font-weight: 500;
+  }
+  .notes ul { margin: 0; padding: 0; list-style: none; }
+  .notes li {
+    font-size: 11px; color: var(--muted); line-height: 1.6;
+    padding: 8px 0 8px 18px; position: relative; border-top: 1px solid var(--line);
+  }
+  .notes li:first-child { border-top: none; }
+  .notes li::before { content: "\203A"; position: absolute; left: 2px; color: var(--c-accent); }
+  .notes code { color: var(--c-fluid); }
+
+  footer { padding: 20px 28px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; letter-spacing: 0.04em; }
+  footer a { color: var(--c-accent); }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <header>
+    <a class="wordmark" href="../index.html">REN<b>K</b>ON</a>
+    <div class="meta">KeyShot &middot; Scripts</div>
+  </header>
+
+  <main>
+    <a class="up-link" href="../index.html"><span aria-hidden="true">&larr;</span> Back to RENKON</a>
+
+    <div class="page-head">
+      <h1>KeyShot Scripts</h1>
+      <p>A home for KeyShot automation &mdash; scene setup, material assignment,
+         and batch-render scripting. Nothing here yet; this is where scripts get
+         organized as they land.</p>
+    </div>
+
+    <div class="empty">
+      <span class="icon" aria-hidden="true">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M24 6 L40 15 V33 L24 42 L8 33 V15 Z"/>
+          <path d="M24 6 V24 M24 24 L40 15 M24 24 L8 15" opacity="0.5"/>
+          <path d="M18 27 l4 4 l8 -9" opacity="0"/>
+        </svg>
+      </span>
+      <h2>No scripts here yet</h2>
+      <p>Drop <code>.py</code> scripts into the <code>keyshot/</code> folder and they'll
+         be listed and documented here. Structure gets tidied once there's enough
+         to structure.</p>
+    </div>
+
+    <div class="notes">
+      <h3>Conventions (for when scripts land)</h3>
+      <ul>
+        <li>KeyShot scripting is <strong>Python 3.10+</strong>, using the <code>lux</code> / <code>luxmath</code> modules.</li>
+        <li>Headless CLI execution is supported &mdash; good for batch renders down the line.</li>
+        <li>Headless automation still needs a machine with a <strong>licensed KeyShot install</strong>; GitHub-hosted Actions runners can't run it.</li>
+        <li>Binary scene files (<code>.bip</code>, <code>.ksp</code>&hellip;) are tracked via Git LFS &mdash; name versions clearly (<code>chair_v3.bip</code>) rather than relying on diffs.</li>
+      </ul>
+    </div>
+  </main>
+
+  <footer>
+    RENKON &middot; <a href="https://github.com/technicallytechnicaldesign/RENKON">github.com/technicallytechnicaldesign/RENKON</a>
+  </footer>
+</body>
+</html>

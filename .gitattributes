@@ -1,0 +1,14 @@
+# Git LFS — KeyShot / rendering binaries.
+# These rules are inert until a matching file is committed. Install git-lfs
+# (`git lfs install`) before adding any of these, or the pointer won't be
+# generated correctly.
+*.bip  filter=lfs diff=lfs merge=lfs -text
+*.ksp  filter=lfs diff=lfs merge=lfs -text
+*.kmtp filter=lfs diff=lfs merge=lfs -text
+*.blend filter=lfs diff=lfs merge=lfs -text
+*.3dm  filter=lfs diff=lfs merge=lfs -text
+*.psd  filter=lfs diff=lfs merge=lfs -text
+*.exr  filter=lfs diff=lfs merge=lfs -text
+*.hdr  filter=lfs diff=lfs merge=lfs -text
+*.fbx  filter=lfs diff=lfs merge=lfs -text
+*.png  filter=lfs diff=lfs merge=lfs -text
