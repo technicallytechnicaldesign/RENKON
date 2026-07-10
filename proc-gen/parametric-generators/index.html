@@ -1,0 +1,2291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Parametric Generators</title>
+<style>
+  :root {
+    --bg: #0a0f16;
+    --panel-bg: #0d1520;
+    --panel-bg-raised: #101a27;
+    --line: #1c2733;
+    --text: #e8e8e0;
+    --muted: #7a7f83;
+
+    --c-structural: #002F67;
+    --c-fluid: #2FA8B0;
+    --c-accent: #E8792E;
+    --c-leader: #E8E8E8;
+    --c-panel-base: #001A33;
+    --c-panel: rgba(0,26,51,0.85);
+    --c-label: #F5F7F8;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: "IBM Plex Mono", "Courier New", monospace;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  button, input { font-family: inherit; }
+  button { cursor: pointer; border-radius: 0; }
+  button:focus-visible, input:focus-visible, a:focus-visible {
+    outline: 2px solid var(--c-accent); outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; }
+  }
+
+  #app-header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 18px 28px; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; background: var(--bg); z-index: 10;
+  }
+  #app-header .crumbs { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  #app-header .crumbs button {
+    background: none; border: none; color: var(--c-accent); font-size: 11px;
+    letter-spacing: 0.08em; text-transform: uppercase; padding: 0; font-family: inherit;
+  }
+  #app-header .crumbs button:hover { text-decoration: underline; }
+  #app-header .mark { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; }
+  #app-main { padding: 28px; max-width: 1400px; margin: 0 auto; }
+
+  .page-head { margin-bottom: 24px; }
+  .page-head h1 {
+    font-size: 16px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text); margin: 0 0 6px 0; font-weight: 500;
+  }
+  .page-head p { color: var(--muted); font-size: 12px; margin: 0; max-width: 62ch; line-height: 1.6; }
+  .up-link {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: none; border: none; color: var(--c-accent);
+    font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 0; margin-bottom: 10px; font-family: inherit;
+  }
+  .up-link:hover { text-decoration: underline; }
+  .up-icon { font-size: 12px; line-height: 1; }
+
+  .card-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1px; background: var(--line); border: 1px solid var(--line);
+  }
+  .card {
+    background: var(--panel-bg); padding: 20px; min-height: 130px;
+    display: flex; flex-direction: column; gap: 10px; text-align: left;
+    border: none; color: var(--text); transition: background 0.15s ease;
+  }
+  .card.active { cursor: pointer; }
+  .card.active:hover { background: var(--panel-bg-raised); }
+  .card .tag { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-accent); }
+  .card.planned .tag { color: var(--muted); }
+  .card h2 { font-size: 14px; margin: 0; font-weight: 600; }
+  .card p { font-size: 11px; color: var(--muted); margin: 0; line-height: 1.6; }
+  .card.planned { opacity: 0.55; border: 1px dashed var(--line); background: transparent; }
+  .card.subtype-card { padding-bottom: 12px; }
+  .mini-stage {
+    margin-top: 4px; background: #060a10; border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    min-height: 90px; padding: 8px; overflow: hidden;
+  }
+  .mini-stage svg { max-width: 100%; height: auto; display: block; }
+
+  .palette-panel {
+    display: flex; flex-wrap: wrap; gap: 18px; padding: 16px 18px;
+    background: var(--panel-bg); border: 1px solid var(--line); margin-bottom: 16px;
+  }
+  .palette-role { display: flex; align-items: center; gap: 8px; }
+  .palette-role label { font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .palette-role input[type=color] { width: 28px; height: 28px; padding: 0; border: 1px solid var(--line); background: none; }
+  .palette-actions { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+  .save-status { font-size: 10px; color: var(--muted); min-width: 90px; }
+
+  .param-panel {
+    display: flex; flex-wrap: wrap; gap: 18px; align-items: center;
+    padding: 14px 18px; background: var(--panel-bg); border: 1px solid var(--line); margin-bottom: 16px;
+  }
+  .param-row { display: flex; align-items: center; gap: 8px; }
+  .param-row label { font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .param-row input[type=range] { width: 100px; accent-color: var(--c-accent); }
+  .param-row input[type=checkbox] { accent-color: var(--c-accent); width: 16px; height: 16px; }
+  .param-value { font-size: 10px; color: var(--text); min-width: 34px; text-align: right; }
+  .param-panel .btn { margin-left: auto; }
+  .param-hint { flex-basis: 100%; font-size: 10px; color: var(--muted); }
+
+  .texture-controls { align-items: flex-start; }
+  .texture-sliders { display: flex; flex-wrap: wrap; gap: 18px; }
+  .pattern-select { display: flex; gap: 6px; }
+  .canvas-row { display: flex; flex-wrap: wrap; gap: 1px; background: var(--line); border: 1px solid var(--line); margin-bottom: 16px; }
+  .canvas-panel { background: var(--panel-bg); padding: 16px; flex: 1 1 260px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .canvas-panel-title { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); align-self: flex-start; }
+  .canvas-panel canvas { width: 100%; max-width: 320px; height: auto; background: #060a10; border: 1px solid var(--line); }
+
+  .text-field-wrap {
+    display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;
+    padding: 14px 18px; background: var(--panel-bg); border: 1px solid var(--line); max-width: 420px;
+  }
+  .text-field-wrap label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .text-field-wrap input[type=text] {
+    background: #060a10; border: 1px solid var(--line); color: var(--text);
+    padding: 8px 10px; font-size: 13px;
+  }
+  .text-field-wrap input[type=text]:focus-visible { border-color: var(--c-accent); }
+  .text-field-wrap .hint { font-size: 10px; color: var(--muted); }
+
+  .large-stage {
+    background: #060a10; border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    min-height: 140px; padding: 18px; margin-bottom: 14px;
+  }
+  .large-stage svg { max-width: min(260px, 100%); max-height: 180px; width: auto; height: auto; display: block; }
+
+  .btn {
+    background: transparent; border: 1px solid var(--line); color: var(--text);
+    font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; padding: 8px 14px;
+  }
+  .btn:hover { border-color: var(--c-accent); color: var(--c-accent); }
+  .btn.primary { border-color: var(--c-accent); color: var(--c-accent); }
+  .btn.primary:hover { background: var(--c-accent); color: #001A33; }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn:disabled:hover { border-color: var(--line); color: var(--text); }
+  .cell-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .status-line { font-size: 10px; color: var(--muted); min-height: 14px; margin-top: 8px; }
+
+  footer.note {
+    margin-top: 26px; font-size: 10px; color: var(--muted); line-height: 1.7;
+    border-top: 1px solid var(--line); padding-top: 14px;
+  }
+</style>
+</head>
+<body>
+  <div id="app">
+    <header id="app-header">
+      <div class="crumbs" id="crumbs"></div>
+      <div class="mark">OVERLAY TOOLKIT</div>
+    </header>
+    <main id="app-main"></main>
+  </div>
+  <canvas id="capture-canvas" style="display:none"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  /* =========================================================
+     PALETTE
+     ========================================================= */
+  const PALETTE_ROLES = [
+    { key: "structural", cssVar: "--c-structural", label: "Structural", hex: "#002F67" },
+    { key: "fluid",      cssVar: "--c-fluid",      label: "Fluid",      hex: "#2FA8B0" },
+    { key: "accent",     cssVar: "--c-accent",     label: "Accent",     hex: "#E8792E" },
+    { key: "leader",     cssVar: "--c-leader",     label: "Leader",     hex: "#E8E8E8" },
+    { key: "panel",      cssVar: "--c-panel-base", label: "Panel BG",   hex: "#001A33" },
+    { key: "label",      cssVar: "--c-label",      label: "Label Text", hex: "#F5F7F8" }
+  ];
+
+  function hexToRgb(hex) {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!m) return { r: 0, g: 0, b: 0 };
+    return { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) };
+  }
+
+  function applyPaletteToDOM(palette) {
+    const root = document.documentElement.style;
+    PALETTE_ROLES.forEach(role => root.setProperty(role.cssVar, palette[role.key]));
+    const rgb = hexToRgb(palette.panel);
+    root.setProperty("--c-panel", `rgba(${rgb.r},${rgb.g},${rgb.b},0.85)`);
+  }
+
+  function defaultPalette() {
+    const p = {};
+    PALETTE_ROLES.forEach(r => p[r.key] = r.hex);
+    return p;
+  }
+
+  let palette = defaultPalette();
+
+  /* =========================================================
+     PER-ASSET LIVE PARAMS (opacity / thickness / speed / roundness)
+     All four are wired through CSS custom properties set inline on
+     each asset's own <svg> root (--t-mult, --s-mult, --r-mult, plus
+     plain `opacity`), so adjusting a slider never has to re-render
+     the markup or restart an animation — except SMIL speed, which
+     has no CSS equivalent for its `dur` attribute and is re-baked
+     into the template on change instead.
+     ========================================================= */
+  const DEFAULT_PARAMS = { opacity: 1, thickness: 1, speed: 1, roundness: 0 };
+  const assetParams = {};
+  function getParams(asset) {
+    if (!assetParams[asset.id]) assetParams[asset.id] = Object.assign({}, DEFAULT_PARAMS, asset.paramPreset || {});
+    return assetParams[asset.id];
+  }
+  function applyLiveParams(asset, stage) {
+    const svgEl = stage.querySelector("svg");
+    if (!svgEl) return;
+    const p = getParams(asset);
+    svgEl.style.opacity = p.opacity;
+    svgEl.style.setProperty("--t-mult", p.thickness);
+    if (asset.engine === "css") svgEl.style.setProperty("--s-mult", p.speed);
+    if (asset.roundable) svgEl.style.setProperty("--r-mult", p.roundness + "px");
+  }
+
+  /* =========================================================
+     CUSTOM TEXT STATE
+     ========================================================= */
+  const customText = {};
+
+  /* =========================================================
+     ASSET MANIFEST
+     ========================================================= */
+  let renderCounter = 0;
+  function nextRid() { return "r" + (renderCounter++); }
+
+  const ASSETS = [
+    {
+      id: "flow-straight", name: "Straight Run", file: "flow_straight.svg", category: "Fluid Flow",
+      engine: "smil", loop: true, durationMs: 1100,
+      svg(rid, speedMult) {
+        speedMult = speedMult || 1;
+        const pat = "fst_pat_" + rid;
+        const dur = (1.1 / speedMult).toFixed(3);
+        return `<svg viewBox="0 0 480 100" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<defs>
+<style>
+  .fst_pipe { stroke: var(--c-structural); stroke-width: calc(3 * var(--t-mult,1)); fill: none; }
+  .fst_fill { fill: url(#${pat}); }
+</style>
+<pattern id="${pat}" width="40" height="60" patternUnits="userSpaceOnUse">
+  <rect width="40" height="60" fill="#12151700" />
+  <path d="M4,10 L20,30 L4,50" fill="none" stroke="var(--c-fluid)" stroke-width="calc(6 * var(--t-mult,1))"
+        stroke-linecap="round" stroke-linejoin="round" opacity="0.9" />
+  <animateTransform xlink:href="#${pat}" attributeName="patternTransform"
+    attributeType="XML" type="translate" from="0 0" to="40 0"
+    dur="${dur}s" repeatCount="indefinite" />
+</pattern>
+</defs>
+<line class="fst_pipe" x1="0" y1="20" x2="480" y2="20" />
+<line class="fst_pipe" x1="0" y1="80" x2="480" y2="80" />
+<rect x="0" y="20" width="480" height="60" class="fst_fill" />
+</svg>`;
+      }
+    },
+    {
+      id: "flow-elbow", name: "Elbow / Curved Run", file: "flow_elbow.svg", category: "Fluid Flow",
+      engine: "css", loop: true, durationMs: 900,
+      svg(rid) {
+        return `<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .fel_wall { fill: none; stroke: var(--c-structural); stroke-width: calc(34 * var(--t-mult,1)); stroke-linecap: round; }
+  .fel_dash { fill: none; stroke: var(--c-fluid); stroke-width: calc(10 * var(--t-mult,1)); stroke-linecap: round;
+    stroke-dasharray: 0.05 0.055; animation: fel_march_${rid} 0.9s linear infinite;
+    animation-duration: calc(0.9s / var(--s-mult,1)); }
+  @keyframes fel_march_${rid} { to { stroke-dashoffset: -0.21; } }
+</style></defs>
+<path class="fel_wall" d="M40,260 L40,140 Q40,40 140,40 L260,40" />
+<path class="fel_dash" pathLength="1" d="M40,260 L40,140 Q40,40 140,40 L260,40" />
+</svg>`;
+      }
+    },
+    {
+      id: "flow-pulse-wave", name: "Traveling Pulse", file: "flow_pulse_wave.svg", category: "Fluid Flow",
+      engine: "smil", loop: true, durationMs: 1800,
+      svg(rid, speedMult) {
+        speedMult = speedMult || 1;
+        const grad = "fpw_grad_" + rid;
+        const dur = (1.8 / speedMult).toFixed(3);
+        return `<svg viewBox="0 0 400 100" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<radialGradient id="${grad}" cx="50%" cy="50%" r="50%">
+  <stop offset="0%" style="stop-color:#8FE3E0; stop-opacity:0.95" />
+  <stop offset="100%" style="stop-color:var(--c-fluid); stop-opacity:0" />
+</radialGradient>
+<style>
+  .fpw_tube { fill: none; stroke: var(--c-structural); stroke-width: calc(40 * var(--t-mult,1)); stroke-linecap: round; }
+  .fpw_inner { fill: none; stroke: #001A33; stroke-width: calc(30 * var(--t-mult,1)); stroke-linecap: round; }
+</style>
+</defs>
+<path id="fpw_path_${rid}" class="fpw_tube" d="M20,50 L380,50" />
+<path class="fpw_inner" d="M20,50 L380,50" />
+<ellipse data-role="motion-target" rx="26" ry="13" fill="url(#${grad})">
+  <animateMotion dur="${dur}s" repeatCount="indefinite" path="M20,50 L380,50" rotate="auto" />
+</ellipse>
+</svg>`;
+      }
+    },
+    {
+      id: "flow-chevron-unit", name: "Static Chevron", file: "flow_chevron_unit.svg", category: "Fluid Flow",
+      engine: "static", loop: false, durationMs: 0,
+      svg() {
+        return `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+<path d="M14,10 L44,30 L14,50" fill="none" style="stroke:var(--c-fluid)"
+      stroke-width="calc(8 * var(--t-mult,1))" stroke-linecap="round" stroke-linejoin="round" />
+</svg>`;
+      }
+    },
+    {
+      id: "flow-spiral-vortex", name: "Spiral Vortex", file: "flow_spiral_vortex.svg", category: "Fluid Flow",
+      engine: "css", loop: true, durationMs: 3000,
+      svg(rid) {
+        return `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .fsv_ring { fill: none; stroke: var(--c-fluid); stroke-width: calc(3 * var(--t-mult,1)); stroke-dasharray: 10 14;
+    transform-box: fill-box; transform-origin: center; animation: fsv_spin_${rid} 3s linear infinite;
+    animation-duration: calc(3s / var(--s-mult,1)); }
+  .fsv_ring2 { fill: none; stroke: var(--c-structural); stroke-width: calc(2 * var(--t-mult,1)); stroke-dasharray: 6 10;
+    transform-box: fill-box; transform-origin: center; animation: fsv_spinrev_${rid} 1.8s linear infinite;
+    animation-duration: calc(1.8s / var(--s-mult,1)); }
+  .fsv_core { fill: var(--c-accent); transform-box: fill-box; transform-origin: center;
+    animation: fsv_pulse_${rid} 1.2s ease-in-out infinite; animation-duration: calc(1.2s / var(--s-mult,1)); }
+  @keyframes fsv_spin_${rid} { to { transform: rotate(360deg); } }
+  @keyframes fsv_spinrev_${rid} { to { transform: rotate(-360deg); } }
+  @keyframes fsv_pulse_${rid} { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.35); opacity: 0.4; } }
+</style></defs>
+<circle class="fsv_ring" cx="60" cy="60" r="40" />
+<circle class="fsv_ring2" cx="60" cy="60" r="24" />
+<circle class="fsv_core" cx="60" cy="60" r="5" />
+</svg>`;
+      }
+    },
+    {
+      id: "flow-branch-split", name: "Branch Split", file: "flow_branch_split.svg", category: "Fluid Flow",
+      engine: "css", loop: true, durationMs: 900,
+      svg(rid) {
+        return `<svg viewBox="0 0 200 160" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .fbs_wall { fill: none; stroke: var(--c-structural); stroke-width: calc(22 * var(--t-mult,1)); stroke-linecap: round; }
+  .fbs_dash { fill: none; stroke: var(--c-fluid); stroke-width: calc(7 * var(--t-mult,1)); stroke-linecap: round;
+    stroke-dasharray: 0.05 0.06; animation: fbs_march_${rid} 0.9s linear infinite;
+    animation-duration: calc(0.9s / var(--s-mult,1)); }
+  @keyframes fbs_march_${rid} { to { stroke-dashoffset: -0.22; } }
+</style></defs>
+<path class="fbs_wall" d="M100,150 L100,90 Q100,68 80,54 L38,22" />
+<path class="fbs_wall" d="M100,90 Q100,68 120,54 L162,22" />
+<path class="fbs_dash" pathLength="1" d="M100,150 L100,90 Q100,68 80,54 L38,22" />
+<path class="fbs_dash" pathLength="1" d="M100,90 Q100,68 120,54 L162,22" />
+</svg>`;
+      }
+    },
+    {
+      id: "flow-surge-pulse-bar", name: "Surge Pulse Bar", file: "flow_surge_pulse_bar.svg", category: "Fluid Flow",
+      engine: "css", loop: true, durationMs: 2000, roundable: true,
+      svg(rid) {
+        return `<svg viewBox="0 0 60 140" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .fpb_frame { fill: none; stroke: var(--c-structural); stroke-width: calc(3 * var(--t-mult,1));
+    rx: var(--r-mult,0); ry: var(--r-mult,0); }
+  .fpb_fill { fill: var(--c-fluid); rx: var(--r-mult,0); ry: var(--r-mult,0);
+    transform-box: fill-box; transform-origin: bottom;
+    animation: fpb_surge_${rid} 2s ease-in-out infinite; animation-duration: calc(2s / var(--s-mult,1)); }
+  .fpb_tick { stroke: var(--c-leader); stroke-width: calc(1.5 * var(--t-mult,1)); }
+  @keyframes fpb_surge_${rid} { 0%,100% { transform: scaleY(0.28); } 50% { transform: scaleY(0.85); } }
+</style></defs>
+<rect class="fpb_frame" x="10" y="10" width="40" height="120" />
+<rect class="fpb_fill" x="14" y="14" width="32" height="112" />
+<line class="fpb_tick" x1="4" y1="70" x2="10" y2="70" />
+<line class="fpb_tick" x1="50" y1="70" x2="56" y2="70" />
+</svg>`;
+      }
+    },
+    {
+      id: "flow-droplet-stream", name: "Droplet Stream", file: "flow_droplet_stream.svg", category: "Fluid Flow",
+      engine: "smil", loop: true, durationMs: 1500,
+      svg(rid, speedMult) {
+        speedMult = speedMult || 1;
+        const dur = (1.5 / speedMult).toFixed(3);
+        const path = "M10,40 Q60,10 110,40 T210,40";
+        const begins = [0, dur / 3, (2 * dur) / 3];
+        const particle = (i) => `<g class="fds_p" data-role="motion-target">
+  <path d="M-7,-6 L5,0 L-7,6 Z" />
+  <animateMotion dur="${dur}s" repeatCount="indefinite" begin="${begins[i]}s" path="${path}" rotate="auto" />
+</g>`;
+        return `<svg viewBox="0 0 220 80" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .fds_guide { fill: none; stroke: var(--c-structural); stroke-width: calc(2 * var(--t-mult,1)); stroke-dasharray: 3 5; opacity: 0.5; }
+  .fds_p path { fill: var(--c-fluid); stroke: var(--c-structural); stroke-width: calc(1 * var(--t-mult,1)); }
+</style></defs>
+<path class="fds_guide" d="${path}" />
+${particle(0)}${particle(1)}${particle(2)}
+</svg>`;
+      }
+    },
+    {
+      id: "callout-leader-label", name: "Leader + Label", file: "callout_leader_label.svg", category: "Callouts",
+      engine: "css", loop: false, durationMs: 950, roundable: true,
+      hasText: true, textDefault: "LABEL_01", textHint: "Leader label text",
+      svg(rid) {
+        return `<svg viewBox="0 0 320 120" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .cll_anchor { fill: var(--c-accent); }
+  .cll_tick { stroke: var(--c-accent); stroke-width: calc(2 * var(--t-mult,1)); }
+  .cll_leader { fill: none; stroke: var(--c-leader); stroke-width: calc(2 * var(--t-mult,1));
+    stroke-dasharray: 1; stroke-dashoffset: 1; animation: cll_draw_${rid} 0.6s ease-out forwards;
+    animation-duration: calc(0.6s / var(--s-mult,1)); }
+  .cll_panel { fill: var(--c-panel); stroke: var(--c-leader); stroke-width: calc(1 * var(--t-mult,1));
+    rx: var(--r-mult,0); ry: var(--r-mult,0);
+    opacity: 0; animation: cll_fadeUp_${rid} 0.4s ease-out 0.5s forwards;
+    animation-duration: calc(0.4s / var(--s-mult,1)); animation-delay: calc(0.5s / var(--s-mult,1)); }
+  .cll_label { font-family: "IBM Plex Mono","Courier New",monospace; font-size: 14px; fill: var(--c-label);
+    opacity: 0; animation: cll_fadeUp_${rid} 0.4s ease-out 0.55s forwards;
+    animation-duration: calc(0.4s / var(--s-mult,1)); animation-delay: calc(0.55s / var(--s-mult,1)); }
+  @keyframes cll_draw_${rid} { to { stroke-dashoffset: 0; } }
+  @keyframes cll_fadeUp_${rid} { from { opacity:0; transform: translateY(6px);} to { opacity:1; transform: translateY(0);} }
+</style></defs>
+<circle class="cll_anchor" cx="20" cy="100" r="4" />
+<line class="cll_tick" x1="12" y1="92" x2="28" y2="108" />
+<path class="cll_leader" pathLength="1" d="M20,100 L70,60 L140,60" />
+<rect class="cll_panel" x="140" y="38" width="150" height="44" />
+<text class="cll_label" data-text-slot="true" x="152" y="65">LABEL_01</text>
+</svg>`;
+      }
+    },
+    {
+      id: "callout-ping-marker", name: "Ping Marker", file: "callout_ping_marker.svg", category: "Callouts",
+      engine: "css", loop: true, durationMs: 1600,
+      svg(rid) {
+        return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .cpm_ring { fill: none; stroke: var(--c-accent); stroke-width: calc(2 * var(--t-mult,1));
+    transform-box: fill-box; transform-origin: center; animation: cpm_ping_${rid} 1.6s ease-out infinite;
+    animation-duration: calc(1.6s / var(--s-mult,1)); }
+  .cpm_r2 { animation-delay: calc(0.53s / var(--s-mult,1)); }
+  .cpm_r3 { animation-delay: calc(1.06s / var(--s-mult,1)); }
+  .cpm_dot { fill: var(--c-accent); }
+  @keyframes cpm_ping_${rid} { 0% { transform: scale(0.3); opacity: 0.9; } 100% { transform: scale(2.2); opacity: 0; } }
+</style></defs>
+<circle class="cpm_ring" cx="50" cy="50" r="10" />
+<circle class="cpm_ring cpm_r2" cx="50" cy="50" r="10" />
+<circle class="cpm_ring cpm_r3" cx="50" cy="50" r="10" />
+<circle class="cpm_dot" cx="50" cy="50" r="4" />
+</svg>`;
+      }
+    },
+    {
+      id: "callout-numbered-badge", name: "Numbered Badge", file: "callout_numbered_badge.svg", category: "Callouts",
+      engine: "css", loop: false, durationMs: 850, roundable: true,
+      hasText: true, textDefault: "01", textHint: "Badge number — keep short, it's a small chip",
+      svg(rid) {
+        return `<svg viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .cnb_anchor { fill: var(--c-accent); }
+  .cnb_leader { fill: none; stroke: var(--c-leader); stroke-width: calc(2 * var(--t-mult,1));
+    stroke-dasharray: 1; stroke-dashoffset: 1; animation: cnb_draw_${rid} 0.5s ease-out forwards;
+    animation-duration: calc(0.5s / var(--s-mult,1)); }
+  .cnb_badge { fill: var(--c-accent); stroke: var(--c-structural); stroke-width: calc(1 * var(--t-mult,1));
+    rx: var(--r-mult,0); ry: var(--r-mult,0);
+    transform-box: fill-box; transform-origin: center; transform: scale(0); opacity: 0;
+    animation: cnb_pop_${rid} 0.35s cubic-bezier(.2,1.4,.4,1) 0.45s forwards;
+    animation-duration: calc(0.35s / var(--s-mult,1)); animation-delay: calc(0.45s / var(--s-mult,1)); }
+  .cnb_num { font-family: "IBM Plex Mono","Courier New",monospace; font-size: 16px; font-weight: 600;
+    fill: var(--c-structural); text-anchor: middle; dominant-baseline: central;
+    opacity: 0; animation: cnb_fadeIn_${rid} 0.2s linear 0.65s forwards;
+    animation-duration: calc(0.2s / var(--s-mult,1)); animation-delay: calc(0.65s / var(--s-mult,1)); }
+  @keyframes cnb_draw_${rid} { to { stroke-dashoffset: 0; } }
+  @keyframes cnb_pop_${rid} { to { transform: scale(1); opacity: 1; } }
+  @keyframes cnb_fadeIn_${rid} { to { opacity: 1; } }
+</style></defs>
+<circle class="cnb_anchor" cx="15" cy="80" r="4" />
+<path class="cnb_leader" pathLength="1" d="M15,80 L60,30 L100,30" />
+<rect class="cnb_badge" x="100" y="15" width="30" height="30" />
+<text class="cnb_num" data-text-slot="true" x="115" y="31">01</text>
+</svg>`;
+      }
+    },
+    {
+      id: "callout-bracket-dimension", name: "Bracket Dimension", file: "callout_bracket_dimension.svg", category: "Callouts",
+      engine: "css", loop: false, durationMs: 800, roundable: true,
+      hasText: true, textDefault: "250 L/MIN", textHint: "Dimension value, e.g. a flow rate or diameter",
+      svg(rid) {
+        return `<svg viewBox="0 0 300 100" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .cbd_tick { stroke: var(--c-leader); stroke-width: calc(2 * var(--t-mult,1)); opacity: 0;
+    animation: cbd_fadeIn_${rid} 0.2s linear 0.55s forwards;
+    animation-duration: calc(0.2s / var(--s-mult,1)); animation-delay: calc(0.55s / var(--s-mult,1)); }
+  .cbd_line { fill: none; stroke: var(--c-leader); stroke-width: calc(2 * var(--t-mult,1));
+    stroke-dasharray: 0.5; stroke-dashoffset: 0.5; animation: cbd_drawOut_${rid} 0.5s ease-out forwards;
+    animation-duration: calc(0.5s / var(--s-mult,1)); }
+  .cbd_bg { fill: var(--c-panel); rx: var(--r-mult,0); ry: var(--r-mult,0); opacity: 0;
+    animation: cbd_fadeIn_${rid} 0.15s linear 0.5s forwards;
+    animation-duration: calc(0.15s / var(--s-mult,1)); animation-delay: calc(0.5s / var(--s-mult,1)); }
+  .cbd_label { font-family: "IBM Plex Mono","Courier New",monospace; font-size: 14px; fill: var(--c-label);
+    text-anchor: middle; opacity: 0; animation: cbd_fadeIn_${rid} 0.2s linear 0.6s forwards;
+    animation-duration: calc(0.2s / var(--s-mult,1)); animation-delay: calc(0.6s / var(--s-mult,1)); }
+  @keyframes cbd_drawOut_${rid} { to { stroke-dashoffset: 0; } }
+  @keyframes cbd_fadeIn_${rid} { to { opacity: 1; } }
+</style></defs>
+<line class="cbd_tick" x1="20" y1="40" x2="20" y2="60" />
+<line class="cbd_tick" x1="280" y1="40" x2="280" y2="60" />
+<path class="cbd_line" pathLength="0.5" d="M20,50 L124,50" />
+<path class="cbd_line" pathLength="0.5" d="M176,50 L280,50" />
+<rect class="cbd_bg" x="122" y="36" width="56" height="28" />
+<text class="cbd_label" data-text-slot="true" x="150" y="55">250 L/MIN</text>
+</svg>`;
+      }
+    },
+    {
+      id: "callout-underline-emphasis", name: "Underline Emphasis", file: "callout_underline_emphasis.svg", category: "Callouts",
+      engine: "css", loop: false, durationMs: 400,
+      svg(rid) {
+        return `<svg viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .cue_tick { stroke: var(--c-accent); stroke-width: calc(2.5 * var(--t-mult,1)); }
+  .cue_line { fill: none; stroke: var(--c-accent); stroke-width: calc(4 * var(--t-mult,1)); stroke-linecap: round;
+    stroke-dasharray: 1; stroke-dashoffset: 1; animation: cue_draw_${rid} 0.4s ease-out forwards;
+    animation-duration: calc(0.4s / var(--s-mult,1)); }
+  @keyframes cue_draw_${rid} { to { stroke-dashoffset: 0; } }
+</style></defs>
+<line class="cue_tick" x1="20" y1="14" x2="20" y2="26" />
+<path class="cue_line" pathLength="1" d="M20,34 L180,34" />
+</svg>`;
+      }
+    },
+    {
+      id: "callout-magnify-lens", name: "Magnify Lens", file: "callout_magnify_lens.svg", category: "Callouts",
+      engine: "css", loop: false, durationMs: 600,
+      svg(rid) {
+        return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .cml_grp { transform-box: fill-box; transform-origin: 42px 42px; transform: scale(0); opacity: 0;
+    animation: cml_pop_${rid} 0.4s cubic-bezier(.2,1.6,.4,1) forwards; animation-duration: calc(0.4s / var(--s-mult,1)); }
+  .cml_lens { fill: none; stroke: var(--c-accent); stroke-width: calc(4 * var(--t-mult,1)); }
+  .cml_handle { stroke: var(--c-accent); stroke-width: calc(5 * var(--t-mult,1)); stroke-linecap: round; }
+  .cml_glint { stroke: var(--c-label); stroke-width: calc(2.5 * var(--t-mult,1)); stroke-linecap: round;
+    opacity: 0; animation: cml_flash_${rid} 0.5s ease-out 0.35s forwards; animation-duration: calc(0.5s / var(--s-mult,1));
+    animation-delay: calc(0.35s / var(--s-mult,1)); }
+  @keyframes cml_pop_${rid} { to { transform: scale(1); opacity: 1; } }
+  @keyframes cml_flash_${rid} { 0% { opacity: 0; } 40% { opacity: 0.9; } 100% { opacity: 0; } }
+</style></defs>
+<g class="cml_grp">
+<circle class="cml_lens" cx="42" cy="42" r="26" />
+<line class="cml_handle" x1="62" y1="62" x2="86" y2="86" />
+<path class="cml_glint" d="M28,20 L36,28" />
+</g>
+</svg>`;
+      }
+    },
+    {
+      id: "callout-flag-marker", name: "Flag Marker", file: "callout_flag_marker.svg", category: "Callouts",
+      engine: "css", loop: true, durationMs: 1600,
+      svg(rid) {
+        return `<svg viewBox="0 0 60 100" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .cfm_pole { stroke: var(--c-structural); stroke-width: calc(3 * var(--t-mult,1)); stroke-linecap: round; }
+  .cfm_base { fill: var(--c-structural); }
+  .cfm_flag { fill: var(--c-accent); transform-box: fill-box; transform-origin: left center;
+    animation: cfm_wave_${rid} 1.6s ease-in-out infinite; animation-duration: calc(1.6s / var(--s-mult,1)); }
+  @keyframes cfm_wave_${rid} { 0%,100% { transform: skewY(0deg); } 50% { transform: skewY(9deg); } }
+</style></defs>
+<line class="cfm_pole" x1="14" y1="10" x2="14" y2="90" />
+<circle class="cfm_base" cx="14" cy="92" r="3" />
+<path class="cfm_flag" d="M14,12 L44,20 L14,28 Z" />
+</svg>`;
+      }
+    },
+    {
+      id: "callout-tooltip-bubble", name: "Tooltip Bubble", file: "callout_tooltip_bubble.svg", category: "Callouts",
+      engine: "css", loop: false, durationMs: 600, roundable: true,
+      hasText: true, textDefault: "TOOLTIP", textHint: "Short tooltip text",
+      svg(rid) {
+        return `<svg viewBox="0 0 220 100" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .ctb_grp { transform-box: fill-box; transform-origin: 40px 80px; transform: scale(0); opacity: 0;
+    animation: ctb_pop_${rid} 0.35s cubic-bezier(.2,1.5,.4,1) forwards; animation-duration: calc(0.35s / var(--s-mult,1)); }
+  .ctb_tail { fill: var(--c-panel); }
+  .ctb_bubble { fill: var(--c-panel); stroke: var(--c-leader); stroke-width: calc(1 * var(--t-mult,1));
+    rx: var(--r-mult,6); ry: var(--r-mult,6); }
+  .ctb_label { font-family: "IBM Plex Mono","Courier New",monospace; font-size: 15px; fill: var(--c-label); text-anchor: middle; }
+</style></defs>
+<g class="ctb_grp">
+<path class="ctb_tail" d="M40,70 L26,92 L54,70 Z" />
+<rect class="ctb_bubble" x="20" y="14" width="180" height="56" />
+<text class="ctb_label" data-text-slot="true" x="110" y="47">TOOLTIP</text>
+</g>
+</svg>`;
+      }
+    },
+    {
+      id: "arrow-directional-single", name: "Directional Single", file: "arrow_directional_single.svg", category: "Arrows",
+      engine: "css", loop: false, durationMs: 650,
+      svg(rid) {
+        return `<svg viewBox="0 0 160 80" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .ads_shaft { fill: none; stroke: var(--c-accent); stroke-width: calc(6 * var(--t-mult,1)); stroke-linecap: round;
+    stroke-dasharray: 1; stroke-dashoffset: 1; animation: ads_draw_${rid} 0.45s ease-out forwards;
+    animation-duration: calc(0.45s / var(--s-mult,1)); }
+  .ads_head { fill: none; stroke: var(--c-accent); stroke-width: calc(6 * var(--t-mult,1)); stroke-linecap: round; stroke-linejoin: round;
+    transform-box: fill-box; transform-origin: center; transform: scale(0); opacity: 0;
+    animation: ads_pop_${rid} 0.25s cubic-bezier(.2,1.5,.4,1) 0.4s forwards;
+    animation-duration: calc(0.25s / var(--s-mult,1)); animation-delay: calc(0.4s / var(--s-mult,1)); }
+  @keyframes ads_draw_${rid} { to { stroke-dashoffset: 0; } }
+  @keyframes ads_pop_${rid} { to { transform: scale(1); opacity: 1; } }
+</style></defs>
+<path class="ads_shaft" pathLength="1" d="M10,40 L112,40" />
+<path class="ads_head" d="M104,20 L134,40 L104,60" />
+</svg>`;
+      }
+    },
+    {
+      id: "arrow-curved-redirect", name: "Curved Redirect", file: "arrow_curved_redirect.svg", category: "Arrows",
+      engine: "css", loop: false, durationMs: 800,
+      svg(rid) {
+        return `<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .acr_shaft { fill: none; stroke: var(--c-accent); stroke-width: calc(6 * var(--t-mult,1)); stroke-linecap: round;
+    stroke-dasharray: 1; stroke-dashoffset: 1; animation: acr_draw_${rid} 0.6s ease-out forwards;
+    animation-duration: calc(0.6s / var(--s-mult,1)); }
+  .acr_head { fill: none; stroke: var(--c-accent); stroke-width: calc(6 * var(--t-mult,1)); stroke-linecap: round; stroke-linejoin: round;
+    transform-box: fill-box; transform-origin: center; transform: scale(0); opacity: 0;
+    animation: acr_pop_${rid} 0.25s cubic-bezier(.2,1.5,.4,1) 0.55s forwards;
+    animation-duration: calc(0.25s / var(--s-mult,1)); animation-delay: calc(0.55s / var(--s-mult,1)); }
+  @keyframes acr_draw_${rid} { to { stroke-dashoffset: 0; } }
+  @keyframes acr_pop_${rid} { to { transform: scale(1); opacity: 1; } }
+</style></defs>
+<path class="acr_shaft" pathLength="1" d="M30,130 Q30,30 120,30" />
+<path class="acr_head" d="M100,14 L128,30 L108,52" />
+</svg>`;
+      }
+    },
+    {
+      id: "arrow-bidirectional", name: "Bidirectional", file: "arrow_bidirectional.svg", category: "Arrows",
+      engine: "css", loop: true, durationMs: 1600,
+      svg(rid) {
+        return `<svg viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .ab_grp { transform-box: fill-box; transform-origin: center; animation: ab_breathe_${rid} 1.6s ease-in-out infinite;
+    animation-duration: calc(1.6s / var(--s-mult,1)); }
+  .ab_shaft { stroke: var(--c-accent); stroke-width: calc(6 * var(--t-mult,1)); stroke-linecap: round; }
+  .ab_head { fill: none; stroke: var(--c-accent); stroke-width: calc(6 * var(--t-mult,1)); stroke-linecap: round; stroke-linejoin: round; }
+  @keyframes ab_breathe_${rid} { 0%,100% { transform: scaleX(1); } 50% { transform: scaleX(1.06); } }
+</style></defs>
+<g class="ab_grp">
+<line class="ab_shaft" x1="42" y1="30" x2="158" y2="30" />
+<path class="ab_head" d="M52,14 L26,30 L52,46" />
+<path class="ab_head" d="M148,14 L174,30 L148,46" />
+</g>
+</svg>`;
+      }
+    },
+    {
+      id: "arrow-spin-orbit", name: "Spin Orbit", file: "arrow_spin_orbit.svg", category: "Arrows",
+      engine: "css", loop: true, durationMs: 2400,
+      svg(rid) {
+        return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .aso_spin { transform-box: fill-box; transform-origin: center; animation: aso_rotate_${rid} 2.4s linear infinite;
+    animation-duration: calc(2.4s / var(--s-mult,1)); }
+  .aso_arc { fill: none; stroke: var(--c-accent); stroke-width: calc(6 * var(--t-mult,1)); stroke-linecap: round; }
+  .aso_head { fill: var(--c-accent); }
+  @keyframes aso_rotate_${rid} { to { transform: rotate(360deg); } }
+</style></defs>
+<g class="aso_spin">
+<path class="aso_arc" d="M50,14 A36,36 0 1,1 17.5,68" />
+<path class="aso_head" d="M8,60 L22,70 L27,54 Z" />
+</g>
+</svg>`;
+      }
+    },
+    {
+      id: "arrow-cluster-fan", name: "Cluster Fan", file: "arrow_cluster_fan.svg", category: "Arrows",
+      engine: "css", loop: false, durationMs: 700,
+      svg(rid) {
+        const arrow = (angle, delay) => `<g transform="translate(24,60) rotate(${angle})">
+  <path class="acf_shaft" pathLength="1" d="M0,0 L70,0"
+    style="animation-delay: calc(${delay}s / var(--s-mult,1));" />
+  <path class="acf_head" d="M60,-11 L80,0 L60,11 Z"
+    style="animation-delay: calc(${delay + 0.15}s / var(--s-mult,1));" />
+</g>`;
+        return `<svg viewBox="0 0 140 120" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .acf_shaft { fill: none; stroke: var(--c-accent); stroke-width: calc(5 * var(--t-mult,1)); stroke-linecap: round;
+    stroke-dasharray: 1; stroke-dashoffset: 1; animation: acf_draw_${rid} 0.35s ease-out forwards;
+    animation-duration: calc(0.35s / var(--s-mult,1)); }
+  .acf_head { fill: var(--c-accent); opacity: 0; transform-box: fill-box; transform-origin: center; transform: scale(0);
+    animation: acf_pop_${rid} 0.2s ease-out forwards; animation-duration: calc(0.2s / var(--s-mult,1)); }
+  @keyframes acf_draw_${rid} { to { stroke-dashoffset: 0; } }
+  @keyframes acf_pop_${rid} { to { transform: scale(1); opacity: 1; } }
+</style></defs>
+${arrow(-30, 0)}${arrow(0, 0.1)}${arrow(30, 0.2)}
+</svg>`;
+      }
+    },
+    {
+      id: "arrow-zigzag-path", name: "Zigzag Path", file: "arrow_zigzag_path.svg", category: "Arrows",
+      engine: "css", loop: false, durationMs: 650,
+      svg(rid) {
+        return `<svg viewBox="0 0 160 80" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .azp_shaft { fill: none; stroke: var(--c-accent); stroke-width: calc(5 * var(--t-mult,1));
+    stroke-linecap: round; stroke-linejoin: miter;
+    stroke-dasharray: 1; stroke-dashoffset: 1; animation: azp_draw_${rid} 0.45s ease-out forwards;
+    animation-duration: calc(0.45s / var(--s-mult,1)); }
+  .azp_head { fill: var(--c-accent); transform-box: fill-box; transform-origin: center; transform: scale(0); opacity: 0;
+    animation: azp_pop_${rid} 0.2s cubic-bezier(.2,1.6,.4,1) 0.4s forwards;
+    animation-duration: calc(0.2s / var(--s-mult,1)); animation-delay: calc(0.4s / var(--s-mult,1)); }
+  @keyframes azp_draw_${rid} { to { stroke-dashoffset: 0; } }
+  @keyframes azp_pop_${rid} { to { transform: scale(1); opacity: 1; } }
+</style></defs>
+<path class="azp_shaft" pathLength="1" d="M10,60 L40,20 L70,60 L100,20 L122,44" />
+<path class="azp_head" d="M116,30 L136,44 L116,58 Z" />
+</svg>`;
+      }
+    },
+    {
+      id: "arrow-chevron-stack", name: "Chevron Stack", file: "arrow_chevron_stack.svg", category: "Arrows",
+      engine: "css", loop: true, durationMs: 1200,
+      svg(rid) {
+        return `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .acs_c { fill: none; stroke: var(--c-accent); stroke-width: calc(7 * var(--t-mult,1));
+    stroke-linecap: round; stroke-linejoin: round; opacity: 0.25;
+    animation: acs_pulse_${rid} 1.2s ease-in-out infinite; animation-duration: calc(1.2s / var(--s-mult,1)); }
+  .acs_c2 { animation-delay: calc(0.15s / var(--s-mult,1)); }
+  .acs_c3 { animation-delay: calc(0.3s / var(--s-mult,1)); }
+  @keyframes acs_pulse_${rid} { 0%,100% { opacity: 0.25; } 50% { opacity: 1; } }
+</style></defs>
+<path class="acs_c" d="M20,20 L40,40 L20,60" />
+<path class="acs_c acs_c2" d="M32,20 L52,40 L32,60" />
+<path class="acs_c acs_c3" d="M44,20 L64,40 L44,60" />
+</svg>`;
+      }
+    },
+    {
+      id: "ping-crosshair", name: "Crosshair", file: "ping_crosshair.svg", category: "Pings",
+      engine: "css", loop: true, durationMs: 2200,
+      svg(rid) {
+        return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .pcr_ring { fill: none; stroke: var(--c-accent); stroke-width: calc(2 * var(--t-mult,1));
+    transform-box: fill-box; transform-origin: center; animation: pcr_pulse_${rid} 2.2s ease-in-out infinite;
+    animation-duration: calc(2.2s / var(--s-mult,1)); }
+  .pcr_tick { stroke: var(--c-accent); stroke-width: calc(2 * var(--t-mult,1)); }
+  .pcr_dot { fill: var(--c-accent); }
+  @keyframes pcr_pulse_${rid} { 0%,100% { opacity:.55; transform: scale(1);} 50% { opacity:1; transform: scale(1.05);} }
+</style></defs>
+<circle class="pcr_ring" cx="50" cy="50" r="22" />
+<line class="pcr_tick" x1="50" y1="18" x2="50" y2="28" />
+<line class="pcr_tick" x1="50" y1="72" x2="50" y2="82" />
+<line class="pcr_tick" x1="18" y1="50" x2="28" y2="50" />
+<line class="pcr_tick" x1="72" y1="50" x2="82" y2="50" />
+<circle class="pcr_dot" cx="50" cy="50" r="3" />
+</svg>`;
+      }
+    },
+    {
+      id: "ping-scan-sweep", name: "Scan Sweep", file: "ping_scan_sweep.svg", category: "Pings",
+      engine: "css", loop: true, durationMs: 2000,
+      svg(rid) {
+        const grad = "pss_grad_" + rid;
+        return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<radialGradient id="${grad}" cx="0%" cy="0%" r="100%">
+  <stop offset="0%" style="stop-color:var(--c-fluid); stop-opacity:0.85" />
+  <stop offset="100%" style="stop-color:var(--c-fluid); stop-opacity:0" />
+</radialGradient>
+<style>
+  .pss_ring { fill: none; stroke: var(--c-structural); stroke-width: calc(2 * var(--t-mult,1)); }
+  .pss_sweep { transform-box: fill-box; transform-origin: 50px 50px; animation: pss_rotate_${rid} 2s linear infinite;
+    animation-duration: calc(2s / var(--s-mult,1)); }
+  .pss_dot { fill: var(--c-accent); }
+  @keyframes pss_rotate_${rid} { to { transform: rotate(360deg); } }
+</style>
+</defs>
+<circle class="pss_ring" cx="50" cy="50" r="38" />
+<g class="pss_sweep">
+<path d="M50,50 L50,12 A38,38 0 0,1 76.9,23.1 Z" fill="url(#${grad})" />
+</g>
+<circle class="pss_dot" cx="50" cy="50" r="3" />
+</svg>`;
+      }
+    },
+    {
+      id: "ping-corner-brackets", name: "Corner Brackets", file: "ping_corner_brackets.svg", category: "Pings",
+      engine: "css", loop: false, durationMs: 400,
+      svg(rid) {
+        return `<svg viewBox="0 0 200 140" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .pcb_bracket { fill: none; stroke: var(--c-accent); stroke-width: calc(4 * var(--t-mult,1)); stroke-linecap: square;
+    transform-box: fill-box; transform-origin: center; opacity: 0;
+    animation-duration: calc(0.4s / var(--s-mult,1)); animation-timing-function: ease-out; animation-fill-mode: forwards; }
+  .pcb_tl { animation-name: pcb_tl_${rid}; }
+  .pcb_tr { animation-name: pcb_tr_${rid}; }
+  .pcb_bl { animation-name: pcb_bl_${rid}; }
+  .pcb_br { animation-name: pcb_br_${rid}; }
+  @keyframes pcb_tl_${rid} { from { opacity:0; transform: translate(-22px,-22px);} to { opacity:1; transform: translate(0,0);} }
+  @keyframes pcb_tr_${rid} { from { opacity:0; transform: translate(22px,-22px);} to { opacity:1; transform: translate(0,0);} }
+  @keyframes pcb_bl_${rid} { from { opacity:0; transform: translate(-22px,22px);} to { opacity:1; transform: translate(0,0);} }
+  @keyframes pcb_br_${rid} { from { opacity:0; transform: translate(22px,22px);} to { opacity:1; transform: translate(0,0);} }
+</style></defs>
+<path class="pcb_bracket pcb_tl" d="M10,36 L10,10 L36,10" />
+<path class="pcb_bracket pcb_tr" d="M164,10 L190,10 L190,36" />
+<path class="pcb_bracket pcb_bl" d="M10,104 L10,130 L36,130" />
+<path class="pcb_bracket pcb_br" d="M190,104 L190,130 L164,130" />
+</svg>`;
+      }
+    },
+    {
+      id: "ping-radar-blip", name: "Radar Blip", file: "ping_radar_blip.svg", category: "Pings",
+      engine: "css", loop: true, durationMs: 3000,
+      svg(rid) {
+        return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .prb_ring { fill: none; stroke: var(--c-structural); stroke-width: calc(2 * var(--t-mult,1)); opacity: 0.6; }
+  .prb_blip { fill: var(--c-accent); transform-box: fill-box; transform-origin: center;
+    animation: prb_blip_${rid} 3s steps(1,end) infinite; animation-duration: calc(3s / var(--s-mult,1)); }
+  @keyframes prb_blip_${rid} {
+    0%, 3% { opacity: 0; transform: scale(0.6); }
+    4% { opacity: 1; transform: scale(1.3); }
+    10% { opacity: 0; transform: scale(0.6); }
+    48% { opacity: 0; transform: scale(0.6); }
+    50% { opacity: 1; transform: scale(1.3); }
+    56% { opacity: 0; transform: scale(0.6); }
+    100% { opacity: 0; transform: scale(0.6); }
+  }
+</style></defs>
+<circle class="prb_ring" cx="50" cy="50" r="30" />
+<circle class="prb_blip" cx="50" cy="50" r="5" />
+</svg>`;
+      }
+    },
+    {
+      id: "ping-target-lock", name: "Target Lock", file: "ping_target_lock.svg", category: "Pings",
+      engine: "css", loop: false, durationMs: 500,
+      svg(rid) {
+        return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .ptl_diamond { fill: none; stroke: var(--c-accent); stroke-width: calc(3 * var(--t-mult,1));
+    transform-box: fill-box; transform-origin: center; opacity: 0;
+    animation: ptl_snap_${rid} 0.4s cubic-bezier(.2,2.2,.3,1) forwards; animation-duration: calc(0.4s / var(--s-mult,1)); }
+  .ptl_flash { fill: none; stroke: var(--c-accent); stroke-width: calc(1.5 * var(--t-mult,1)); opacity: 0;
+    transform-box: fill-box; transform-origin: center;
+    animation: ptl_flash_${rid} 0.5s ease-out forwards; animation-duration: calc(0.5s / var(--s-mult,1)); }
+  @keyframes ptl_snap_${rid} { 0% { transform: scale(1.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+  @keyframes ptl_flash_${rid} { 0% { transform: scale(0.5); opacity: 0.9; } 100% { transform: scale(1.7); opacity: 0; } }
+</style></defs>
+<g transform="rotate(45 50 50)">
+<rect class="ptl_diamond" x="35" y="35" width="30" height="30" />
+</g>
+<circle class="ptl_flash" cx="50" cy="50" r="22" />
+</svg>`;
+      }
+    },
+    {
+      id: "ping-star-burst", name: "Star Burst", file: "ping_star_burst.svg", category: "Pings",
+      engine: "css", loop: true, durationMs: 1400,
+      svg(rid) {
+        return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .psb_star { fill: var(--c-accent); stroke: var(--c-structural); stroke-width: calc(1 * var(--t-mult,1));
+    transform-box: fill-box; transform-origin: center;
+    animation: psb_twinkle_${rid} 1.4s ease-in-out infinite; animation-duration: calc(1.4s / var(--s-mult,1)); }
+  @keyframes psb_twinkle_${rid} { 0%,100% { transform: scale(0.7) rotate(0deg); opacity: 0.6; } 50% { transform: scale(1.15) rotate(12deg); opacity: 1; } }
+</style></defs>
+<path class="psb_star" d="M50,20 L56,44 L80,50 L56,56 L50,80 L44,56 L20,50 L44,44 Z" />
+</svg>`;
+      }
+    },
+    {
+      id: "ping-underglow-pulse", name: "Underglow Pulse", file: "ping_underglow_pulse.svg", category: "Pings",
+      engine: "css", loop: true, durationMs: 2600,
+      svg(rid) {
+        const grad = "pug_grad_" + rid;
+        return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<radialGradient id="${grad}" cx="50%" cy="50%" r="50%">
+  <stop offset="0%" style="stop-color:var(--c-fluid); stop-opacity:0.8" />
+  <stop offset="100%" style="stop-color:var(--c-fluid); stop-opacity:0" />
+</radialGradient>
+<style>
+  .pug_glow { transform-box: fill-box; transform-origin: center;
+    animation: pug_breathe_${rid} 2.6s ease-in-out infinite; animation-duration: calc(2.6s / var(--s-mult,1)); }
+  .pug_dot { fill: var(--c-fluid); }
+  @keyframes pug_breathe_${rid} { 0%,100% { transform: scale(0.7); opacity: 0.5; } 50% { transform: scale(1.15); opacity: 1; } }
+</style>
+</defs>
+<ellipse class="pug_glow" cx="50" cy="50" rx="34" ry="20" fill="url(#${grad})" />
+<circle class="pug_dot" cx="50" cy="50" r="3" />
+</svg>`;
+      }
+    },
+    {
+      id: "frame-corner-brackets-full", name: "Full HUD Corners", file: "frame_corner_brackets_full.svg", category: "Frame",
+      engine: "css", loop: false, durationMs: 800,
+      svg(rid) {
+        return `<svg viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .fcb_bracket { fill: none; stroke: var(--c-accent); stroke-width: calc(3 * var(--t-mult,1)); stroke-linecap: square;
+    stroke-dasharray: 1; stroke-dashoffset: 1; animation: fcb_draw_${rid} 0.5s ease-out forwards;
+    animation-duration: calc(0.5s / var(--s-mult,1)); }
+  .fcb_b2 { animation-delay: calc(0.08s / var(--s-mult,1)); }
+  .fcb_b3 { animation-delay: calc(0.16s / var(--s-mult,1)); }
+  .fcb_b4 { animation-delay: calc(0.24s / var(--s-mult,1)); }
+  .fcb_tick { stroke: var(--c-structural); stroke-width: calc(2 * var(--t-mult,1)); opacity: 0;
+    animation: fcb_fadeIn_${rid} 0.3s linear 0.5s forwards;
+    animation-duration: calc(0.3s / var(--s-mult,1)); animation-delay: calc(0.5s / var(--s-mult,1)); }
+</style></defs>
+<path class="fcb_bracket" pathLength="1" d="M20,60 L20,20 L60,20" />
+<path class="fcb_bracket fcb_b2" pathLength="1" d="M580,20 L620,20 L620,60" />
+<path class="fcb_bracket fcb_b3" pathLength="1" d="M20,300 L20,340 L60,340" />
+<path class="fcb_bracket fcb_b4" pathLength="1" d="M620,300 L620,340 L580,340" />
+<line class="fcb_tick" x1="20" y1="180" x2="20" y2="200" />
+<line class="fcb_tick" x1="620" y1="180" x2="620" y2="200" />
+<line class="fcb_tick" x1="300" y1="20" x2="320" y2="20" />
+<line class="fcb_tick" x1="300" y1="340" x2="320" y2="340" />
+</svg>`;
+      }
+    },
+    {
+      id: "divider-technical-rule", name: "Technical Rule", file: "divider_technical_rule.svg", category: "Frame",
+      engine: "css", loop: false, durationMs: 800, roundable: true,
+      hasText: true, textDefault: "SECTION_02", textHint: "Section / transition label",
+      svg(rid) {
+        return `<svg viewBox="0 0 400 40" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .dtr_line { fill: none; stroke: var(--c-leader); stroke-width: calc(1.5 * var(--t-mult,1));
+    stroke-dasharray: 0.5; stroke-dashoffset: 0.5; animation: dtr_draw_${rid} 0.5s ease-out forwards;
+    animation-duration: calc(0.5s / var(--s-mult,1)); }
+  .dtr_tick { stroke: var(--c-leader); stroke-width: calc(1.5 * var(--t-mult,1)); opacity: 0;
+    animation: dtr_fadeIn_${rid} 0.2s linear 0.5s forwards;
+    animation-duration: calc(0.2s / var(--s-mult,1)); animation-delay: calc(0.5s / var(--s-mult,1)); }
+  .dtr_bg { fill: var(--c-panel); rx: var(--r-mult,0); ry: var(--r-mult,0); opacity: 0;
+    animation: dtr_fadeIn_${rid} 0.15s linear 0.45s forwards;
+    animation-duration: calc(0.15s / var(--s-mult,1)); animation-delay: calc(0.45s / var(--s-mult,1)); }
+  .dtr_label { font-family: "IBM Plex Mono","Courier New",monospace; font-size: 11px; letter-spacing: 0.08em;
+    fill: var(--c-label); text-anchor: middle; opacity: 0; animation: dtr_fadeIn_${rid} 0.2s linear 0.55s forwards;
+    animation-duration: calc(0.2s / var(--s-mult,1)); animation-delay: calc(0.55s / var(--s-mult,1)); }
+  @keyframes dtr_draw_${rid} { to { stroke-dashoffset: 0; } }
+  @keyframes dtr_fadeIn_${rid} { to { opacity: 1; } }
+</style></defs>
+<path class="dtr_line" pathLength="0.5" d="M20,20 L155,20" />
+<path class="dtr_line" pathLength="0.5" d="M245,20 L380,20" />
+<line class="dtr_tick" x1="20" y1="14" x2="20" y2="26" />
+<line class="dtr_tick" x1="380" y1="14" x2="380" y2="26" />
+<rect class="dtr_bg" x="160" y="6" width="80" height="28" />
+<text class="dtr_label" data-text-slot="true" x="200" y="24">SECTION_02</text>
+</svg>`;
+      }
+    },
+    {
+      id: "badge-spec-tag", name: "Spec Tag", file: "badge_spec_tag.svg", category: "Frame",
+      engine: "css", loop: false, durationMs: 650, roundable: true,
+      hasText: true, textDefault: "SPEC_TAG", textHint: "Short spec text — rating, material, standard",
+      svg(rid) {
+        return `<svg viewBox="0 0 140 44" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .bst_tick { stroke: var(--c-accent); stroke-width: calc(2 * var(--t-mult,1)); stroke-dasharray: 1; stroke-dashoffset: 1;
+    animation: bst_draw_${rid} 0.25s ease-out forwards;
+    animation-duration: calc(0.25s / var(--s-mult,1)); }
+  .bst_chip { fill: var(--c-panel); stroke: var(--c-accent); stroke-width: calc(1.5 * var(--t-mult,1));
+    rx: var(--r-mult,0); ry: var(--r-mult,0);
+    transform-box: fill-box; transform-origin: left center; transform: scaleX(0); opacity: 0;
+    animation: bst_pop_${rid} 0.3s ease-out 0.2s forwards;
+    animation-duration: calc(0.3s / var(--s-mult,1)); animation-delay: calc(0.2s / var(--s-mult,1)); }
+  .bst_label { font-family: "IBM Plex Mono","Courier New",monospace; font-size: 13px; letter-spacing: 0.06em;
+    fill: var(--c-label); opacity: 0; animation: bst_fadeIn_${rid} 0.2s linear 0.45s forwards;
+    animation-duration: calc(0.2s / var(--s-mult,1)); animation-delay: calc(0.45s / var(--s-mult,1)); }
+  @keyframes bst_draw_${rid} { to { stroke-dashoffset: 0; } }
+  @keyframes bst_pop_${rid} { to { transform: scaleX(1); opacity: 1; } }
+  @keyframes bst_fadeIn_${rid} { to { opacity: 1; } }
+</style></defs>
+<line class="bst_tick" pathLength="1" x1="4" y1="22" x2="18" y2="22" />
+<rect class="bst_chip" x="18" y="8" width="118" height="28" />
+<text class="bst_label" data-text-slot="true" x="28" y="27">SPEC_TAG</text>
+</svg>`;
+      }
+    },
+    {
+      id: "frame-scan-line-sweep", name: "Scan Line Sweep", file: "frame_scan_line_sweep.svg", category: "Frame",
+      engine: "css", loop: true, durationMs: 2200,
+      svg(rid) {
+        return `<svg viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .fss_border { fill: none; stroke: var(--c-structural); stroke-width: calc(1.5 * var(--t-mult,1)); opacity: 0.5; }
+  .fss_sweep { stroke: var(--c-accent); stroke-width: calc(2 * var(--t-mult,1));
+    animation: fss_scan_${rid} 2.2s linear infinite; animation-duration: calc(2.2s / var(--s-mult,1)); }
+  @keyframes fss_scan_${rid} {
+    0% { transform: translateY(0); opacity: 0; }
+    8% { opacity: 0.85; }
+    92% { opacity: 0.85; }
+    100% { transform: translateY(360px); opacity: 0; }
+  }
+</style></defs>
+<rect class="fss_border" x="4" y="4" width="632" height="352" />
+<line class="fss_sweep" x1="0" y1="0" x2="640" y2="0" />
+</svg>`;
+      }
+    },
+    {
+      id: "frame-vignette-pulse", name: "Vignette Pulse", file: "frame_vignette_pulse.svg", category: "Frame",
+      engine: "css", loop: true, durationMs: 3200,
+      svg(rid) {
+        const grad = "fvp_grad_" + rid;
+        return `<svg viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<radialGradient id="${grad}" cx="50%" cy="50%" r="50%">
+  <stop offset="0%" stop-color="#000000" stop-opacity="0.55" />
+  <stop offset="100%" stop-color="#000000" stop-opacity="0" />
+</radialGradient>
+<style>
+  .fvp_corner { fill: url(#${grad}); transform-box: fill-box; transform-origin: center;
+    animation: fvp_breathe_${rid} 3.2s ease-in-out infinite; animation-duration: calc(3.2s / var(--s-mult,1)); }
+  @keyframes fvp_breathe_${rid} { 0%,100% { transform: scale(0.85); opacity: 0.6; } 50% { transform: scale(1.05); opacity: 1; } }
+</style>
+</defs>
+<ellipse class="fvp_corner" cx="0" cy="0" rx="220" ry="160" />
+<ellipse class="fvp_corner" cx="640" cy="0" rx="220" ry="160" />
+<ellipse class="fvp_corner" cx="0" cy="360" rx="220" ry="160" />
+<ellipse class="fvp_corner" cx="640" cy="360" rx="220" ry="160" />
+</svg>`;
+      }
+    },
+    {
+      id: "frame-grid-overlay", name: "Grid Overlay", file: "frame_grid_overlay.svg", category: "Frame",
+      engine: "css", loop: false, durationMs: 1200,
+      svg(rid) {
+        const vLines = [];
+        for (let x = 80; x < 640; x += 80) vLines.push(`<line class="fgo_line" x1="${x}" y1="0" x2="${x}" y2="360" />`);
+        const hLines = [];
+        for (let y = 60; y < 360; y += 60) hLines.push(`<line class="fgo_line" x1="0" y1="${y}" x2="640" y2="${y}" />`);
+        return `<svg viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .fgo_line { stroke: var(--c-structural); stroke-width: calc(1 * var(--t-mult,1)); opacity: 0;
+    animation: fgo_fade_${rid} 1.2s ease-out forwards; animation-duration: calc(1.2s / var(--s-mult,1)); }
+  @keyframes fgo_fade_${rid} { to { opacity: 0.45; } }
+</style></defs>
+${vLines.join("")}
+${hLines.join("")}
+</svg>`;
+      }
+    },
+    {
+      id: "frame-title-card-bar", name: "Title Card Bar", file: "frame_title_card_bar.svg", category: "Frame",
+      engine: "css", loop: false, durationMs: 550, roundable: true,
+      hasText: true, textDefault: "TITLE_CARD", textHint: "Lower-third title text",
+      svg(rid) {
+        return `<svg viewBox="0 0 640 140" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .ftb_slide { transform: translateX(-460px); animation: ftb_in_${rid} 0.55s ease-out forwards;
+    animation-duration: calc(0.55s / var(--s-mult,1)); }
+  .ftb_bar { fill: var(--c-panel); rx: var(--r-mult,0); ry: var(--r-mult,0); }
+  .ftb_accent { stroke: var(--c-accent); stroke-width: calc(5 * var(--t-mult,1)); }
+  .ftb_label { font-family: "IBM Plex Mono","Courier New",monospace; font-size: 20px; letter-spacing: 0.04em; fill: var(--c-label); }
+  @keyframes ftb_in_${rid} { to { transform: translateX(0); } }
+</style></defs>
+<g class="ftb_slide">
+<rect class="ftb_bar" x="0" y="70" width="400" height="50" />
+<line class="ftb_accent" x1="0" y1="70" x2="0" y2="120" />
+<text class="ftb_label" data-text-slot="true" x="24" y="102">TITLE_CARD</text>
+</g>
+</svg>`;
+      }
+    },
+    {
+      id: "splash-droplet-fall", name: "Droplet Fall", file: "splash_droplet_fall.svg", category: "Splashes",
+      engine: "css", loop: true, durationMs: 1400,
+      svg(rid) {
+        return `<svg viewBox="0 0 100 140" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .sdf_surface { stroke: var(--c-structural); stroke-width: calc(3 * var(--t-mult,1)); }
+  .sdf_drop { transform-box: fill-box; transform-origin: center;
+    animation: sdf_fall_${rid} 1.4s cubic-bezier(.55,0,.85,.35) infinite;
+    animation-duration: calc(1.4s / var(--s-mult,1)); }
+  .sdf_drop path { fill: var(--c-fluid); stroke: var(--c-structural); stroke-width: calc(1.5 * var(--t-mult,1)); }
+  .sdf_ripple { fill: none; stroke: var(--c-fluid); stroke-width: calc(2 * var(--t-mult,1));
+    transform-box: fill-box; transform-origin: center;
+    animation: sdf_ripple_${rid} 1.4s ease-out infinite;
+    animation-duration: calc(1.4s / var(--s-mult,1)); }
+  @keyframes sdf_fall_${rid} {
+    0%   { transform: translateY(16px) scale(0.6); opacity: 0; }
+    8%   { transform: translateY(16px) scale(0.85); opacity: 1; }
+    68%  { transform: translateY(96px) scale(1); opacity: 1; }
+    86%  { transform: translateY(112px) scaleY(0.5) scaleX(1.3); opacity: 1; }
+    96%  { transform: translateY(114px) scaleY(0.15) scaleX(0.5); opacity: 0; }
+    100% { transform: translateY(16px) scale(0.6); opacity: 0; }
+  }
+  @keyframes sdf_ripple_${rid} {
+    0%, 80% { opacity: 0; transform: scaleX(0.3); }
+    88%     { opacity: 0.8; transform: scaleX(1); }
+    100%    { opacity: 0; transform: scaleX(1.7); }
+  }
+</style></defs>
+<line class="sdf_surface" x1="14" y1="118" x2="86" y2="118" />
+<ellipse class="sdf_ripple" cx="50" cy="118" rx="16" ry="5" />
+<g transform="translate(50,0)">
+  <g class="sdf_drop">
+    <path d="M0,-23 C15,-4 18,10 18,18 A18,18 0 1,1 -18,18 C-18,10 -15,-4 0,-23 Z" />
+  </g>
+</g>
+</svg>`;
+      }
+    },
+    {
+      id: "splash-impact-burst", name: "Impact Burst", file: "splash_impact_burst.svg", category: "Splashes",
+      engine: "css", loop: false, durationMs: 600,
+      svg(rid) {
+        const angles = [0, 72, 144, 216, 288];
+        const particles = angles.map((deg, i) => `
+<g transform="translate(60,60) rotate(${deg})">
+  <g class="sib_particle sib_p${i}">
+    <path d="M0,-9 C6,-1.5 7,4 7,7 A7,7 0 1,1 -7,7 C-7,4 -6,-1.5 0,-9 Z" />
+  </g>
+</g>`).join("");
+        return `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .sib_core { fill: var(--c-fluid); stroke: var(--c-structural); stroke-width: calc(1.5 * var(--t-mult,1));
+    transform-box: fill-box; transform-origin: center; opacity: 0;
+    animation: sib_core_${rid} 0.45s ease-out forwards;
+    animation-duration: calc(0.45s / var(--s-mult,1)); }
+  .sib_particle { fill: var(--c-fluid); stroke: var(--c-structural); stroke-width: calc(1.2 * var(--t-mult,1));
+    transform-box: fill-box; transform-origin: center; opacity: 0;
+    animation: sib_burst_${rid} 0.5s ease-out forwards;
+    animation-duration: calc(0.5s / var(--s-mult,1)); }
+  .sib_p1, .sib_p3 { animation-delay: calc(0.03s / var(--s-mult,1)); }
+  .sib_p2, .sib_p4 { animation-delay: calc(0.06s / var(--s-mult,1)); }
+  @keyframes sib_core_${rid} { 0% { transform: scale(0.2); opacity: 0.9; } 100% { transform: scale(1.7); opacity: 0; } }
+  @keyframes sib_burst_${rid} { 0% { transform: translateY(-10px) scale(0.5); opacity: 1; } 100% { transform: translateY(-42px) scale(0.15); opacity: 0; } }
+</style></defs>
+<ellipse class="sib_core" cx="60" cy="60" rx="14" ry="7" />
+${particles}
+</svg>`;
+      }
+    },
+    {
+      id: "splash-ripple-rings", name: "Ripple Rings", file: "splash_ripple_rings.svg", category: "Splashes",
+      engine: "css", loop: true, durationMs: 1800,
+      svg(rid) {
+        return `<svg viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .srr_ring { fill: none; stroke: var(--c-fluid); stroke-width: calc(2 * var(--t-mult,1));
+    transform-box: fill-box; transform-origin: center;
+    animation: srr_ripple_${rid} 1.8s ease-out infinite;
+    animation-duration: calc(1.8s / var(--s-mult,1)); }
+  .srr_r2 { animation-delay: calc(0.6s / var(--s-mult,1)); }
+  .srr_r3 { animation-delay: calc(1.2s / var(--s-mult,1)); }
+  .srr_dot { fill: var(--c-fluid); stroke: var(--c-structural); stroke-width: calc(1 * var(--t-mult,1)); }
+  @keyframes srr_ripple_${rid} { 0% { transform: scale(0.2,0.1); opacity: 0.85; } 100% { transform: scale(2.6,0.8); opacity: 0; } }
+</style></defs>
+<ellipse class="srr_ring" cx="50" cy="30" rx="14" ry="5" />
+<ellipse class="srr_ring srr_r2" cx="50" cy="30" rx="14" ry="5" />
+<ellipse class="srr_ring srr_r3" cx="50" cy="30" rx="14" ry="5" />
+<ellipse class="srr_dot" cx="50" cy="30" rx="3" ry="1.6" />
+</svg>`;
+      }
+    },
+    {
+      id: "splash-puddle-form", name: "Puddle Form", file: "splash_puddle_form.svg", category: "Splashes",
+      engine: "css", loop: true, durationMs: 2800,
+      svg(rid) {
+        return `<svg viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .spf_puddle { fill: var(--c-fluid); stroke: var(--c-structural); stroke-width: calc(1.5 * var(--t-mult,1));
+    transform-box: fill-box; transform-origin: center;
+    animation: spf_grow_${rid} 2.8s ease-in-out infinite; animation-duration: calc(2.8s / var(--s-mult,1)); }
+  .spf_shine { fill: var(--c-label); opacity: 0.35; }
+  @keyframes spf_grow_${rid} {
+    0% { transform: scale(0.05); opacity: 0; }
+    20% { transform: scale(1); opacity: 1; }
+    75% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(0.05); opacity: 0; }
+  }
+</style></defs>
+<ellipse class="spf_puddle" cx="50" cy="40" rx="34" ry="12" />
+<ellipse class="spf_shine" cx="38" cy="35" rx="7" ry="2.5" />
+</svg>`;
+      }
+    },
+    {
+      id: "splash-mist-spray", name: "Mist Spray", file: "splash_mist_spray.svg", category: "Splashes",
+      engine: "css", loop: false, durationMs: 950,
+      svg(rid) {
+        return `<svg viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .smt_dot { fill: var(--c-fluid); opacity: 0; transform-box: fill-box; transform-origin: center;
+    animation-duration: calc(0.9s / var(--s-mult,1)); animation-timing-function: ease-out; animation-fill-mode: forwards; }
+  .smt_p1 { animation-name: smt_k1_${rid}; }
+  .smt_p2 { animation-name: smt_k2_${rid}; animation-delay: calc(0.04s / var(--s-mult,1)); }
+  .smt_p3 { animation-name: smt_k3_${rid}; animation-delay: calc(0.08s / var(--s-mult,1)); }
+  .smt_p4 { animation-name: smt_k4_${rid}; animation-delay: calc(0.02s / var(--s-mult,1)); }
+  .smt_p5 { animation-name: smt_k5_${rid}; animation-delay: calc(0.06s / var(--s-mult,1)); }
+  .smt_p6 { animation-name: smt_k6_${rid}; animation-delay: calc(0.1s / var(--s-mult,1)); }
+  @keyframes smt_k1_${rid} { 0% { opacity:0; transform: translate(0,0) scale(0.4);} 30% { opacity:0.9;} 100% { opacity:0; transform: translate(-30px,-42px) scale(1);} }
+  @keyframes smt_k2_${rid} { 0% { opacity:0; transform: translate(0,0) scale(0.4);} 30% { opacity:0.9;} 100% { opacity:0; transform: translate(12px,-52px) scale(1);} }
+  @keyframes smt_k3_${rid} { 0% { opacity:0; transform: translate(0,0) scale(0.4);} 30% { opacity:0.9;} 100% { opacity:0; transform: translate(-46px,-22px) scale(1);} }
+  @keyframes smt_k4_${rid} { 0% { opacity:0; transform: translate(0,0) scale(0.4);} 30% { opacity:0.9;} 100% { opacity:0; transform: translate(38px,-34px) scale(1);} }
+  @keyframes smt_k5_${rid} { 0% { opacity:0; transform: translate(0,0) scale(0.4);} 30% { opacity:0.9;} 100% { opacity:0; transform: translate(-10px,-58px) scale(1);} }
+  @keyframes smt_k6_${rid} { 0% { opacity:0; transform: translate(0,0) scale(0.4);} 30% { opacity:0.9;} 100% { opacity:0; transform: translate(46px,-14px) scale(1);} }
+</style></defs>
+<circle class="smt_dot smt_p1" cx="60" cy="70" r="4" />
+<circle class="smt_dot smt_p2" cx="60" cy="70" r="3" />
+<circle class="smt_dot smt_p3" cx="60" cy="70" r="5" />
+<circle class="smt_dot smt_p4" cx="60" cy="70" r="3" />
+<circle class="smt_dot smt_p5" cx="60" cy="70" r="4" />
+<circle class="smt_dot smt_p6" cx="60" cy="70" r="3" />
+</svg>`;
+      }
+    },
+    {
+      id: "splash-drip-trail", name: "Drip Trail", file: "splash_drip_trail.svg", category: "Splashes",
+      engine: "css", loop: true, durationMs: 1600,
+      svg(rid) {
+        const drop = (cls, delay) => `<g transform="translate(30,0)">
+  <g class="sdt_drop ${cls}" style="animation-delay: calc(${delay}s / var(--s-mult,1));">
+    <path d="M0,-18 C12,-3 14,8 14,14 A14,14 0 1,1 -14,14 C-14,8 -12,-3 0,-18 Z" />
+  </g>
+</g>`;
+        return `<svg viewBox="0 0 60 160" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .sdt_drop { transform-box: fill-box; transform-origin: center;
+    animation: sdt_fall_${rid} 1.6s cubic-bezier(.5,0,.9,.4) infinite; animation-duration: calc(1.6s / var(--s-mult,1)); }
+  .sdt_drop path { fill: var(--c-fluid); stroke: var(--c-structural); stroke-width: calc(1.3 * var(--t-mult,1)); }
+  .sdt_surface { stroke: var(--c-structural); stroke-width: calc(2.5 * var(--t-mult,1)); }
+  @keyframes sdt_fall_${rid} {
+    0% { transform: translateY(10px) scale(0.5); opacity: 0; }
+    10% { transform: translateY(10px) scale(0.8); opacity: 1; }
+    75% { transform: translateY(120px) scale(1); opacity: 1; }
+    92% { transform: translateY(134px) scaleY(0.4) scaleX(1.3); opacity: 1; }
+    100% { transform: translateY(10px) scale(0.5); opacity: 0; }
+  }
+</style></defs>
+<line class="sdt_surface" x1="6" y1="146" x2="54" y2="146" />
+${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
+</svg>`;
+      }
+    },
+    {
+      id: "splash-wave-crest", name: "Wave Crest", file: "splash_wave_crest.svg", category: "Splashes",
+      engine: "css", loop: true, durationMs: 2400,
+      svg(rid) {
+        return `<svg viewBox="0 0 160 60" xmlns="http://www.w3.org/2000/svg">
+<defs><style>
+  .swc_wave { fill: var(--c-fluid); animation: swc_scroll_${rid} 2.4s linear infinite;
+    animation-duration: calc(2.4s / var(--s-mult,1)); }
+  .swc_crest { fill: none; stroke: var(--c-structural); stroke-width: calc(2 * var(--t-mult,1));
+    animation: swc_scroll_${rid} 2.4s linear infinite; animation-duration: calc(2.4s / var(--s-mult,1)); }
+  @keyframes swc_scroll_${rid} { 0% { transform: translateX(0); } 100% { transform: translateX(-60px); } }
+</style></defs>
+<path class="swc_wave" d="M-60,30 C-50,15 -40,15 -30,30 C-20,45 -10,45 0,30 C10,15 20,15 30,30 C40,45 50,45 60,30 C70,15 80,15 90,30 C100,45 110,45 120,30 C130,15 140,15 150,30 C160,45 170,45 180,30 C190,15 200,15 210,30 L210,60 L-60,60 Z" />
+<path class="swc_crest" d="M-60,30 C-50,15 -40,15 -30,30 C-20,45 -10,45 0,30 C10,15 20,15 30,30 C40,45 50,45 60,30 C70,15 80,15 90,30 C100,45 110,45 120,30 C130,15 140,15 150,30 C160,45 170,45 180,30 C190,15 200,15 210,30" />
+</svg>`;
+      }
+    }
+  ];
+
+  ASSETS.forEach(a => { if (a.hasText) customText[a.id] = a.textDefault; });
+
+  const CATEGORIES = [
+    { slug: "fluid-flow", label: "Fluid Flow", blurb: "Directional flow indicators for pipe and tube runs." },
+    { slug: "splashes",   label: "Splashes",   blurb: "Droplets, drips and impact ripples — organic fluid motion." },
+    { slug: "callouts",   label: "Callouts",   blurb: "Point at something on a render and label it." },
+    { slug: "arrows",     label: "Arrows",     blurb: "General-purpose direction and motion, not fluid-specific." },
+    { slug: "pings",      label: "Pings",      blurb: "Draw attention to a spot or a region." },
+    { slug: "frame",      label: "Frame",      blurb: "Instrument-panel chrome — dividers, badges, HUD frames." }
+  ];
+
+  /* =========================================================
+     RENDER + TEXT HELPERS
+     ========================================================= */
+  function applyText(asset, stage) {
+    if (!asset.hasText) return;
+    const slot = stage.querySelector("[data-text-slot]");
+    if (slot) slot.textContent = customText[asset.id];
+  }
+
+  function renderAssetInto(stage, asset) {
+    const rid = nextRid();
+    const p = getParams(asset);
+    stage.innerHTML = asset.engine === "smil" ? asset.svg(rid, p.speed) : asset.svg(rid);
+    applyText(asset, stage);
+    applyLiveParams(asset, stage);
+  }
+
+  function formatParamValue(key, val) {
+    if (key === "opacity") return Math.round(val * 100) + "%";
+    if (key === "roundness") return Math.round(val) + "px";
+    return val.toFixed(2) + "x";
+  }
+
+  /* =========================================================
+     TOOL REGISTRY + ROUTER
+     ========================================================= */
+  const TOOLS = [
+    {
+      id: "overlay-kit",
+      title: "Overlay Asset Customizer",
+      description: "Browse by type, pick a variant, then recolor, retext, adjust and export.",
+      status: "active",
+      mount: mountOverlayKit
+    },
+    {
+      id: "texture-generator",
+      title: "Texture & Bump Map Generator",
+      description: "Procedural grayscale texture and bump-map previews from a few generation criteria.",
+      status: "active",
+      mount: mountTextureTool
+    }
+  ];
+
+  function mountHome(main) {
+    main.innerHTML = "";
+    const head = document.createElement("div");
+    head.className = "page-head";
+    head.innerHTML = `<h1>Parametric Generators</h1><p>Procedural / parametric generators for the rendering &amp; overlay compositing pipeline. Each tile is a self-contained tool; more get added here over time.</p>`;
+    main.appendChild(head);
+
+    const grid = document.createElement("div");
+    grid.className = "card-grid";
+
+    TOOLS.forEach(tool => {
+      const card = document.createElement("button");
+      card.className = "card active";
+      card.innerHTML = `<div class="tag">Active</div><h2>${tool.title}</h2><p>${tool.description}</p>`;
+      card.addEventListener("click", () => { location.hash = "#" + tool.id; });
+      grid.appendChild(card);
+    });
+
+    const placeholder = document.createElement("div");
+    placeholder.className = "card planned";
+    placeholder.innerHTML = `<div class="tag">Reserved</div><h2>Next tool slot</h2><p>New tools register in the TOOLS array and appear here automatically.</p>`;
+    grid.appendChild(placeholder);
+
+    main.appendChild(grid);
+    setCrumbs([]);
+  }
+
+  function setCrumbs(items) {
+    const el = document.getElementById("crumbs");
+    el.innerHTML = "";
+    const all = [{ label: "Parametric Generators", hash: "" }].concat(items);
+    all.forEach((item, i) => {
+      const isLast = i === all.length - 1;
+      if (isLast) {
+        const span = document.createElement("span");
+        span.textContent = item.label;
+        span.style.color = "var(--text)";
+        el.appendChild(span);
+      } else {
+        const btn = document.createElement("button");
+        btn.textContent = item.label;
+        btn.addEventListener("click", () => { location.hash = item.hash; });
+        el.appendChild(btn);
+        const sep = document.createElement("span");
+        sep.textContent = " / ";
+        sep.style.color = "var(--muted)";
+        el.appendChild(sep);
+      }
+    });
+  }
+
+  function buildPageHead(title, subtitleHtml, up) {
+    const head = document.createElement("div");
+    head.className = "page-head";
+    if (up) {
+      const upLink = document.createElement("button");
+      upLink.className = "up-link";
+      upLink.innerHTML = `<span class="up-icon" aria-hidden="true">&#8593;</span> Up to ${up.label}`;
+      upLink.addEventListener("click", () => { location.hash = up.hash; });
+      head.appendChild(upLink);
+    }
+    const h1 = document.createElement("h1");
+    h1.textContent = title;
+    head.appendChild(h1);
+    if (subtitleHtml) {
+      const p = document.createElement("p");
+      p.innerHTML = subtitleHtml;
+      head.appendChild(p);
+    }
+    return head;
+  }
+
+  function navigate() {
+    const parts = location.hash.replace(/^#/, "").split("/").filter(Boolean);
+    const main = document.getElementById("app-main");
+    if (parts.length === 0) { mountHome(main); return; }
+    const tool = TOOLS.find(t => t.id === parts[0]);
+    if (!tool) { mountHome(main); return; }
+    main.innerHTML = "";
+    tool.mount(main, parts.slice(1));
+  }
+  window.addEventListener("hashchange", navigate);
+
+  /* =========================================================
+     OVERLAY KIT TOOL — type -> subtype -> customize
+     ========================================================= */
+  function mountOverlayKit(main, subpath) {
+    const [catSlug, assetId] = subpath;
+    if (!catSlug) { renderTypeGrid(main); return; }
+    const category = CATEGORIES.find(c => c.slug === catSlug);
+    if (!category) { location.hash = "#overlay-kit"; return; }
+    if (!assetId) { renderSubtypeGrid(main, category); return; }
+    const asset = ASSETS.find(a => a.id === assetId && a.category === category.label);
+    if (!asset) { location.hash = "#overlay-kit/" + category.slug; return; }
+    renderCustomize(main, category, asset);
+  }
+
+  function renderTypeGrid(main) {
+    setCrumbs([{ label: "Overlay Asset Customizer", hash: "#overlay-kit" }]);
+    main.appendChild(buildPageHead(
+      "Select a Type",
+      "Families of overlay. Pick one to see its variants.",
+      { label: "Parametric Generators", hash: "" }
+    ));
+
+    const grid = document.createElement("div");
+    grid.className = "card-grid";
+    CATEGORIES.forEach(cat => {
+      const count = ASSETS.filter(a => a.category === cat.label).length;
+      const card = document.createElement("button");
+      card.className = "card active";
+      card.innerHTML = `<div class="tag">${count} variant${count === 1 ? "" : "s"}</div><h2>${cat.label}</h2><p>${cat.blurb}</p>`;
+      card.addEventListener("click", () => { location.hash = "#overlay-kit/" + cat.slug; });
+      grid.appendChild(card);
+    });
+    main.appendChild(grid);
+  }
+
+  function renderSubtypeGrid(main, category) {
+    setCrumbs([
+      { label: "Overlay Asset Customizer", hash: "#overlay-kit" },
+      { label: category.label }
+    ]);
+    main.appendChild(buildPageHead(
+      category.label,
+      `${category.blurb} Pick a variant to customize and export it.`,
+      { label: "Types", hash: "#overlay-kit" }
+    ));
+
+    const grid = document.createElement("div");
+    grid.className = "card-grid";
+    ASSETS.filter(a => a.category === category.label).forEach(asset => {
+      const card = document.createElement("button");
+      card.className = "card active subtype-card";
+      let tag = asset.engine === "static" ? "Static" : (asset.loop ? "Loops" : "Plays once");
+      card.innerHTML = `<div class="tag">${tag}</div><h2>${asset.name}</h2>`;
+      const stage = document.createElement("div");
+      stage.className = "mini-stage";
+      card.appendChild(stage);
+      card.addEventListener("click", () => { location.hash = "#overlay-kit/" + category.slug + "/" + asset.id; });
+      grid.appendChild(card);
+      renderAssetInto(stage, asset);
+    });
+    main.appendChild(grid);
+  }
+
+  function buildParamControls(asset, stage, onReset) {
+    const wrap = document.createElement("div");
+    wrap.className = "param-panel";
+    const p = getParams(asset);
+
+    function row(key, label, min, max, step) {
+      const rowEl = document.createElement("div");
+      rowEl.className = "param-row";
+      const lab = document.createElement("label");
+      lab.textContent = label;
+      const input = document.createElement("input");
+      input.type = "range";
+      input.min = min; input.max = max; input.step = step;
+      input.value = p[key];
+      const valSpan = document.createElement("span");
+      valSpan.className = "param-value";
+      valSpan.textContent = formatParamValue(key, p[key]);
+      const isSmilSpeed = asset.engine === "smil" && key === "speed";
+      input.addEventListener("input", () => {
+        p[key] = parseFloat(input.value);
+        valSpan.textContent = formatParamValue(key, p[key]);
+        if (!isSmilSpeed) applyLiveParams(asset, stage);
+      });
+      if (isSmilSpeed) {
+        input.addEventListener("change", () => renderAssetInto(stage, asset));
+      }
+      rowEl.appendChild(lab); rowEl.appendChild(input); rowEl.appendChild(valSpan);
+      return rowEl;
+    }
+
+    wrap.appendChild(row("opacity", "Opacity", 0.15, 1, 0.05));
+    wrap.appendChild(row("thickness", "Thickness", 0.25, 3, 0.05));
+    if (asset.engine !== "static") wrap.appendChild(row("speed", "Speed", 0.25, 3, 0.05));
+    if (asset.roundable) wrap.appendChild(row("roundness", "Roundness", 0, 16, 1));
+
+    const resetBtn = document.createElement("button");
+    resetBtn.className = "btn";
+    resetBtn.textContent = "Reset Adjustments";
+    resetBtn.addEventListener("click", () => {
+      Object.assign(p, DEFAULT_PARAMS);
+      onReset();
+    });
+    wrap.appendChild(resetBtn);
+
+    if (asset.engine !== "static" && !asset.loop) {
+      const hint = document.createElement("div");
+      hint.className = "param-hint";
+      hint.textContent = "This piece plays once — adjust Speed, then hit Replay to see it at the new pace.";
+      wrap.appendChild(hint);
+    }
+
+    return wrap;
+  }
+
+  function renderCustomize(main, category, asset) {
+    setCrumbs([
+      { label: "Overlay Asset Customizer", hash: "#overlay-kit" },
+      { label: category.label, hash: "#overlay-kit/" + category.slug },
+      { label: asset.name }
+    ]);
+    applyPaletteToDOM(palette);
+
+    main.appendChild(buildPageHead(
+      asset.name,
+      `${asset.file} — ${asset.engine === "static" ? "static reference glyph" : (asset.loop ? "loops indefinitely" : "plays once, replay below")}.`,
+      { label: category.label, hash: "#overlay-kit/" + category.slug }
+    ));
+
+    const stage = document.createElement("div");
+    stage.className = "large-stage";
+
+    main.appendChild(buildPalettePanel());
+    main.appendChild(buildParamControls(asset, stage, () => renderCustomize(main, category, asset)));
+    if (asset.hasText) main.appendChild(buildTextField(asset, stage));
+
+    main.appendChild(stage);
+    renderAssetInto(stage, asset);
+
+    const actions = document.createElement("div");
+    actions.className = "cell-actions";
+
+    if (asset.engine !== "static" && !asset.loop) {
+      const replayBtn = document.createElement("button");
+      replayBtn.className = "btn";
+      replayBtn.textContent = "Replay";
+      replayBtn.addEventListener("click", () => renderAssetInto(stage, asset));
+      actions.appendChild(replayBtn);
+    }
+
+    const statusLine = document.createElement("div");
+    statusLine.className = "status-line";
+
+    const pngBtn = document.createElement("button");
+    pngBtn.className = "btn";
+    pngBtn.textContent = "Export PNG";
+    pngBtn.addEventListener("click", () => exportPNG(asset, stage, statusLine));
+    actions.appendChild(pngBtn);
+
+    if (asset.engine !== "static") {
+      const gifBtn = document.createElement("button");
+      gifBtn.className = "btn primary";
+      gifBtn.textContent = "Export GIF";
+      gifBtn.addEventListener("click", () => exportGIF(asset, stage, statusLine, gifBtn));
+      actions.appendChild(gifBtn);
+    }
+
+    main.appendChild(actions);
+    main.appendChild(statusLine);
+
+    const foot = document.createElement("footer");
+    foot.className = "note";
+    foot.innerHTML = `Colors and adjustments apply live and carry back to the type/subtype screens. GIF export uses gif.js from cdnjs (its worker is fetched and re-hosted as a blob: URL, since browsers block Worker() on a cross-origin script); SMIL assets are frame-scrubbed via native SVG time control, CSS assets via the Web Animations API.`;
+    main.appendChild(foot);
+  }
+
+  function buildTextField(asset, stage) {
+    const wrap = document.createElement("div");
+    wrap.className = "text-field-wrap";
+    const label = document.createElement("label");
+    label.textContent = "Custom Text";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.maxLength = 40;
+    input.value = customText[asset.id];
+    input.addEventListener("input", () => {
+      customText[asset.id] = input.value;
+      const slot = stage.querySelector("[data-text-slot]");
+      if (slot) slot.textContent = input.value;
+    });
+    const hint = document.createElement("div");
+    hint.className = "hint";
+    hint.textContent = asset.textHint || "";
+    wrap.appendChild(label);
+    wrap.appendChild(input);
+    wrap.appendChild(hint);
+    return wrap;
+  }
+
+  function buildPalettePanel() {
+    const panel = document.createElement("div");
+    panel.className = "palette-panel";
+
+    PALETTE_ROLES.forEach(role => {
+      const wrap = document.createElement("div");
+      wrap.className = "palette-role";
+      const label = document.createElement("label");
+      label.textContent = role.label;
+      const input = document.createElement("input");
+      input.type = "color";
+      input.value = palette[role.key];
+      input.addEventListener("input", () => {
+        palette[role.key] = input.value;
+        applyPaletteToDOM(palette);
+      });
+      wrap.appendChild(label);
+      wrap.appendChild(input);
+      panel.appendChild(wrap);
+    });
+
+    const actions = document.createElement("div");
+    actions.className = "palette-actions";
+    const status = document.createElement("span");
+    status.className = "save-status";
+
+    const saveBtn = document.createElement("button");
+    saveBtn.className = "btn";
+    saveBtn.textContent = "Save Palette";
+    saveBtn.addEventListener("click", async () => {
+      status.textContent = "Saving\u2026";
+      try {
+        if (window.storage) {
+          await window.storage.set("palette:default", JSON.stringify(palette), false);
+          status.textContent = "Saved";
+        } else { status.textContent = "Storage unavailable"; }
+      } catch (e) { status.textContent = "Save failed"; }
+      setTimeout(() => status.textContent = "", 2000);
+    });
+
+    const loadBtn = document.createElement("button");
+    loadBtn.className = "btn";
+    loadBtn.textContent = "Load Palette";
+    loadBtn.addEventListener("click", async () => {
+      status.textContent = "Loading\u2026";
+      try {
+        if (window.storage) {
+          const res = await window.storage.get("palette:default", false);
+          if (res && res.value) {
+            palette = JSON.parse(res.value);
+            applyPaletteToDOM(palette);
+            panel.querySelectorAll("input[type=color]").forEach((inp, i) => { inp.value = palette[PALETTE_ROLES[i].key]; });
+            status.textContent = "Loaded";
+          } else { status.textContent = "No saved palette"; }
+        } else { status.textContent = "Storage unavailable"; }
+      } catch (e) { status.textContent = "None saved yet"; }
+      setTimeout(() => status.textContent = "", 2000);
+    });
+
+    const resetBtn = document.createElement("button");
+    resetBtn.className = "btn";
+    resetBtn.textContent = "Reset";
+    resetBtn.addEventListener("click", () => {
+      palette = defaultPalette();
+      applyPaletteToDOM(palette);
+      panel.querySelectorAll("input[type=color]").forEach((inp, i) => { inp.value = palette[PALETTE_ROLES[i].key]; });
+    });
+
+    actions.appendChild(saveBtn);
+    actions.appendChild(loadBtn);
+    actions.appendChild(resetBtn);
+    actions.appendChild(status);
+    panel.appendChild(actions);
+    return panel;
+  }
+
+  /* =========================================================
+     TEXTURE & BUMP MAP GENERATOR
+     First pass: a working procedural core (seeded value noise,
+     plus two simpler grid/scratch generators) driven by a handful
+     of sliders, with a live grayscale texture preview and a
+     simulated-relief bump preview derived from the same height
+     data. Both export as PNG at a higher resolution than the
+     live preview. Deliberately kept to one flat screen and a
+     small, obviously-extensible generator registry — more pattern
+     types, tiling, and normal-map (not just height) export are
+     the natural next additions.
+     ========================================================= */
+  const TEXTURE_PREVIEW_SIZE = 320;
+  const TEXTURE_EXPORT_SIZE = 1024;
+
+  function mulberry32(seed) {
+    let s = seed >>> 0;
+    return function () {
+      s |= 0; s = (s + 0x6D2B79F5) | 0;
+      let t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function buildValueField(w, h, cellSize, rng) {
+    const cols = Math.ceil(w / cellSize) + 2, rows = Math.ceil(h / cellSize) + 2;
+    const grid = [];
+    for (let y = 0; y < rows; y++) {
+      const row = [];
+      for (let x = 0; x < cols; x++) row.push(rng());
+      grid.push(row);
+    }
+    return { grid, cellSize };
+  }
+
+  function sampleField(field, x, y) {
+    const { grid, cellSize } = field;
+    const gx = x / cellSize, gy = y / cellSize;
+    const x0 = Math.floor(gx), y0 = Math.floor(gy);
+    const sx = gx - x0, sy = gy - y0;
+    const smooth = t => t * t * (3 - 2 * t);
+    const sxs = smooth(sx), sys = smooth(sy);
+    const v00 = grid[y0][x0], v10 = grid[y0][x0 + 1];
+    const v01 = grid[y0 + 1][x0], v11 = grid[y0 + 1][x0 + 1];
+    const top = v00 + (v10 - v00) * sxs;
+    const bot = v01 + (v11 - v01) * sxs;
+    return top + (bot - top) * sys;
+  }
+
+  function generateNoise(w, h, p) {
+    const rng = mulberry32(p.seed);
+    const octaves = Math.max(1, Math.round(p.octaves));
+    const fields = [];
+    let freq = Math.max(4, p.scale);
+    for (let o = 0; o < octaves; o++) {
+      fields.push(buildValueField(w, h, Math.max(4, freq), rng));
+      freq = Math.max(4, freq / 2);
+    }
+    const amps = []; let amp = 1, maxAmp = 0;
+    for (let o = 0; o < octaves; o++) { amps.push(amp); maxAmp += amp; amp *= p.roughness; }
+    const data = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let v = 0;
+        for (let o = 0; o < octaves; o++) v += sampleField(fields[o], x, y) * amps[o];
+        data[y * w + x] = v / maxAmp;
+      }
+    }
+    return data;
+  }
+
+  function generateGrid(w, h, p) {
+    const rng = mulberry32(p.seed);
+    const count = Math.max(2, Math.round(p.count));
+    const spacing = Math.max(4, w / count);
+    const thickness = Math.min(spacing * 0.4, Math.max(1, p.scale * 0.08 * p.contrast));
+    const jitter = p.roughness * spacing * 0.15;
+    const data = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const jx = x + (rng() - 0.5) * jitter;
+        const jy = y + (rng() - 0.5) * jitter;
+        const mx = ((jx % spacing) + spacing) % spacing;
+        const my = ((jy % spacing) + spacing) % spacing;
+        data[y * w + x] = (mx < thickness || my < thickness) ? 1 : 0.15;
+      }
+    }
+    return data;
+  }
+
+  function generateScratches(w, h, p) {
+    const rng = mulberry32(p.seed);
+    const data = new Float32Array(w * h).fill(0.5);
+    const count = Math.max(1, Math.round(p.count));
+    for (let i = 0; i < count; i++) {
+      const x0 = rng() * w;
+      const y0 = rng() * h;
+      const len = h * (0.2 + rng() * 0.65) * (p.scale / 60);
+      const drift = (rng() - 0.5) * w * 0.25;
+      const depth = (0.25 + rng() * 0.5) * Math.min(2, p.contrast);
+      const steps = Math.max(1, Math.round(len));
+      for (let s = 0; s < steps; s++) {
+        const t = s / steps;
+        const xx = Math.round(x0 + drift * t + (rng() - 0.5) * p.roughness * 3);
+        const yy = Math.round(y0 + t * len);
+        if (xx >= 0 && xx < w && yy >= 0 && yy < h) {
+          const idx = yy * w + xx;
+          data[idx] = Math.max(0, data[idx] - depth * 0.5);
+        }
+      }
+    }
+    return data;
+  }
+
+  function generateSplotches(w, h, p) {
+    const rng = mulberry32(p.seed);
+    const data = new Float32Array(w * h).fill(0.35);
+    const count = Math.max(1, Math.round(p.count));
+    const maxR = Math.max(4, p.scale);
+    for (let i = 0; i < count; i++) {
+      const cx = rng() * w, cy = rng() * h;
+      const r = maxR * (0.15 + rng() * (0.15 + p.roughness * 0.25));
+      const strength = 0.35 + rng() * 0.5;
+      const x0 = Math.max(0, Math.floor(cx - r)), x1 = Math.min(w, Math.ceil(cx + r));
+      const y0 = Math.max(0, Math.floor(cy - r)), y1 = Math.min(h, Math.ceil(cy + r));
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const dx = x - cx, dy = y - cy;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < r) {
+            const falloff = 1 - dist / r;
+            const idx = y * w + x;
+            data[idx] = Math.min(1, data[idx] + falloff * falloff * strength);
+          }
+        }
+      }
+    }
+    return data;
+  }
+
+  const TEXTURE_GENERATORS = { noise: generateNoise, grid: generateGrid, scratches: generateScratches, splotches: generateSplotches };
+
+  function applyContrast(data, contrast) {
+    for (let i = 0; i < data.length; i++) {
+      data[i] = Math.min(1, Math.max(0, (data[i] - 0.5) * contrast + 0.5));
+    }
+  }
+
+  function paintHeightMap(canvas, data, w, h) {
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    const img = ctx.createImageData(w, h);
+    for (let i = 0; i < data.length; i++) {
+      const v = Math.round(data[i] * 255);
+      img.data[i * 4] = v; img.data[i * 4 + 1] = v; img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  function paintBumpPreview(canvas, data, w, h, bumpStrength, lightAngleDeg) {
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    const img = ctx.createImageData(w, h);
+    const angle = (lightAngleDeg * Math.PI) / 180;
+    const lx = Math.cos(angle), ly = Math.sin(angle);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const xp = Math.min(w - 1, x + 1), xm = Math.max(0, x - 1);
+        const yp = Math.min(h - 1, y + 1), ym = Math.max(0, y - 1);
+        const dx = (data[y * w + xp] - data[y * w + xm]) * bumpStrength;
+        const dy = (data[yp * w + x] - data[ym * w + x]) * bumpStrength;
+        let shade = 0.55 - (dx * lx + dy * ly) * 1.5;
+        shade = Math.min(1, Math.max(0, shade));
+        const v = Math.round(shade * 255);
+        const idx = (y * w + x) * 4;
+        img.data[idx] = v; img.data[idx + 1] = v; img.data[idx + 2] = v; img.data[idx + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  function computeTextureData(size, state) {
+    const gen = TEXTURE_GENERATORS[state.pattern] || generateNoise;
+    const data = gen(size, size, state);
+    applyContrast(data, state.contrast);
+    if (state.invert) { for (let i = 0; i < data.length; i++) data[i] = 1 - data[i]; }
+    return data;
+  }
+
+  function mountTextureTool(main) {
+    setCrumbs([{ label: "Texture & Bump Map Generator" }]);
+
+    main.appendChild(buildPageHead(
+      "Texture & Bump Map Generator",
+      "Procedural grayscale texture and bump previews, driven by a few seeded generation criteria. This is early infrastructure — more pattern types, tiling and normal-map export are the obvious next steps.",
+      { label: "Parametric Generators", hash: "" }
+    ));
+
+    const state = {
+      pattern: "noise",
+      scale: 60,
+      octaves: 4,
+      count: 24,
+      roughness: 0.5,
+      contrast: 1.2,
+      bumpStrength: 1,
+      lightAngle: 135,
+      invert: false,
+      seed: Math.floor(Math.random() * 1e9)
+    };
+
+    const controls = document.createElement("div");
+    controls.className = "param-panel texture-controls";
+    main.appendChild(controls);
+
+    const patternRow = document.createElement("div");
+    patternRow.className = "param-row";
+    const patternLabel = document.createElement("label");
+    patternLabel.textContent = "Pattern";
+    patternRow.appendChild(patternLabel);
+    const patternGroup = document.createElement("div");
+    patternGroup.className = "pattern-select";
+    patternRow.appendChild(patternGroup);
+    controls.appendChild(patternRow);
+
+    const sliderRowsWrap = document.createElement("div");
+    sliderRowsWrap.className = "texture-sliders";
+    controls.appendChild(sliderRowsWrap);
+
+    const seedRow = document.createElement("div");
+    seedRow.className = "param-row";
+    const seedLabel = document.createElement("label");
+    seedLabel.textContent = "Seed";
+    const seedValue = document.createElement("span");
+    seedValue.className = "param-value";
+    seedValue.style.minWidth = "90px";
+    const randomizeBtn = document.createElement("button");
+    randomizeBtn.className = "btn";
+    randomizeBtn.textContent = "Randomize";
+    randomizeBtn.addEventListener("click", () => {
+      state.seed = Math.floor(Math.random() * 1e9);
+      seedValue.textContent = String(state.seed);
+      regenerate();
+    });
+    seedRow.appendChild(seedLabel);
+    seedRow.appendChild(seedValue);
+    seedRow.appendChild(randomizeBtn);
+    controls.appendChild(seedRow);
+
+    function row(key, label, min, max, step) {
+      const rowEl = document.createElement("div");
+      rowEl.className = "param-row";
+      const lab = document.createElement("label");
+      lab.textContent = label;
+      const input = document.createElement("input");
+      input.type = "range";
+      input.min = min; input.max = max; input.step = step;
+      input.value = state[key];
+      const valSpan = document.createElement("span");
+      valSpan.className = "param-value";
+      valSpan.textContent = state[key];
+      input.addEventListener("input", () => {
+        state[key] = parseFloat(input.value);
+        valSpan.textContent = state[key];
+        regenerate();
+      });
+      rowEl.appendChild(lab); rowEl.appendChild(input); rowEl.appendChild(valSpan);
+      sliderRowsWrap.appendChild(rowEl);
+      return rowEl;
+    }
+
+    row("scale", "Scale", 8, 160, 2);
+    const octaveRow = row("octaves", "Octaves", 1, 6, 1);
+    const countRow = row("count", "Count", 2, 80, 1);
+    row("roughness", "Roughness", 0.1, 0.9, 0.05);
+    row("contrast", "Contrast", 0.5, 3, 0.05);
+    row("bumpStrength", "Bump Strength", 0.1, 3, 0.05);
+    row("lightAngle", "Light Angle", 0, 360, 5);
+    countRow.style.display = "none";
+
+    const invertRow = document.createElement("div");
+    invertRow.className = "param-row";
+    const invertLabel = document.createElement("label");
+    invertLabel.textContent = "Invert";
+    const invertInput = document.createElement("input");
+    invertInput.type = "checkbox";
+    invertInput.checked = state.invert;
+    invertInput.addEventListener("change", () => {
+      state.invert = invertInput.checked;
+      regenerate();
+    });
+    invertRow.appendChild(invertLabel);
+    invertRow.appendChild(invertInput);
+    sliderRowsWrap.appendChild(invertRow);
+
+    ["noise", "grid", "scratches", "splotches"].forEach(kind => {
+      const btn = document.createElement("button");
+      btn.className = "btn" + (state.pattern === kind ? " primary" : "");
+      btn.textContent = kind.charAt(0).toUpperCase() + kind.slice(1);
+      btn.addEventListener("click", () => {
+        state.pattern = kind;
+        Array.from(patternGroup.children).forEach(b => b.classList.remove("primary"));
+        btn.classList.add("primary");
+        octaveRow.style.display = kind === "noise" ? "flex" : "none";
+        countRow.style.display = kind === "noise" ? "none" : "flex";
+        regenerate();
+      });
+      patternGroup.appendChild(btn);
+    });
+
+    seedValue.textContent = String(state.seed);
+
+    const canvasRow = document.createElement("div");
+    canvasRow.className = "canvas-row";
+    main.appendChild(canvasRow);
+
+    function canvasPanel(title) {
+      const panel = document.createElement("div");
+      panel.className = "canvas-panel";
+      const h3 = document.createElement("div");
+      h3.className = "canvas-panel-title";
+      h3.textContent = title;
+      const canvas = document.createElement("canvas");
+      panel.appendChild(h3);
+      panel.appendChild(canvas);
+      canvasRow.appendChild(panel);
+      return canvas;
+    }
+
+    const textureCanvas = canvasPanel("Texture / Height Map");
+    const bumpCanvas = canvasPanel("Bump Preview (simulated light)");
+
+    const actions = document.createElement("div");
+    actions.className = "cell-actions";
+    main.appendChild(actions);
+    const statusLine = document.createElement("div");
+    statusLine.className = "status-line";
+    main.appendChild(statusLine);
+
+    const exportTextureBtn = document.createElement("button");
+    exportTextureBtn.className = "btn primary";
+    exportTextureBtn.textContent = "Export Height/Bump Map PNG";
+    exportTextureBtn.addEventListener("click", () => {
+      statusLine.textContent = "Rendering at " + TEXTURE_EXPORT_SIZE + "px\u2026";
+      setTimeout(() => {
+        const data = computeTextureData(TEXTURE_EXPORT_SIZE, state);
+        const exportCanvas = document.createElement("canvas");
+        paintHeightMap(exportCanvas, data, TEXTURE_EXPORT_SIZE, TEXTURE_EXPORT_SIZE);
+        downloadDataUrl(exportCanvas.toDataURL("image/png"), "texture_" + state.pattern + "_" + state.seed + ".png");
+        statusLine.textContent = "Height/bump map downloaded";
+        setTimeout(() => statusLine.textContent = "", 2500);
+      }, 10);
+    });
+
+    const exportPreviewBtn = document.createElement("button");
+    exportPreviewBtn.className = "btn";
+    exportPreviewBtn.textContent = "Export Preview Render PNG";
+    exportPreviewBtn.addEventListener("click", () => {
+      statusLine.textContent = "Rendering at " + TEXTURE_EXPORT_SIZE + "px\u2026";
+      setTimeout(() => {
+        const data = computeTextureData(TEXTURE_EXPORT_SIZE, state);
+        const exportCanvas = document.createElement("canvas");
+        paintBumpPreview(exportCanvas, data, TEXTURE_EXPORT_SIZE, TEXTURE_EXPORT_SIZE, state.bumpStrength, state.lightAngle);
+        downloadDataUrl(exportCanvas.toDataURL("image/png"), "bump_preview_" + state.pattern + "_" + state.seed + ".png");
+        statusLine.textContent = "Preview render downloaded (not a texture map — visual only)";
+        setTimeout(() => statusLine.textContent = "", 3500);
+      }, 10);
+    });
+
+    actions.appendChild(exportTextureBtn);
+    actions.appendChild(exportPreviewBtn);
+
+    const foot = document.createElement("footer");
+    foot.className = "note";
+    foot.innerHTML = `The Height/Bump Map export is the actual grayscale data — usable directly in a bump/height texture slot. The Preview Render is a simulated relief shading of that same data so you can judge depth and light direction before exporting; it is not itself a texture map.`;
+    main.appendChild(foot);
+
+    function regenerate() {
+      const data = computeTextureData(TEXTURE_PREVIEW_SIZE, state);
+      paintHeightMap(textureCanvas, data, TEXTURE_PREVIEW_SIZE, TEXTURE_PREVIEW_SIZE);
+      paintBumpPreview(bumpCanvas, data, TEXTURE_PREVIEW_SIZE, TEXTURE_PREVIEW_SIZE, state.bumpStrength, state.lightAngle);
+    }
+
+    regenerate();
+  }
+
+  /* =========================================================
+     FREEZE HELPERS
+     ========================================================= */
+  function bakeCssFreeze(svgEl) {
+    const clone = svgEl.cloneNode(true);
+    const liveAll = svgEl.querySelectorAll("*");
+    const cloneAll = clone.querySelectorAll("*");
+    liveAll.forEach((liveEl, i) => {
+      const cs = getComputedStyle(liveEl);
+      if (cs.animationName && cs.animationName !== "none") {
+        const t = cloneAll[i];
+        t.style.animation = "none";
+        t.style.opacity = cs.opacity;
+        t.style.transform = cs.transform;
+        if (cs.strokeDashoffset && cs.strokeDashoffset !== "none") t.style.strokeDashoffset = cs.strokeDashoffset;
+      }
+    });
+    return clone;
+  }
+
+  function matrixToString(m) { return `matrix(${m.a},${m.b},${m.c},${m.d},${m.e},${m.f})`; }
+
+  function bakeSmilFreeze(svgEl) {
+    const clone = svgEl.cloneNode(true);
+    try {
+      // Bake any <pattern> driven by an animateTransform (patternTransform), e.g. flow-straight.
+      const livePatterns = svgEl.querySelectorAll("pattern");
+      const clonePatterns = clone.querySelectorAll("pattern");
+      livePatterns.forEach((liveP, i) => {
+        const cloneP = clonePatterns[i];
+        const mat = liveP.patternTransform.baseVal.numberOfItems
+          ? liveP.patternTransform.baseVal.consolidate().matrix : null;
+        if (mat) cloneP.setAttribute("patternTransform", matrixToString(mat));
+        const animEl = cloneP.querySelector("animateTransform");
+        if (animEl) animEl.remove();
+      });
+      // Bake any number of animateMotion-driven elements, e.g. flow-pulse-wave's
+      // single glow or flow-droplet-stream's three particles.
+      const liveMotion = svgEl.querySelectorAll('[data-role="motion-target"]');
+      const cloneMotion = clone.querySelectorAll('[data-role="motion-target"]');
+      liveMotion.forEach((liveEl, i) => {
+        const cloneEl = cloneMotion[i];
+        const mat = liveEl.transform.baseVal.numberOfItems
+          ? liveEl.transform.baseVal.consolidate().matrix : null;
+        if (mat) cloneEl.setAttribute("transform", matrixToString(mat));
+        const animEl = cloneEl.querySelector("animateMotion");
+        if (animEl) animEl.remove();
+      });
+    } catch (e) { /* clone stays as an unfrozen fallback */ }
+    return clone;
+  }
+
+  function freezeNode(asset, svgEl) {
+    if (asset.engine === "smil") return bakeSmilFreeze(svgEl);
+    if (asset.engine === "css") return bakeCssFreeze(svgEl);
+    return svgEl.cloneNode(true);
+  }
+
+  function resolvedSvgMarkup(node) {
+    const serialized = new XMLSerializer().serializeToString(node);
+    let out = serialized;
+    PALETTE_ROLES.forEach(role => {
+      const val = getComputedStyle(document.documentElement).getPropertyValue(role.cssVar).trim();
+      out = out.split(`var(${role.cssVar})`).join(val);
+    });
+    const panelVal = getComputedStyle(document.documentElement).getPropertyValue("--c-panel").trim();
+    out = out.split("var(--c-panel)").join(panelVal);
+    return out;
+  }
+
+  function svgToImage(markup) {
+    return new Promise((resolve, reject) => {
+      const svgBlob = new Blob([markup], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(svgBlob);
+      const img = new Image();
+      img.onload = () => { resolve(img); URL.revokeObjectURL(url); };
+      img.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
+      img.src = url;
+    });
+  }
+
+  function viewBoxSize(svgEl) {
+    const vb = svgEl.viewBox.baseVal;
+    if (vb && vb.width) return { w: vb.width, h: vb.height };
+    const rect = svgEl.getBoundingClientRect();
+    return { w: rect.width || 300, h: rect.height || 150 };
+  }
+
+  function downloadDataUrl(url, filename) {
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  let gifWorkerBlobUrlPromise = null;
+  function getGifWorkerBlobUrl() {
+    // Browsers refuse to construct a Worker directly from a cross-origin
+    // script URL (cdnjs here) — gif.js would then never emit "finished"
+    // or throw anywhere catchable. Fetching the script and re-hosting it
+    // as a blob: URL sidesteps that, since blob: URLs are same-origin to
+    // the page that created them.
+    if (!gifWorkerBlobUrlPromise) {
+      gifWorkerBlobUrlPromise = fetch("https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js")
+        .then(r => { if (!r.ok) throw new Error("worker fetch failed: " + r.status); return r.text(); })
+        .then(text => URL.createObjectURL(new Blob([text], { type: "application/javascript" })));
+    }
+    return gifWorkerBlobUrlPromise;
+  }
+
+  async function exportPNG(asset, stage, statusLine) {
+    statusLine.textContent = "Rendering PNG\u2026";
+    try {
+      const svgEl = stage.querySelector("svg");
+      const frozen = freezeNode(asset, svgEl);
+      const markup = resolvedSvgMarkup(frozen);
+      const { w, h } = viewBoxSize(svgEl);
+      const scale = 3;
+      const img = await svgToImage(markup);
+      const canvas = document.getElementById("capture-canvas");
+      canvas.width = w * scale; canvas.height = h * scale;
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      downloadDataUrl(canvas.toDataURL("image/png"), asset.id + ".png");
+      statusLine.textContent = "PNG downloaded";
+    } catch (e) {
+      statusLine.textContent = "PNG export failed";
+    }
+    setTimeout(() => statusLine.textContent = "", 2500);
+  }
+
+  async function exportGIF(asset, stage, statusLine, btn) {
+    if (typeof GIF === "undefined") {
+      statusLine.textContent = "gif.js failed to load";
+      return;
+    }
+    btn.disabled = true;
+    statusLine.textContent = "Preparing encoder\u2026";
+    try {
+      const svgEl = stage.querySelector("svg");
+      const { w, h } = viewBoxSize(svgEl);
+      const scale = 2;
+      const frameCount = 20;
+      const speed = getParams(asset).speed || 1;
+      const effectiveDurationMs = asset.durationMs / speed;
+      const delay = Math.max(30, Math.round(effectiveDurationMs / frameCount));
+
+      const canvas = document.getElementById("capture-canvas");
+      canvas.width = w * scale; canvas.height = h * scale;
+      const ctx = canvas.getContext("2d");
+
+      const workerUrl = await getGifWorkerBlobUrl();
+      const gif = new GIF({
+        workers: 2, quality: 10, width: canvas.width, height: canvas.height,
+        workerScript: workerUrl
+      });
+      gif.on("error", () => {
+        statusLine.textContent = "GIF encoder error";
+        btn.disabled = false;
+      });
+
+      statusLine.textContent = "Capturing frames 0%";
+
+      if (asset.engine === "css") {
+        const anims = svgEl.getAnimations ? svgEl.getAnimations({ subtree: true }) : [];
+        anims.forEach(a => a.pause());
+        for (let i = 0; i < frameCount; i++) {
+          anims.forEach(a => { a.currentTime = (effectiveDurationMs / frameCount) * i; });
+          const frozen = bakeCssFreeze(svgEl);
+          const markup = resolvedSvgMarkup(frozen);
+          const img = await svgToImage(markup);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          gif.addFrame(ctx, { copy: true, delay });
+          statusLine.textContent = "Capturing frames " + Math.round(((i + 1) / frameCount) * 100) + "%";
+        }
+        anims.forEach(a => a.cancel());
+      } else if (asset.engine === "smil") {
+        svgEl.pauseAnimations();
+        for (let i = 0; i < frameCount; i++) {
+          const t = (effectiveDurationMs / 1000 / frameCount) * i;
+          svgEl.setCurrentTime(t);
+          const frozen = bakeSmilFreeze(svgEl);
+          const markup = resolvedSvgMarkup(frozen);
+          const img = await svgToImage(markup);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          gif.addFrame(ctx, { copy: true, delay });
+          statusLine.textContent = "Capturing frames " + Math.round(((i + 1) / frameCount) * 100) + "%";
+        }
+        svgEl.unpauseAnimations();
+      }
+
+      statusLine.textContent = "Encoding GIF\u2026";
+      gif.on("finished", (blob) => {
+        const url = URL.createObjectURL(blob);
+        downloadDataUrl(url, asset.id + ".gif");
+        URL.revokeObjectURL(url);
+        statusLine.textContent = "GIF downloaded";
+        btn.disabled = false;
+        renderAssetInto(stage, asset);
+        setTimeout(() => statusLine.textContent = "", 2500);
+      });
+      gif.render();
+    } catch (e) {
+      statusLine.textContent = "GIF export failed";
+      btn.disabled = false;
+    }
+  }
+
+  /* =========================================================
+     INIT
+     ========================================================= */
+  navigate();
+})();
+</script>
+</body>
+</html>
