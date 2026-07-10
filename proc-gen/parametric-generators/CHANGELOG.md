@@ -36,8 +36,9 @@ Versioning: informal `vN` milestones tagged in git as `paramgen-vN`.
 ### Still to do (next)
 - Animated **export** (§6.3): PNG frame-sequence first (the KeyShot-friendly
   deliverable) via the same new-tab pattern (a numbered gallery of blob-URL
-  frames), then optionally WebM via `MediaRecorder`. Export is currently a
-  single static frame.
+  frames — "BLOB-URL-GALL"), then optionally WebM via `MediaRecorder`. Export
+  is currently a single static frame. **Full plan:**
+  [`docs/ANIMATED_EXPORT.md`](docs/ANIMATED_EXPORT.md).
 - The open GIF-export bug (§3) — unchanged; deprioritized in favor of the
   Worker-free frame-sequence path.
 
