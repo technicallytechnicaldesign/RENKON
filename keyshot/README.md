@@ -1,22 +1,57 @@
 # keyshot
 
-KeyShot automation and scene assets. Empty for now — files get dropped in as
-they arrive, and the folder gets structured once there's enough to structure.
+KeyShot automation for the Creo &rarr; KeyShot pipeline, plus scene/material
+binaries as they arrive.
 
-Live placeholder page: [`index.html`](index.html).
+Live page: [`index.html`](index.html) &mdash; script inventory, backlog, and
+conventions.
 
-## What lives here (eventually)
+## Structure
 
-- **Scripts** — Python 3.10+ automation using the `lux` / `luxmath` modules
-  (scene setup, material assignment, batch renders). Headless CLI execution is
-  supported.
-- **Scene / material binaries** — `.bip`, `.ksp`, `.kmtp`, etc. Tracked via
-  Git LFS (see root `.gitattributes`). Name versions clearly (`chair_v3.bip`) —
-  binary scene files can't be meaningfully diffed or merged.
+```
+keyshot/
+  scripts/    current lux/luxmath scripts (batch render, turntable, animation)
+  index.html  live inventory page
+  SCRIPT_STOCK.md            at-a-glance inventory + prioritized backlog
+  RESEARCH_CREO_KEYSHOT.md   research notes behind the backlog
+```
+
+`SCRIPT_STOCK.md` is the source of truth for script status — update it,
+don't replace it, as scripts move through the pipeline.
+
+## Current scripts (`scripts/`)
+
+| Script | Stage | What it does |
+|---|---|---|
+| [`2a_BAT_STD_VIEW_AA01.py`](scripts/2a_BAT_STD_VIEW_AA01.py) | 2a &middot; BAT | Studios-first multi-view batch render |
+| [`2a_BAT_TURNTABLE_AA01.py`](scripts/2a_BAT_TURNTABLE_AA01.py) | 2a &middot; BAT | Studios-first 360&deg; turntable batch |
+| [`2b_ANI_HERO_REVEAL_AA01.py`](scripts/2b_ANI_HERO_REVEAL_AA01.py) | 2b &middot; ANI | Zoom+crane hero reveal, synced to Model Set animation |
+
+## Naming convention
+
+`{PREFIX}_{AREA}_{NAME}_{REV}.py`
+
+- **PREFIX** — pipeline stage: `0_` pre-checks &middot; `1_` pre-render/cam/material/scene
+  helpers &middot; `2a_` batch renders &middot; `2b_` animation &middot; `3_` after-processing &middot;
+  `4_` post-checks/other automation
+- **AREA** — 3-letter area code: `BAT` batch, `ANI` animation, `HLP` helper, etc.
+- **NAME** — short description, 2-4 words
+- **REV** — `XX01`: letters step up for a larger/breaking change (`AA` &rarr; `AB`,
+  resets number to `01`), number steps up for a routine change (`AA01` &rarr; `AA02`)
+
+Each script's internal KeyShot dialog `id=` (e.g. `id="renderturntables.py.luxion"`)
+is left untouched on purpose — it's a persistence key KeyShot uses to remember
+last-used dialog field values, not a display name.
 
 ## Notes
 
-- Headless automation needs a machine with a **licensed KeyShot install**;
+- KeyShot scripting is Python 3.10+, using the `lux` / `luxmath` modules.
+- Headless CLI execution is supported for scripts marked `HEADLESS COMPLIANT`.
+  Headless automation still needs a machine with a **licensed KeyShot install**;
   GitHub-hosted Actions runners can't run it.
+- Studios (camera + environment + image style, paired) are preferred over raw
+  Cameras throughout the batch/animation scripts — raw cameras leave lighting
+  as whatever's already active, which is wrong for parts with multiple
+  lighting setups.
 - Install `git lfs` (`git lfs install`) before committing any binary scene
   files, or the LFS pointers won't be generated.

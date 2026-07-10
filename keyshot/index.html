@@ -37,7 +37,7 @@
   header .wordmark:hover { color: var(--text); }
   header .meta { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
 
-  main { flex: 1; padding: 32px 28px 56px; max-width: 900px; margin: 0 auto; width: 100%; }
+  main { flex: 1; padding: 32px 28px 56px; max-width: 980px; margin: 0 auto; width: 100%; }
 
   .up-link {
     display: inline-flex; align-items: center; gap: 6px;
@@ -53,15 +53,76 @@
   }
   .page-head p { color: var(--muted); font-size: 12px; margin: 0; max-width: 68ch; line-height: 1.7; }
 
-  .empty {
-    border: 1px dashed var(--line); background: var(--panel-bg);
-    padding: 48px 28px; text-align: center; margin-bottom: 28px;
+  section { margin-bottom: 36px; }
+  section > h2 {
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 12px; font-weight: 500;
+    display: flex; align-items: center; gap: 10px;
   }
-  .empty .icon { width: 48px; height: 48px; color: var(--muted); opacity: 0.7; margin: 0 auto 16px; }
-  .empty .icon svg { width: 100%; height: 100%; display: block; }
-  .empty h2 { font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; margin: 0 0 8px; font-weight: 500; color: var(--muted); }
-  .empty p { font-size: 11px; color: var(--muted); margin: 0 auto; max-width: 52ch; line-height: 1.7; }
-  .empty code { color: var(--c-fluid); }
+  section > h2 .rule { flex: 1; height: 1px; background: var(--line); }
+
+  /* ---- script inventory ---- */
+  .stage-group { border: 1px solid var(--line); background: var(--panel-bg); margin-bottom: 1px; }
+  .stage-group + .stage-group { border-top: none; }
+
+  .stage-row {
+    display: grid;
+    grid-template-columns: 76px 1fr auto;
+    gap: 14px;
+    padding: 14px 18px;
+    border-top: 1px solid var(--line);
+    align-items: start;
+  }
+  .stage-row:first-child { border-top: none; }
+  .stage-row:hover { background: var(--panel-bg-raised); }
+
+  .stage-tag {
+    font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--c-fluid); white-space: nowrap; padding-top: 2px;
+  }
+  .stage-tag .area { display: block; color: var(--muted); margin-top: 2px; }
+
+  .stage-body .name {
+    font-size: 12.5px; color: var(--text);
+  }
+  .stage-body .name a { color: var(--c-accent); }
+  .stage-body .name a:hover { text-decoration: underline; }
+  .stage-body .note { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.6; max-width: 58ch; }
+
+  .status {
+    font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 8px; border: 1px solid var(--line); white-space: nowrap; height: fit-content;
+  }
+  .status.current { color: var(--c-fluid); border-color: var(--c-fluid); }
+  .status.pending { color: var(--c-accent); border-color: var(--c-accent); }
+  .status.archive { color: var(--muted); text-decoration: line-through; }
+  .status.external { color: var(--muted); border-style: dashed; }
+
+  /* ---- backlog ---- */
+  .backlog { border: 1px solid var(--line); background: var(--panel-bg); }
+  .backlog li {
+    list-style: none; display: grid; grid-template-columns: 40px 1fr;
+    gap: 14px; padding: 10px 18px; border-top: 1px solid var(--line);
+    font-size: 11px; line-height: 1.6;
+  }
+  .backlog li:first-child { border-top: none; }
+  .backlog .pri { color: var(--c-accent); font-size: 10px; letter-spacing: 0.04em; padding-top: 1px; }
+  .backlog .idea { color: var(--text); }
+  .backlog .idea .stage { color: var(--muted); }
+  .backlog ul { margin: 0; padding: 0; }
+
+  /* ---- docs / notes ---- */
+  .docs-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1px;
+    background: var(--line); border: 1px solid var(--line);
+  }
+  .doc-card {
+    background: var(--panel-bg); padding: 18px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .doc-card:hover { background: var(--panel-bg-raised); }
+  .doc-card .doc-name { font-size: 12px; color: var(--c-accent); }
+  .doc-card:hover .doc-name { text-decoration: underline; }
+  .doc-card .doc-desc { font-size: 11px; color: var(--muted); line-height: 1.6; }
 
   .notes {
     border: 1px solid var(--line); background: var(--panel-bg);
@@ -97,31 +158,180 @@
 
     <div class="page-head">
       <h1>KeyShot Scripts</h1>
-      <p>A home for KeyShot automation &mdash; scene setup, material assignment,
-         and batch-render scripting. Nothing here yet; this is where scripts get
-         organized as they land.</p>
+      <p>Automation for the Creo &rarr; KeyShot pipeline &mdash; batch views, turntables,
+         and camera-driven reveal animations, written against the <code
+         style="color:var(--c-fluid)">lux</code> / <code style="color:var(--c-fluid)">luxmath</code>
+         scripting API. Headless-compliant where noted, so batch stages can run
+         unattended on a licensed KeyShot install.</p>
     </div>
 
-    <div class="empty">
-      <span class="icon" aria-hidden="true">
-        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
-          <path d="M24 6 L40 15 V33 L24 42 L8 33 V15 Z"/>
-          <path d="M24 6 V24 M24 24 L40 15 M24 24 L8 15" opacity="0.5"/>
-          <path d="M18 27 l4 4 l8 -9" opacity="0"/>
-        </svg>
-      </span>
-      <h2>No scripts here yet</h2>
-      <p>Drop <code>.py</code> scripts into the <code>keyshot/</code> folder and they'll
-         be listed and documented here. Structure gets tidied once there's enough
-         to structure.</p>
-    </div>
+    <section>
+      <h2>Inventory<span class="rule"></span></h2>
+
+      <div class="stage-group">
+        <div class="stage-row">
+          <div class="stage-tag">2A<span class="area">BAT</span></div>
+          <div class="stage-body">
+            <div class="name"><a href="scripts/2a_BAT_STD_VIEW_AA01.py">2a_BAT_STD_VIEW_AA01.py</a></div>
+            <div class="note">Studios-first multi-view batch render. Imports every model of a chosen
+              extension from a folder, applies an optional material template, then renders every
+              Studio (camera + environment pairing) defined per part &mdash; falls back to raw
+              cameras only when a part has no Studios. Logs a CSV manifest.</div>
+          </div>
+          <div class="status current">Current</div>
+        </div>
+        <div class="stage-row">
+          <div class="stage-tag">2A<span class="area">BAT</span></div>
+          <div class="stage-body">
+            <div class="name"><a href="scripts/2a_BAT_TURNTABLE_AA01.py">2a_BAT_TURNTABLE_AA01.py</a></div>
+            <div class="note">Studios-first 360&deg; turntable batch. Same Studio-aware camera/lighting
+              selection as the std-view script; spins each imported part and encodes a small mp4
+              per part. Kept as a continuous spin on purpose &mdash; the "fade between angles" idea
+              is planned as a separate <code style="color:var(--c-fluid)">3_</code> post-process
+              script instead of a change here.</div>
+          </div>
+          <div class="status current">Current</div>
+        </div>
+        <div class="stage-row">
+          <div class="stage-tag">2B<span class="area">ANI</span></div>
+          <div class="stage-body">
+            <div class="name"><a href="scripts/2b_ANI_HERO_REVEAL_AA01.py">2b_ANI_HERO_REVEAL_AA01.py</a></div>
+            <div class="note">Automated hero-reveal shot: single monotonic zoom (in or out) into a
+              camera/Studio's own framing, with optional vertical crane, HDRI rotation, brightness
+              ramp, and synced Model Set animation playback. Orbit/arc was deliberately removed
+              (Rodrigues' formula degenerates when the rotation axis aligns with the camera-to-object
+              direction); ground-setter method name and <code style="color:var(--c-fluid)">getAnimationInfo()</code>'s
+              return shape are unconfirmed on your build &mdash; the script probes and reports which
+              worked. See in-file docstring for full design notes.</div>
+          </div>
+          <div class="status current">Current</div>
+        </div>
+      </div>
+
+      <div class="stage-group">
+        <div class="stage-row">
+          <div class="stage-tag">1<span class="area">HLP</span></div>
+          <div class="stage-body">
+            <div class="name">batch_material_preflight.py</div>
+            <div class="note">Material-template coverage QC. Pending rename to
+              <code style="color:var(--c-fluid)">1_HLP_MAT_PREFLIGHT_AA01.py</code> under the
+              new naming convention &mdash; not yet dropped into this project.</div>
+          </div>
+          <div class="status pending">Pending rename</div>
+        </div>
+        <div class="stage-row">
+          <div class="stage-tag">3<span class="area">PRC</span></div>
+          <div class="stage-body">
+            <div class="name">contact_sheet.py</div>
+            <div class="note">Standalone HTML contact-sheet viewer (not a <code style="color:var(--c-fluid)">lux</code>
+              script). Pending rename to <code style="color:var(--c-fluid)">3_PRC_CONTACT_SHEET_AA01.py</code>.</div>
+          </div>
+          <div class="status pending">Pending rename</div>
+        </div>
+      </div>
+
+      <div class="stage-group">
+        <div class="stage-row">
+          <div class="stage-tag">2A<span class="area">BAT</span></div>
+          <div class="stage-body">
+            <div class="name">batch_turntable.py</div>
+            <div class="note">Raw-camera-only predecessor of <code style="color:var(--c-fluid)">2a_BAT_TURNTABLE</code>. Approved for archive.</div>
+          </div>
+          <div class="status archive">Archive</div>
+        </div>
+        <div class="stage-row">
+          <div class="stage-tag">2A<span class="area">BAT</span></div>
+          <div class="stage-body">
+            <div class="name">batch_import_and_render_all_views.py</div>
+            <div class="note">Raw-camera-only predecessor of <code style="color:var(--c-fluid)">2a_BAT_STD_VIEW</code>. Approved for archive.</div>
+          </div>
+          <div class="status archive">Archive</div>
+        </div>
+      </div>
+
+      <div class="stage-group">
+        <div class="stage-row">
+          <div class="stage-tag">0<span class="area">NGS</span></div>
+          <div class="stage-body">
+            <div class="name">0_NGS_MAT_STEEL.py</div>
+            <div class="note">Not in this project's files &mdash; exists elsewhere.</div>
+          </div>
+          <div class="status external">Elsewhere</div>
+        </div>
+        <div class="stage-row">
+          <div class="stage-tag">0<span class="area">NGS</span></div>
+          <div class="stage-body">
+            <div class="name">0_NGS_PROC_MATS.py</div>
+            <div class="note">Not in this project's files &mdash; exists elsewhere.</div>
+          </div>
+          <div class="status external">Elsewhere</div>
+        </div>
+        <div class="stage-row">
+          <div class="stage-tag">2B<span class="area">ANI</span></div>
+          <div class="stage-body">
+            <div class="name">2ANI_SCATTERANIMATION_AQ.py</div>
+            <div class="note">Scatter tech reference for the planned particle/assembly-scatter script &mdash; exists elsewhere.</div>
+          </div>
+          <div class="status external">Elsewhere</div>
+        </div>
+        <div class="stage-row">
+          <div class="stage-tag">4*<span class="area">CHK</span></div>
+          <div class="stage-body">
+            <div class="name">3_NGS_CHECK_REPORT.py</div>
+            <div class="note">Exists elsewhere; reads like a post-check under the new scheme &mdash;
+              recommend re-prefixing <code style="color:var(--c-fluid)">3_</code> &rarr;
+              <code style="color:var(--c-fluid)">4_</code> next time it's in a session.</div>
+          </div>
+          <div class="status external">Elsewhere</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Backlog<span class="rule"></span></h2>
+      <ul class="backlog">
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Hand-staged one-off reveal (particles, rain) &mdash; design stage</span></li>
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Assembly reveal, Creo-driven &mdash; animate an authored explode state; depends on verifying explode data survives the plugin import</span></li>
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Assembly reveal, procedural modes &mdash; scatter/settle, staggered/sub-assembly build, spiral converge, ghost fade-in</span></li>
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Cutaway / cross-section reveal</span></li>
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">1 &middot;</span> Material-name lookup table (Creo &rarr; KeyShot)</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">3 &middot;</span> Multi-angle fade reel &mdash; crossfade between Studios/cameras; consumes stills from the turntable/std-view batches</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">3 &middot;</span> BOM-driven manifest (opt-in) &mdash; BOM access method still TBD</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">2b &middot;</span> Dynamic BOM callouts on assembly renders &mdash; depends on the BOM manifest above</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">1 &middot;</span> Studio/camera-rig template library</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> Pre-import geometry/appearance validator</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">4 &middot;</span> Naming-compliance + render-completeness audit</span></li>
+        <li><span class="pri">P3</span><span class="idea"><span class="stage">&mdash; &middot;</span> Archive superseded batch scripts &mdash; approved</span></li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Living Docs<span class="rule"></span></h2>
+      <div class="docs-grid">
+        <a class="doc-card" href="SCRIPT_STOCK.md">
+          <div class="doc-name">SCRIPT_STOCK.md</div>
+          <div class="doc-desc">At-a-glance inventory + prioritized backlog. Source of truth for the tables above &mdash; update it, don't replace it.</div>
+        </a>
+        <a class="doc-card" href="RESEARCH_CREO_KEYSHOT.md">
+          <div class="doc-name">RESEARCH_CREO_KEYSHOT.md</div>
+          <div class="doc-desc">Research notes behind the backlog: Creo&rarr;KeyShot bridge options, parts vs. assemblies, open questions.</div>
+        </a>
+      </div>
+    </section>
 
     <div class="notes">
-      <h3>Conventions (for when scripts land)</h3>
+      <h3>Conventions</h3>
       <ul>
+        <li>Filenames: <code>{PREFIX}_{AREA}_{NAME}_{REV}.py</code> &mdash; prefix is pipeline
+          stage (<code>0_</code> pre-check &middot; <code>1_</code> pre-render/helper &middot;
+          <code>2a_</code> batch render &middot; <code>2b_</code> animation &middot;
+          <code>3_</code> post-process &middot; <code>4_</code> post-check), area is a 3-letter
+          code (<code>BAT</code>, <code>ANI</code>, <code>HLP</code>&hellip;), REV steps a letter
+          for a breaking change and a number for a routine one.</li>
         <li>KeyShot scripting is <strong>Python 3.10+</strong>, using the <code>lux</code> / <code>luxmath</code> modules.</li>
-        <li>Headless CLI execution is supported &mdash; good for batch renders down the line.</li>
+        <li>Headless CLI execution is supported for anything marked <code>HEADLESS COMPLIANT</code> &mdash; good for unattended batch renders.</li>
         <li>Headless automation still needs a machine with a <strong>licensed KeyShot install</strong>; GitHub-hosted Actions runners can't run it.</li>
+        <li>Studios (camera + environment + image style, paired) are preferred over raw Cameras throughout &mdash; raw cameras leave lighting as whatever's already active, which is wrong for parts with multiple lighting setups.</li>
         <li>Binary scene files (<code>.bip</code>, <code>.ksp</code>&hellip;) are tracked via Git LFS &mdash; name versions clearly (<code>chair_v3.bip</code>) rather than relying on diffs.</li>
       </ul>
     </div>
