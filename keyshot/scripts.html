@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>KeyShot Scripts — RENKON</title>
+<style>
+  :root {
+    --bg: #0a0f16;
+    --panel-bg: #0d1520;
+    --panel-bg-raised: #101a27;
+    --line: #1c2733;
+    --text: #e8e8e0;
+    --muted: #7a7f83;
+
+    --c-structural: #002F67;
+    --c-fluid: #2FA8B0;
+    --c-accent: #E8792E;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: "IBM Plex Mono", "Courier New", monospace;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh; display: flex; flex-direction: column;
+  }
+  a { color: inherit; text-decoration: none; }
+  :focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
+
+  header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 18px 28px; border-bottom: 1px solid var(--line);
+  }
+  header .wordmark { font-size: 14px; letter-spacing: 0.28em; font-weight: 500; }
+  header .wordmark b { color: var(--c-accent); font-weight: 500; }
+  header .wordmark:hover { color: var(--text); }
+  header .meta { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+
+  main { flex: 1; padding: 32px 28px 56px; max-width: 980px; margin: 0 auto; width: 100%; }
+
+  .up-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--c-accent); font-size: 10px; letter-spacing: 0.06em;
+    text-transform: uppercase; margin-bottom: 18px;
+  }
+  .up-link:hover { text-decoration: underline; }
+
+  .page-head { margin-bottom: 28px; }
+  .page-head h1 {
+    font-size: 17px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text); margin: 0 0 8px 0; font-weight: 500;
+  }
+  .page-head p { color: var(--muted); font-size: 12px; margin: 0; max-width: 68ch; line-height: 1.7; }
+
+  section { margin-bottom: 36px; }
+  section > h2 {
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 12px; font-weight: 500;
+    display: flex; align-items: center; gap: 10px;
+  }
+  section > h2 .rule { flex: 1; height: 1px; background: var(--line); }
+
+  /* ---- filter pills ---- */
+  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .pill {
+    -webkit-appearance: none; appearance: none; cursor: pointer;
+    background: var(--panel-bg); color: var(--muted); border: 1px solid var(--line);
+    font-family: inherit; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 6px 12px; transition: color 0.12s ease, border-color 0.12s ease;
+  }
+  .pill:hover { color: var(--text); border-color: var(--muted); }
+  .pill.active { color: var(--c-accent); border-color: var(--c-accent); }
+
+  /* ---- script inventory ---- */
+  .stage-group { border: 1px solid var(--line); background: var(--panel-bg); margin-bottom: 1px; }
+  .stage-group + .stage-group { border-top: none; }
+
+  .stage-row {
+    display: grid;
+    grid-template-columns: 76px 1fr auto;
+    gap: 14px;
+    padding: 14px 18px;
+    border-top: 1px solid var(--line);
+    align-items: start;
+  }
+  .stage-row:first-child { border-top: none; }
+  .stage-row:hover { background: var(--panel-bg-raised); }
+
+  .stage-tag {
+    font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--c-fluid); white-space: nowrap; padding-top: 2px;
+  }
+  .stage-tag .area { display: block; color: var(--muted); margin-top: 2px; }
+
+  .stage-body .name {
+    font-size: 12.5px; color: var(--text);
+  }
+  .stage-body .name a { color: var(--c-accent); }
+  .stage-body .name a:hover { text-decoration: underline; }
+  .stage-body .note { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.6; max-width: 58ch; }
+
+  .status {
+    font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 8px; border: 1px solid var(--line); white-space: nowrap; height: fit-content;
+  }
+  .status.current { color: var(--c-fluid); border-color: var(--c-fluid); }
+  .status.pending { color: var(--c-accent); border-color: var(--c-accent); }
+  .status.archive { color: var(--muted); text-decoration: line-through; }
+  .status.locked { color: var(--muted); border-style: dashed; }
+
+  .empty-note {
+    padding: 14px 18px; font-size: 11px; color: var(--muted); font-style: italic;
+    border-top: 1px solid var(--line); display: none;
+  }
+
+  /* ---- expandable secondary inventory ---- */
+  .more {
+    border: 1px solid var(--line); background: var(--panel-bg);
+  }
+  .more > summary {
+    list-style: none; cursor: pointer; padding: 12px 18px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+  }
+  .more > summary::-webkit-details-marker { display: none; }
+  .more > summary:hover { color: var(--text); }
+  .more > summary .chev {
+    display: inline-block; color: var(--c-accent); transition: transform 0.15s ease;
+  }
+  .more[open] > summary .chev { transform: rotate(90deg); }
+  .more-body { border-top: 1px solid var(--line); padding: 16px 18px 18px; }
+  .more-body .toggle-group { margin-bottom: 14px; }
+
+  /* ---- backlog ---- */
+  .backlog { border: 1px solid var(--line); background: var(--panel-bg); }
+  .backlog li {
+    list-style: none; display: grid; grid-template-columns: 40px 1fr;
+    gap: 14px; padding: 10px 18px; border-top: 1px solid var(--line);
+    font-size: 11px; line-height: 1.6;
+  }
+  .backlog li:first-child { border-top: none; }
+  .backlog .pri { color: var(--c-accent); font-size: 10px; letter-spacing: 0.04em; padding-top: 1px; }
+  .backlog .idea { color: var(--text); }
+  .backlog .idea .stage { color: var(--muted); }
+  .backlog ul { margin: 0; padding: 0; }
+
+  .notes {
+    border: 1px solid var(--line); background: var(--panel-bg);
+    padding: 22px 24px;
+  }
+  .notes h3 {
+    font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text); margin: 0 0 14px; font-weight: 500;
+  }
+  .notes ul { margin: 0; padding: 0; list-style: none; }
+  .notes li {
+    font-size: 11px; color: var(--muted); line-height: 1.6;
+    padding: 8px 0 8px 18px; position: relative; border-top: 1px solid var(--line);
+  }
+  .notes li:first-child { border-top: none; }
+  .notes li::before { content: "\203A"; position: absolute; left: 2px; color: var(--c-accent); }
+  .notes code { color: var(--c-fluid); }
+
+  footer { padding: 20px 28px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; letter-spacing: 0.04em; }
+  footer a { color: var(--c-accent); }
+  footer a:hover { text-decoration: underline; }
+</style>
+<script src="../assets/reveal.js"></script>
+</head>
+<body>
+  <header>
+    <a class="wordmark" href="../index.html">REN<b>K</b>ON</a>
+    <div class="meta">KeyShot &middot; Scripts</div>
+  </header>
+
+  <main>
+    <a class="up-link" href="index.html"><span aria-hidden="true">&larr;</span> Back to KeyShot</a>
+
+    <div class="page-head">
+      <h1>Scripts</h1>
+      <p>Automation for the Creo &rarr; KeyShot pipeline &mdash; batch views, turntables,
+         and camera-driven reveal animations, written against the <code
+         style="color:var(--c-fluid)">lux</code> / <code style="color:var(--c-fluid)">luxmath</code>
+         scripting API. Headless-compliant where noted, so batch stages can run
+         unattended on a licensed KeyShot install.</p>
+    </div>
+
+    <section>
+      <h2>Inventory<span class="rule"></span></h2>
+
+      <div class="pill-row" role="group" aria-label="Filter by pipeline stage">
+        <button type="button" class="pill active" data-stage="all">All</button>
+        <button type="button" class="pill" data-stage="0">0</button>
+        <button type="button" class="pill" data-stage="1">1</button>
+        <button type="button" class="pill" data-stage="2a">2a</button>
+        <button type="button" class="pill" data-stage="2b">2b</button>
+        <button type="button" class="pill" data-stage="3">3</button>
+        <button type="button" class="pill" data-stage="4">4</button>
+      </div>
+
+      <div class="stage-group" data-status="current">
+        <div class="stage-row" data-stage="2a">
+          <div class="stage-tag">2A<span class="area">BAT</span></div>
+          <div class="stage-body">
+            <div class="name"><a href="scripts/2a_BAT_STD_VIEW_AA01.py">2a_BAT_STD_VIEW_AA01.py</a></div>
+            <div class="note">Studios-first multi-view batch render. Imports every model of a chosen
+              extension from a folder, applies an optional material template, then renders every
+              Studio (camera + environment pairing) defined per part &mdash; falls back to raw
+              cameras only when a part has no Studios. Logs a CSV manifest.</div>
+          </div>
+          <div class="status current">Current</div>
+        </div>
+        <div class="stage-row" data-stage="2a">
+          <div class="stage-tag">2A<span class="area">BAT</span></div>
+          <div class="stage-body">
+            <div class="name"><a href="scripts/2a_BAT_TURNTABLE_AA01.py">2a_BAT_TURNTABLE_AA01.py</a></div>
+            <div class="note">Studios-first 360&deg; turntable batch. Same Studio-aware camera/lighting
+              selection as the std-view script; spins each imported part and encodes a small mp4
+              per part. Kept as a continuous spin on purpose &mdash; the "fade between angles" idea
+              is planned as a separate <code style="color:var(--c-fluid)">3_</code> post-process
+              script instead of a change here.</div>
+          </div>
+          <div class="status current">Current</div>
+        </div>
+        <div class="stage-row" data-stage="2b">
+          <div class="stage-tag">2B<span class="area">ANI</span></div>
+          <div class="stage-body">
+            <div class="name"><a href="scripts/2b_ANI_HERO_REVEAL_AA01.py">2b_ANI_HERO_REVEAL_AA01.py</a></div>
+            <div class="note">Automated hero-reveal shot: single monotonic zoom (in or out) into a
+              camera/Studio's own framing, with optional vertical crane, HDRI rotation, brightness
+              ramp, and synced Model Set animation playback. Orbit/arc was deliberately removed
+              (Rodrigues' formula degenerates when the rotation axis aligns with the camera-to-object
+              direction); ground-setter method name and <code style="color:var(--c-fluid)">getAnimationInfo()</code>'s
+              return shape are unconfirmed on your build &mdash; the script probes and reports which
+              worked. See in-file docstring for full design notes.</div>
+          </div>
+          <div class="status current">Current</div>
+        </div>
+        <div class="stage-row" data-stage="1">
+          <div class="stage-tag">1<span class="area">HLP</span></div>
+          <div class="stage-body">
+            <div class="name"><a href="scripts/1_HLP_MAT_PREFLIGHT_AA01.py">1_HLP_MAT_PREFLIGHT_AA01.py</a></div>
+            <div class="note">Material-template coverage QC, ahead of a full batch render. Imports
+              every part in a folder, applies a material template, and reports which objects'
+              materials did not change &mdash; a strong signal the template has no entry for that
+              object's native material name. Does no rendering, so it runs in seconds.</div>
+          </div>
+          <div class="status current">Current</div>
+        </div>
+        <div class="stage-row" data-stage="3">
+          <div class="stage-tag">3<span class="area">PRC</span></div>
+          <div class="stage-body">
+            <div class="name"><a href="scripts/3_PRC_CONTACT_SHEET_AA01.py">3_PRC_CONTACT_SHEET_AA01.py</a></div>
+            <div class="note">Standalone HTML contact sheet from a batch's rendered output (not a
+              <code style="color:var(--c-fluid)">lux</code> script &mdash; run with a regular Python 3
+              interpreter). Scans an output folder for stills and turntable videos, groups them by
+              part, writes one <code style="color:var(--c-fluid)">contact_sheet.html</code>.</div>
+          </div>
+          <div class="status current">Current</div>
+        </div>
+        <div class="stage-row" data-stage="1">
+          <div class="stage-tag">1<span class="area">HLP</span></div>
+          <div class="stage-body">
+            <div class="name"><a href="scripts/1_HLP_MAT_LOOKUP_AA01.py">1_HLP_MAT_LOOKUP_AA01.py</a></div>
+            <div class="note">Creo &rarr; KeyShot material-name lookup table. Loads a CSV/JSON
+              mapping of native material/appearance names to KeyShot material templates, then
+              applies the matching template per object (not scene-wide) across a batch import.
+              Prevention, complementing what <code style="color:var(--c-fluid)">1_HLP_MAT_PREFLIGHT_AA01.py</code>
+              catches after the fact. Per-object template assignment is an unconfirmed API on this
+              build &mdash; probes a short list of candidate setters and reports which worked.</div>
+          </div>
+          <div class="status current">Current</div>
+        </div>
+        <div class="stage-row" data-stage="2b">
+          <div class="stage-tag">2B<span class="area">ANI</span></div>
+          <div class="stage-body">
+            <div class="name"><a href="scripts/2b_ANI_CUTAWAY_REVEAL_AA01.py">2b_ANI_CUTAWAY_REVEAL_AA01.py</a></div>
+            <div class="note">Cutaway / cross-section reveal. Sweeps a clip plane through an
+              assembly's bounding box over a frame sequence with the camera held static &mdash;
+              contrast to the hero-reveal script's camera dolly. Reuses the same Studios-vs-Cameras
+              selection, manifest logging, and headless-dialog pattern as
+              <code style="color:var(--c-fluid)">2b_ANI_HERO_REVEAL_AA01.py</code>. Clipping-plane
+              and bounding-box APIs are unconfirmed on this build &mdash; probes several candidate
+              method names and degrades to unclipped rendering with a warning if none resolve.</div>
+          </div>
+          <div class="status current">Current</div>
+        </div>
+        <div class="empty-note">No current scripts at this stage.</div>
+      </div>
+
+      <details class="more">
+        <summary><span class="chev" aria-hidden="true">&rsaquo;</span> Show more scripts (pending, archive, locked)</summary>
+        <div class="more-body">
+          <div class="pill-row toggle-group" role="group" aria-label="Show pending, archive, or locked scripts">
+            <button type="button" class="pill active" data-status="pending">Pending</button>
+            <button type="button" class="pill" data-status="archive">Archive</button>
+            <button type="button" class="pill" data-status="locked">Locked</button>
+          </div>
+
+          <div class="stage-group" data-status="pending">
+            <div class="empty-note">Nothing pending rename right now &mdash; the last two, material
+              preflight and contact sheet, landed and moved up to Current.</div>
+          </div>
+
+          <div class="stage-group" data-status="archive" hidden>
+            <div class="stage-row" data-stage="2a">
+              <div class="stage-tag">2A<span class="area">BAT</span></div>
+              <div class="stage-body">
+                <div class="name"><a href="scripts/archive/batch_turntable.py">batch_turntable.py</a></div>
+                <div class="note">Raw-camera-only predecessor of <code style="color:var(--c-fluid)">2a_BAT_TURNTABLE</code>.</div>
+              </div>
+              <div class="status archive">Archive</div>
+            </div>
+            <div class="stage-row" data-stage="2a">
+              <div class="stage-tag">2A<span class="area">BAT</span></div>
+              <div class="stage-body">
+                <div class="name"><a href="scripts/archive/batch_import_and_render_all_views.py">batch_import_and_render_all_views.py</a></div>
+                <div class="note">Raw-camera-only predecessor of <code style="color:var(--c-fluid)">2a_BAT_STD_VIEW</code>.</div>
+              </div>
+              <div class="status archive">Archive</div>
+            </div>
+            <div class="empty-note">No archived scripts at this stage.</div>
+          </div>
+
+          <div class="stage-group" data-status="locked" hidden>
+            <div class="stage-row" data-stage="0">
+              <div class="stage-tag">0<span class="area">NGS</span></div>
+              <div class="stage-body">
+                <div class="name">0_NGS_MAT_STEEL.py</div>
+                <div class="note">Not in this project's files &mdash; exists elsewhere.</div>
+              </div>
+              <div class="status locked">Locked</div>
+            </div>
+            <div class="stage-row" data-stage="0">
+              <div class="stage-tag">0<span class="area">NGS</span></div>
+              <div class="stage-body">
+                <div class="name">0_NGS_PROC_MATS.py</div>
+                <div class="note">Not in this project's files &mdash; exists elsewhere.</div>
+              </div>
+              <div class="status locked">Locked</div>
+            </div>
+            <div class="stage-row" data-stage="2b">
+              <div class="stage-tag">2B<span class="area">ANI</span></div>
+              <div class="stage-body">
+                <div class="name">2ANI_SCATTERANIMATION_AQ.py</div>
+                <div class="note">Scatter tech reference for the planned particle/assembly-scatter script &mdash; exists elsewhere.</div>
+              </div>
+              <div class="status locked">Locked</div>
+            </div>
+            <div class="stage-row" data-stage="3">
+              <div class="stage-tag">4*<span class="area">CHK</span></div>
+              <div class="stage-body">
+                <div class="name">3_NGS_CHECK_REPORT.py</div>
+                <div class="note">Exists elsewhere; reads like a post-check under the new scheme &mdash;
+                  recommend re-prefixing <code style="color:var(--c-fluid)">3_</code> &rarr;
+                  <code style="color:var(--c-fluid)">4_</code> next time it's in a session.</div>
+              </div>
+              <div class="status locked">Locked</div>
+            </div>
+            <div class="empty-note">No locked scripts at this stage.</div>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <section>
+      <h2>Backlog<span class="rule"></span></h2>
+      <ul class="backlog">
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Hand-staged one-off reveal (particles, rain) &mdash; design stage</span></li>
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Assembly reveal, Creo-driven &mdash; animate an authored explode state; depends on verifying explode data survives the plugin import</span></li>
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Assembly reveal, procedural modes &mdash; scatter/settle, staggered/sub-assembly build, spiral converge, ghost fade-in</span></li>
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Cutaway / cross-section reveal <em style="color:var(--c-fluid); font-style:normal;">&mdash; done, see Current</em></span></li>
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">1 &middot;</span> Material-name lookup table (Creo &rarr; KeyShot) <em style="color:var(--c-fluid); font-style:normal;">&mdash; done, see Current</em></span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">3 &middot;</span> Multi-angle fade reel &mdash; crossfade between Studios/cameras; consumes stills from the turntable/std-view batches</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">3 &middot;</span> BOM-driven manifest (opt-in) &mdash; BOM access method still TBD</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">2b &middot;</span> Dynamic BOM callouts on assembly renders &mdash; depends on the BOM manifest above</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">1 &middot;</span> Studio/camera-rig template library</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> Pre-import geometry/appearance validator</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">4 &middot;</span> Naming-compliance + render-completeness audit</span></li>
+        <li><span class="pri">P3</span><span class="idea"><span class="stage">&mdash; &middot;</span> Archive superseded batch scripts <em style="color:var(--c-fluid); font-style:normal;">&mdash; done</em></span></li>
+      </ul>
+    </section>
+
+    <div class="notes">
+      <h3>Conventions</h3>
+      <ul>
+        <li>Filename: <code>{PREFIX}_{AREA}_{NAME}_{REV}.py</code></li>
+        <li>PREFIX: <code>0_</code> pre-check &middot; <code>1_</code> pre-render/helper &middot;
+          <code>2a_</code> batch render &middot; <code>2b_</code> animation &middot;
+          <code>3_</code> post-process &middot; <code>4_</code> post-check</li>
+        <li>AREA: 3-letter code &mdash; <code>BAT</code>, <code>ANI</code>, <code>HLP</code>,
+          <code>PRC</code>, <code>NGS</code>, <code>CHK</code>&hellip;</li>
+        <li>REV: <code>XX01</code> &mdash; letter steps for a breaking change, number steps for a routine one</li>
+        <li>Python 3.10+, <code>lux</code> / <code>luxmath</code> modules</li>
+        <li>Headless CLI runs anything marked <code>HEADLESS COMPLIANT</code>; still needs a machine with a licensed KeyShot install</li>
+        <li>Studios (camera + environment + image style) preferred over raw Cameras</li>
+        <li>Binary scene files (<code>.bip</code>, <code>.ksp</code>&hellip;) tracked via Git LFS</li>
+      </ul>
+    </div>
+  </main>
+
+  <footer>
+    RENKON &middot; <a href="https://github.com/technicallytechnicaldesign/RENKON">github.com/technicallytechnicaldesign/RENKON</a>
+  </footer>
+  <script>
+  (function () {
+    var stagePills = document.querySelectorAll('.pill[data-stage]');
+    var statusPills = document.querySelectorAll('.pill[data-status]');
+    var groups = document.querySelectorAll('.stage-group');
+    var currentStage = 'all';
+    var currentStatus = 'pending';
+
+    function apply() {
+      groups.forEach(function (group) {
+        var status = group.dataset.status;
+        var groupVisible = status === 'current' || status === currentStatus;
+        group.hidden = !groupVisible;
+        if (!groupVisible) return;
+        var anyRow = false;
+        group.querySelectorAll('.stage-row').forEach(function (row) {
+          var show = currentStage === 'all' || row.dataset.stage === currentStage;
+          row.hidden = !show;
+          if (show) anyRow = true;
+        });
+        var note = group.querySelector('.empty-note');
+        if (note) note.style.display = anyRow ? 'none' : '';
+      });
+    }
+
+    stagePills.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        stagePills.forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        currentStage = btn.dataset.stage;
+        apply();
+      });
+    });
+
+    statusPills.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        statusPills.forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        currentStatus = btn.dataset.status;
+        apply();
+      });
+    });
+
+    apply();
+  })();
+  </script>
+  <script src="../assets/menu.js"></script>
+</body>
+</html>

@@ -3,8 +3,9 @@
 KeyShot automation for the Creo &rarr; KeyShot pipeline, plus scene/material
 binaries as they arrive.
 
-Live page: [`index.html`](index.html) &mdash; script inventory, backlog, and
-conventions.
+Live pages: [`index.html`](index.html) &mdash; hub tile grid, Scripts is the
+first live area; [`scripts.html`](scripts.html) &mdash; script inventory
+(filterable, active-only by default), backlog, and conventions.
 
 ## Structure
 
@@ -12,7 +13,8 @@ conventions.
 keyshot/
   scripts/            current lux/luxmath scripts (batch render, turntable, animation, helpers)
   scripts/archive/    superseded scripts, kept for reference only — not part of the active pipeline
-  index.html          live inventory page
+  index.html          hub page — tile grid of KeyShot areas
+  scripts.html        script inventory page (filters, backlog, conventions)
   SCRIPT_STOCK.md            at-a-glance inventory + prioritized backlog
   RESEARCH_CREO_KEYSHOT.md   research notes behind the backlog
 ```
@@ -25,9 +27,11 @@ don't replace it, as scripts move through the pipeline.
 | Script | Stage | What it does |
 |---|---|---|
 | [`1_HLP_MAT_PREFLIGHT_AA01.py`](scripts/1_HLP_MAT_PREFLIGHT_AA01.py) | 1 &middot; HLP | Material-template coverage QC, ahead of a full batch render |
+| [`1_HLP_MAT_LOOKUP_AA01.py`](scripts/1_HLP_MAT_LOOKUP_AA01.py) | 1 &middot; HLP | Creo &rarr; KeyShot material-name lookup table, applies templates per object |
 | [`2a_BAT_STD_VIEW_AA01.py`](scripts/2a_BAT_STD_VIEW_AA01.py) | 2a &middot; BAT | Studios-first multi-view batch render |
 | [`2a_BAT_TURNTABLE_AA01.py`](scripts/2a_BAT_TURNTABLE_AA01.py) | 2a &middot; BAT | Studios-first 360&deg; turntable batch |
 | [`2b_ANI_HERO_REVEAL_AA01.py`](scripts/2b_ANI_HERO_REVEAL_AA01.py) | 2b &middot; ANI | Zoom+crane hero reveal, synced to Model Set animation |
+| [`2b_ANI_CUTAWAY_REVEAL_AA01.py`](scripts/2b_ANI_CUTAWAY_REVEAL_AA01.py) | 2b &middot; ANI | Cutaway / cross-section reveal, sweeps a clip plane through an assembly |
 | [`3_PRC_CONTACT_SHEET_AA01.py`](scripts/3_PRC_CONTACT_SHEET_AA01.py) | 3 &middot; PRC | Standalone HTML contact sheet from a batch's rendered output |
 
 ### Archived (`scripts/archive/`)
