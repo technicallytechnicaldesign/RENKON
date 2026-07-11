@@ -1,7 +1,7 @@
 # Script Stock
 
 Project ID: `ksrp-efbe4961`
-Last updated: 2026-07-11 (naming cleanup + 5 backlog items delivered; forum research grounds 3 stage-0 scripts, dispatched to subagents)
+Last updated: 2026-07-11 (naming cleanup + 8 backlog items delivered; stage 0 now populated)
 
 Running at-a-glance inventory + priority backlog. Update this file, don't
 replace it, as scripts move status.
@@ -10,6 +10,9 @@ replace it, as scripts move status.
 
 | Stage | Area | Script | Status | Notes |
 |---|---|---|---|---|
+| 0 | VAL | `0_VAL_STEP_PREFLIGHT_AA01.py` | ✅ current | STEP-file preflight (not a lux script) — unit/scale declaration check, filename hygiene, duplicate base names, best-effort material-name hints. Forum-grounded: unit/scale mismatch is the #1 reported KeyShot import complaint |
+| 0 | VAL | `0_VAL_IMPORT_HEALTH_AA01.py` | ✅ current | Trial-import geometry/appearance health check — bounding-box sanity, object-count sanity, Studio/camera presence, before committing a folder to the full batch pass |
+| 0 | VAL | `0_VAL_ORIENTATION_CHECK_AA01.py` | ✅ current | Orientation/up-axis sanity check — flags statistical footprint-ratio outliers across a batch. Explicitly a review-flagging heuristic, not a fixer |
 | 1 | HLP | `1_HLP_MAT_PREFLIGHT_AA01.py` | ✅ current | Material-template coverage QC — renamed from `batch_material_preflight.py` |
 | 1 | HLP | `1_HLP_MAT_LOOKUP_AA01.py` | ✅ current | Creo → KeyShot material-name lookup table; applies templates per object. Per-object apply method is unconfirmed on your build — probes candidates, reports which worked |
 | 2a | BAT | `2a_BAT_STD_VIEW_AA01.py` | ✅ current | Studios-first multi-view batch |
@@ -40,9 +43,9 @@ replace it, as scripts move status.
 | P2 | 3 | BOM-driven manifest (opt-in) | Not started | Research Q3 — BOM access method |
 | P2 | 2b | Dynamic BOM callouts on assembly renders | Not started | BOM-driven manifest, above |
 | P2 | 1 | Studio/camera-rig template library | Not started | — |
-| P2 | 0 | STEP-file preflight (units, filename hygiene, material-name hints) | 🔧 in progress (subagent) — `0_VAL_STEP_PREFLIGHT_AA01.py` | Forum-grounded: STEP unit/scale mismatch is the #1 reported KeyShot import complaint (see RESEARCH_CREO_KEYSHOT.md) |
-| P2 | 0 | Trial-import geometry/appearance health check | 🔧 in progress (subagent) — `0_VAL_IMPORT_HEALTH_AA01.py` | This is the original "pre-import geometry/appearance validator" item, now split out and grounded in specific forum reports (missing assembly components, tessellation gaps, failed imports) |
-| P2 | 0 | Orientation / up-axis sanity check | 🔧 in progress (subagent) — `0_VAL_ORIENTATION_CHECK_AA01.py` | Forum-grounded: KeyShot is always Y-up, source CAD varies, easy to get wrong unattended |
+| P2 | 0 | STEP-file preflight (units, filename hygiene, material-name hints) | ✅ done — `0_VAL_STEP_PREFLIGHT_AA01.py` | Forum-grounded: STEP unit/scale mismatch is the #1 reported KeyShot import complaint (see RESEARCH_CREO_KEYSHOT.md) |
+| P2 | 0 | Trial-import geometry/appearance health check | ✅ done — `0_VAL_IMPORT_HEALTH_AA01.py` | This is the original "pre-import geometry/appearance validator" item, now split out and grounded in specific forum reports (missing assembly components, tessellation gaps, failed imports) |
+| P2 | 0 | Orientation / up-axis sanity check | ✅ done — `0_VAL_ORIENTATION_CHECK_AA01.py` | Forum-grounded: KeyShot is always Y-up, source CAD varies, easy to get wrong unattended |
 | P2 | 4 | Naming-compliance + render-completeness audit | ✅ done — `4_CHK_AUDIT_AA01.py` | — |
 | P3 | — | Archive superseded batch scripts | ✅ done — moved to `scripts/archive/` | — |
 | P2 | 2b | Assembly reveal — sub-assembly build (grouped convergence) | Not started | Extension of `2b_ANI_ASSEMBLY_PROCEDURAL_AA01.py`; extension point noted in that script's `get_parts()`/`schedule_staggered_windows()` |

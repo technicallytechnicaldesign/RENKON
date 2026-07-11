@@ -200,6 +200,43 @@
       </div>
 
       <div class="stage-group" data-status="current">
+        <div class="stage-row" data-stage="0">
+          <div class="stage-tag">0<span class="area">VAL</span></div>
+          <div class="stage-body">
+            <div class="name"><a href="scripts/0_VAL_STEP_PREFLIGHT_AA01.py">0_VAL_STEP_PREFLIGHT_AA01.py</a></div>
+            <div class="note">STEP-file preflight &mdash; not a <code style="color:var(--c-fluid)">lux</code>
+              script, runs on plain STEP text before KeyShot ever opens the file. Checks the
+              declared unit/scale (the #1 reported KeyShot import complaint), filename hygiene,
+              duplicate base names, and best-effort material-name hints cross-referenced against a
+              <code style="color:var(--c-fluid)">1_HLP_MAT_LOOKUP_AA01.py</code>-format mapping
+              file. Forum-grounded: see <code style="color:var(--c-fluid)">RESEARCH_CREO_KEYSHOT.md</code>.</div>
+          </div>
+          <div class="status current">Current</div>
+        </div>
+        <div class="stage-row" data-stage="0">
+          <div class="stage-tag">0<span class="area">VAL</span></div>
+          <div class="stage-body">
+            <div class="name"><a href="scripts/0_VAL_IMPORT_HEALTH_AA01.py">0_VAL_IMPORT_HEALTH_AA01.py</a></div>
+            <div class="note">Trial-import geometry/appearance health check &mdash; a fast, no-render
+              gate before committing a folder to the full batch pass. Flags import failures,
+              bounding-box anomalies, assembly-named files that imported as a single object
+              (missing components), and parts with no Studios or cameras. Uses the now-confirmed
+              <code style="color:var(--c-fluid)">getBoundingBox()</code> call.</div>
+          </div>
+          <div class="status current">Current</div>
+        </div>
+        <div class="stage-row" data-stage="0">
+          <div class="stage-tag">0<span class="area">VAL</span></div>
+          <div class="stage-body">
+            <div class="name"><a href="scripts/0_VAL_ORIENTATION_CHECK_AA01.py">0_VAL_ORIENTATION_CHECK_AA01.py</a></div>
+            <div class="note">Orientation / up-axis sanity check &mdash; computes a footprint ratio
+              per part from its bounding box and flags statistical outliers relative to the rest
+              of the batch. Explicitly a review-flagging heuristic, not a fixer or a ground-truth
+              checker &mdash; a flagged part might be legitimately different, and an entire batch
+              sharing the same bad orientation setting wouldn't be caught at all.</div>
+          </div>
+          <div class="status current">Current</div>
+        </div>
         <div class="stage-row" data-stage="2a">
           <div class="stage-tag">2A<span class="area">BAT</span></div>
           <div class="stage-body">
@@ -421,7 +458,9 @@
         <li><span class="pri">P2</span><span class="idea"><span class="stage">3 &middot;</span> BOM-driven manifest (opt-in) &mdash; BOM access method still TBD</span></li>
         <li><span class="pri">P2</span><span class="idea"><span class="stage">2b &middot;</span> Dynamic BOM callouts on assembly renders &mdash; depends on the BOM manifest above</span></li>
         <li><span class="pri">P2</span><span class="idea"><span class="stage">1 &middot;</span> Studio/camera-rig template library</span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> Pre-import geometry/appearance validator</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> STEP-file preflight (units, filename hygiene, material hints) <em style="color:var(--c-fluid); font-style:normal;">&mdash; done, see Current</em></span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> Trial-import geometry/appearance health check <em style="color:var(--c-fluid); font-style:normal;">&mdash; done, see Current</em> (the original "pre-import validator" item, split into 3)</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> Orientation / up-axis sanity check <em style="color:var(--c-fluid); font-style:normal;">&mdash; done, see Current</em></span></li>
         <li><span class="pri">P2</span><span class="idea"><span class="stage">4 &middot;</span> Naming-compliance + render-completeness audit <em style="color:var(--c-fluid); font-style:normal;">&mdash; done, see Current</em></span></li>
         <li><span class="pri">P3</span><span class="idea"><span class="stage">&mdash; &middot;</span> Archive superseded batch scripts <em style="color:var(--c-fluid); font-style:normal;">&mdash; done</em></span></li>
       </ul>
