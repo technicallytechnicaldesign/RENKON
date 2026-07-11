@@ -1,7 +1,7 @@
 # Script Stock
 
 Project ID: `ksrp-efbe4961`
-Last updated: 2026-07-11 (naming cleanup done; 2 backlog items delivered by subagent)
+Last updated: 2026-07-11 (naming cleanup + 2 backlog items delivered; 3 more in progress overnight)
 
 Running at-a-glance inventory + priority backlog. Update this file, don't
 replace it, as scripts move status.
@@ -30,15 +30,15 @@ replace it, as scripts move status.
 |---|---|---|---|---|
 | P1 | 2b | Hand-staged one-off reveal (particles, rain) | Design | — |
 | P1 | 2b | Assembly reveal — Creo-driven (animate an authored explode state) | Not started | Verify explode data survives plugin import |
-| P1 | 2b | Assembly reveal — procedural modes (scatter/settle, staggered/sub-assembly build, spiral converge, ghost fade-in) | Not started | — |
+| P1 | 2b | Assembly reveal — procedural modes (scatter/settle, staggered/sub-assembly build, spiral converge, ghost fade-in) | 🔧 in progress (subagent) — `2b_ANI_ASSEMBLY_PROCEDURAL_AA01.py` | — |
 | P1 | 2b | Cutaway / cross-section reveal | ✅ done — `2b_ANI_CUTAWAY_REVEAL_AA01.py` | — |
 | P1 | 1 | Material-name lookup table (Creo → KeyShot) | ✅ done — `1_HLP_MAT_LOOKUP_AA01.py` | — |
-| P2 | 3 | Multi-angle fade reel (crossfade between Studios/cameras) | Not started | Consumes stills from `2a_BAT_TURNTABLE`/`2a_BAT_STD_VIEW` |
+| P2 | 3 | Multi-angle fade reel (crossfade between Studios/cameras) | 🔧 in progress (subagent) — `3_PRC_FADE_REEL_AA01.py` | Consumes stills from `2a_BAT_TURNTABLE`/`2a_BAT_STD_VIEW` |
 | P2 | 3 | BOM-driven manifest (opt-in) | Not started | Research Q3 — BOM access method |
 | P2 | 2b | Dynamic BOM callouts on assembly renders | Not started | BOM-driven manifest, above |
 | P2 | 1 | Studio/camera-rig template library | Not started | — |
 | P2 | 0 | Pre-import geometry/appearance validator | Not started | — |
-| P2 | 4 | Naming-compliance + render-completeness audit | Not started | — |
+| P2 | 4 | Naming-compliance + render-completeness audit | 🔧 in progress (subagent) — `4_CHK_AUDIT_AA01.py` | — |
 | P3 | — | Archive superseded batch scripts | ✅ done — moved to `scripts/archive/` | — |
 
 See `RESEARCH_CREO_KEYSHOT.md` for the thinking behind the backlog.
