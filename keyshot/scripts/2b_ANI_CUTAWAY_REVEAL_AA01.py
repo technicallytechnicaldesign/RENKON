@@ -83,18 +83,19 @@ SWEEP GEOMETRY -- BOUNDING BOX + AXIS
 The sweep needs a start offset fully outside the assembly on one side and
 an end offset fully outside on the other, so the whole interior is exposed
 somewhere mid-sweep. That range is derived from the target node's
-axis-aligned bounding box -- but a bounding-box GETTER is *also* unconfirmed
-on this pipeline's `lux`/SceneNode API (the only confirmed spatial query
-used elsewhere is SceneNode.getCenter(world=True), which gives a point, not
-an extent). resolve_bounding_box() probes getBoundingBox(world=True),
-getBoundingBox(), getWorldBoundingBox(), getBounds(world=True) and
-getBounds() the same defensive getattr-and-try way as the clipping plane
-itself, and accepts a couple of plausible return shapes (an object with
-.min/.max, a 2-tuple of points, or a flat 6-tuple). If none of those work
-either, the sweep falls back to manual numeric start/end offsets from the
-options dialog (clip_start_override / clip_end_override) and warns that
-auto-framing the sweep wasn't possible -- so a totally blind probe failure
-still produces a usable (if hand-tuned) result instead of stopping the run.
+axis-aligned bounding box. CONFIRMED as of a 2026-07-11 research pass
+(KeyShot 11.0 scripting reference, media.keyshot.com/scripting/doc/11.0/
+lux.html): SceneNode.getBoundingBox() is real, returning (min, max)
+vectors -- this was written against an unconfirmed guess and happened to
+land on a real name. resolve_bounding_box() still probes a short list
+(getBoundingBox(world=True), getBoundingBox(), getWorldBoundingBox(),
+getBounds(world=True), getBounds()) rather than calling the confirmed form
+directly, for graceful behavior on older KeyShot versions or a different
+kwarg shape, and accepts a couple of plausible return shapes (an object
+with .min/.max, a 2-tuple of points, or a flat 6-tuple). If somehow none of
+those work, the sweep falls back to manual numeric start/end offsets from
+the options dialog (clip_start_override / clip_end_override) and warns
+that auto-framing the sweep wasn't possible.
 
 --------------------------------------------------------------------------
 STUDIOS vs CAMERAS
@@ -111,10 +112,10 @@ never moved once activated -- it just sits and watches the plane sweep.
 GROUND RENDERING
 --------------------------------------------------------------------------
 Same situation and same defensive candidate-list treatment as the hero
-reveal script: ground shadow/reflection getters are confirmed, the exact
-setter names aren't, so a short list of plausible setter names is tried and
-whichever one worked is reported. See set_ground_rendering() below --
-logic is a direct copy of the hero reveal script's version.
+reveal script: ground shadow/reflection getters AND setters
+(env.setGroundShadows/setGroundReflections) are confirmed (see hero reveal
+script's GROUND RENDERING note for the source). See set_ground_rendering()
+below -- logic is a direct copy of the hero reveal script's version.
 
 --------------------------------------------------------------------------
 QUEUEING
@@ -136,13 +137,14 @@ lux.openFile(), lux.getStudios(), lux.getStudio(name),
 lux.setActiveStudio(name), lux.getCameras(), lux.setCamera(name),
 lux.getModelSets(), lux.setModelSets(names), lux.getImportOptions(),
 lux.importFile(path, opts=...), SceneNode.getCenter(world=True),
-env ground-state getters (isGroundShadowsEnabled-style),
+SceneNode.getBoundingBox() (confirmed 2026-07-11 -- see SWEEP GEOMETRY
+above), env ground-state getters AND setters (env.setGroundShadows/
+setGroundReflections, confirmed 2026-07-11 -- see GROUND RENDERING above),
 lux.getRenderOptions()/setAddToQueue()/setMaxTimeRendering(),
 lux.processQueue(), lux.isHeadless(), lux.getInputDialog().
 
 Inferred-but-unconfirmed, wrapped defensively throughout: env.setRotation()
-(same flag as the hero reveal script), the ground shadow/reflection
-*setter* names (same flag as the hero reveal script).
+(same flag as the hero reveal script).
 
 Experimental / entirely unverified -- flagged loudly and probed via
 getattr(...) rather than called directly, degrading gracefully to "no
@@ -151,12 +153,10 @@ cutaway effect" if nothing resolves: EVERY clipping-plane method name
 lux.getClipPlane / lux.addClippingPlane / lux.createClippingPlane /
 lux.addSection / lux.createSection, and the handle's setEnabled / enable /
 setActive / setVisible / setPosition / setOffset / setOrigin / setPlane /
-setNormal / setDirection / setAxis), and EVERY bounding-box getter name
-(getBoundingBox / getWorldBoundingBox / getBounds, with or without a
-world= kwarg). None of these appear in a confirmed reference available to
-this pipeline -- treat the whole clipping-plane feature as needing a real
-KeyShot session to validate, and update the candidate lists / promote the
-working names once confirmed.
+setNormal / setDirection / setAxis). None of these appear in a confirmed
+reference available to this pipeline -- treat the whole clipping-plane
+feature as needing a real KeyShot session to validate, and update the
+candidate list / promote the working name once confirmed.
 
 Run inside the KeyShot Scripting Console, or via `keyshot -script` headless
 (dialog auto-skips headless -> DEFAULT_OPTIONS is used instead).
@@ -445,12 +445,14 @@ def vscale(a, s): return (a[0] * s, a[1] * s, a[2] * s)
 
 
 # --------------------------------------------------------------------------
-# EXPERIMENTAL: bounding box probe — see BOUNDING BOX header note
+# getBoundingBox() is confirmed to exist (2026-07-11) — see SWEEP GEOMETRY
+# header note. Exact return-value shape still probed defensively below.
 # --------------------------------------------------------------------------
 
 def _parse_bbox_result(result):
     """Try a couple of plausible return shapes for a bounding-box call.
-    Returns (min_xyz, max_xyz) or None. Entirely unconfirmed shape."""
+    Returns (min_xyz, max_xyz) or None. The call itself is confirmed
+    (getBoundingBox()); its exact return shape is not documented here."""
     if result is None:
         return None
     try:
@@ -470,8 +472,9 @@ def _parse_bbox_result(result):
 
 
 def resolve_bounding_box(node):
-    """EXPERIMENTAL — see the SWEEP GEOMETRY header note. Probes a short
-    list of plausible bounding-box getters via getattr(...); none are
+    """getBoundingBox() is confirmed to exist — see SWEEP GEOMETRY header
+    note. Probes a short list of plausible getter names/kwargs via
+    getattr(...) for version tolerance; exact return shape isn't
     confirmed anywhere in this pipeline. Returns (min_xyz, max_xyz, api_name)
     or (None, None, None) if nothing resolved."""
     candidates = [

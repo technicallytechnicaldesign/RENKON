@@ -55,17 +55,15 @@ what keeps it centered in frame throughout the shot.
 --------------------------------------------------------------------------
 GROUND RENDERING
 --------------------------------------------------------------------------
-Confirmed: KeyShot's Environment object exposes getters for ground
-shadows/reflections/flattening state (e.g. "returns whether ground
-shadows are enabled or disabled"). The exact setter method names for
-toggling shadows/reflections on and off aren't fully spelled out in the
-reference available here, so this tries a short list of plausible names
-for each (e.g. setGroundShadows / enableGroundShadows /
-setGroundShadowsEnabled) and reports whichever one actually worked on your
-KeyShot build, rather than silently guessing. If none of them exist on
-your version, it warns and leaves the ground setting untouched — run
-`help(env)` in the Scripting Console to find the exact name if that
-happens, and it can be added to the candidate list.
+Confirmed (2026-07-11, KeyShot 11.0 scripting reference at
+media.keyshot.com/scripting/doc/11.0/lux.html): env.setGroundShadows(bool)
+and env.setGroundReflections(bool) are the real setter names, alongside the
+getters this script already relied on. This script still tries them via a
+short candidate list (setGroundShadows / enableGroundShadows /
+setGroundShadowsEnabled, same for reflections) rather than calling them
+directly, since that list costs nothing and keeps the script working on
+older KeyShot versions where the confirmed name might differ — but the
+first candidate in each list is now a documented API, not a guess.
 
 --------------------------------------------------------------------------
 WHY THERE'S NO ORBIT/ARC
@@ -113,9 +111,10 @@ lux.getRenderOptions()/setAddToQueue()/setMaxTimeRendering(),
 lux.processQueue().
 Inferred-but-unconfirmed: env.setRotation() — the get/set pairing pattern
 is consistent everywhere else in this API, but the literal setRotation
-signature isn't in the docs. The ground shadow/reflection *setter* method
-names are also inferred by naming-convention analogy rather than confirmed
-verbatim — see the GROUND RENDERING note above. Both wrapped defensively.
+signature isn't in the docs. (The ground shadow/reflection setter names
+were in this same unconfirmed category until a 2026-07-11 research pass
+found them documented — see the GROUND RENDERING note above; they're
+confirmed now.)
 Experimental: lux.getAnimationInfo()'s exact return shape (dict vs tuple)
 isn't documented; the optional product-turntable spin's Matrix.rotate()
 signature also isn't confirmed (same flag as the scatter animation

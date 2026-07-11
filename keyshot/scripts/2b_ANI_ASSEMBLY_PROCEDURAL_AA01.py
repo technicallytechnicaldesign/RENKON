@@ -101,15 +101,17 @@ PART EXTENT / SCATTER SCALE
 --------------------------------------------------------------------------
 Scatter/spiral offsets need to scale with each part's own size so small
 parts don't fly absurdly far and large parts don't clip through their
-neighbors. The only confirmed spatial query available anywhere in this
-pipeline is SceneNode.getCenter(world=True) (a point, not an extent). A
-bounding-box GETTER would give a proper extent but is NOT confirmed --
-resolve_bounding_box() below is copied from 2b_ANI_CUTAWAY_REVEAL_AA01.py's
-identical probe (same candidate list: getBoundingBox(world=True),
-getBoundingBox(), getWorldBoundingBox(), getBounds(world=True),
-getBounds()), since that script already worked out the defensive shape-
-parsing needed for whatever a bounding-box call returns. If NONE of those
-resolve on this KeyShot build, this script falls back to a much cruder
+neighbors. SceneNode.getBoundingBox() is CONFIRMED to exist (2026-07-11
+research pass, KeyShot 11.0 scripting reference) and gives a proper extent
+-- this was written when it was still treated as an unconfirmed guess,
+same as its sibling scripts. resolve_bounding_box() below is copied from
+2b_ANI_CUTAWAY_REVEAL_AA01.py's identical probe (same candidate list:
+getBoundingBox(world=True), getBoundingBox(), getWorldBoundingBox(),
+getBounds(world=True), getBounds()) -- kept as a probe rather than a direct
+call for version tolerance and because the exact RETURN SHAPE still isn't
+documented, but the call itself is now known-real. If NONE of the
+candidates resolve on this KeyShot build, this script falls back to a much
+cruder
 estimate -- the part's own center-to-scene-origin distance, scaled by
 extent_fallback_mult -- which is a genuinely worse proxy for "how big is
 this part" but at least keeps every part's scatter radius in the same
@@ -174,10 +176,11 @@ the assembly's own parts (or their opacity) animate.
 GROUND RENDERING
 --------------------------------------------------------------------------
 Same situation and same defensive candidate-list treatment as the hero
-reveal / cutaway scripts: ground shadow/reflection getters are confirmed,
-the exact setter names aren't, so a short list of plausible setter names is
-tried and whichever one worked is reported. set_ground_rendering() below is
-a direct copy of the sibling scripts' version.
+reveal / cutaway scripts: ground shadow/reflection getters AND setters
+(env.setGroundShadows/setGroundReflections) are confirmed (2026-07-11 --
+see the hero reveal script's GROUND RENDERING note for the source).
+set_ground_rendering() below is a direct copy of the sibling scripts'
+version.
 
 --------------------------------------------------------------------------
 QUEUEING
@@ -204,11 +207,14 @@ lux.getRenderOptions()/setAddToQueue()/setMaxTimeRendering(),
 lux.processQueue(), lux.isHeadless(), lux.getInputDialog(),
 node.applyTransform(matrix, absolute=False) as a call (its use here, for a
 long sequence of many small per-frame deltas across many parts, is itself
-a NOVEL usage pattern not attempted elsewhere -- see TRANSFORM MECHANICS).
+a NOVEL usage pattern not attempted elsewhere -- see TRANSFORM MECHANICS),
+SceneNode.getBoundingBox() (confirmed 2026-07-11 -- see PART EXTENT above;
+exact return shape still probed defensively), env ground-state setters
+(env.setGroundShadows/setGroundReflections, confirmed 2026-07-11 -- see
+GROUND RENDERING above).
 
 Inferred-but-unconfirmed, wrapped defensively throughout: env.setRotation()
-(same flag as the sibling scripts), the ground shadow/reflection *setter*
-names (same flag as the sibling scripts).
+(same flag as the sibling scripts).
 
 Experimental / entirely unverified -- flagged loudly and probed via
 getattr(...) rather than called directly, degrading gracefully if nothing
@@ -220,9 +226,6 @@ resolves:
     pipeline before this file; pure naming-convention guess alongside
     .rotate(). This is the single most load-bearing unconfirmed call in
     this script, since every translation-based mode depends on it.
-  - Every bounding-box getter name (getBoundingBox / getWorldBoundingBox /
-    getBounds, with or without a world= kwarg) -- copied from the cutaway
-    script's identical, already-unconfirmed probe.
   - The entire opacity/transparency control surface used by ghost_fade:
     node-level setOpacity / setTransparency / setAlpha, and the material-
     object accessor candidates getMaterialNode / getAppearance /
@@ -580,9 +583,10 @@ def _parse_bbox_result(result):
 
 
 def resolve_bounding_box(node):
-    """EXPERIMENTAL — see the PART EXTENT header note. Probes a short list
-    of plausible bounding-box getters via getattr(...); none are confirmed
-    anywhere in this pipeline. Returns (min_xyz, max_xyz, api_name) or
+    """getBoundingBox() is confirmed to exist — see the PART EXTENT header
+    note. Probes a short list of plausible getter names/kwargs via
+    getattr(...) for version tolerance; exact return shape isn't
+    documented. Returns (min_xyz, max_xyz, api_name) or
     (None, None, None) if nothing resolved."""
     candidates = [
         ("getBoundingBox", {"world": True}),
