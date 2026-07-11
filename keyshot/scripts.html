@@ -286,6 +286,24 @@
           </div>
           <div class="status current">Current</div>
         </div>
+        <div class="stage-row" data-stage="2b">
+          <div class="stage-tag">2B<span class="area">ANI</span></div>
+          <div class="stage-body">
+            <div class="name"><a href="scripts/2b_ANI_ASSEMBLY_PROCEDURAL_AA01.py">2b_ANI_ASSEMBLY_PROCEDURAL_AA01.py</a></div>
+            <div class="note">Assembly reveal, procedural modes. Parts converge into their authored
+              final positions while the camera holds static &mdash; four selectable modes:
+              <code style="color:var(--c-fluid)">scatter_settle</code>,
+              <code style="color:var(--c-fluid)">staggered_build</code>,
+              <code style="color:var(--c-fluid)">spiral_converge</code>, and
+              <code style="color:var(--c-fluid)">ghost_fade</code>. Motion is built from relative
+              per-frame transform deltas that always sum to zero by the final frame &mdash; the
+              only confirmed per-node mutator in this pipeline. Per-node transform composition,
+              bounding-box sizing, and opacity control are all unconfirmed on this build; each is
+              probed defensively and degrades gracefully. Sub-assembly build (grouped convergence)
+              is a follow-on, not implemented here.</div>
+          </div>
+          <div class="status current">Current</div>
+        </div>
         <div class="stage-row" data-stage="3">
           <div class="stage-tag">3<span class="area">PRC</span></div>
           <div class="stage-body">
@@ -396,7 +414,7 @@
       <ul class="backlog">
         <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Hand-staged one-off reveal (particles, rain) &mdash; design stage</span></li>
         <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Assembly reveal, Creo-driven &mdash; animate an authored explode state; depends on verifying explode data survives the plugin import</span></li>
-        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Assembly reveal, procedural modes &mdash; scatter/settle, staggered/sub-assembly build, spiral converge, ghost fade-in <em style="color:var(--c-accent); font-style:normal;">&mdash; in progress</em></span></li>
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Assembly reveal, procedural modes &mdash; scatter/settle, staggered build, spiral converge, ghost fade-in <em style="color:var(--c-fluid); font-style:normal;">&mdash; done, see Current</em> (sub-assembly build remains a follow-on)</span></li>
         <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Cutaway / cross-section reveal <em style="color:var(--c-fluid); font-style:normal;">&mdash; done, see Current</em></span></li>
         <li><span class="pri">P1</span><span class="idea"><span class="stage">1 &middot;</span> Material-name lookup table (Creo &rarr; KeyShot) <em style="color:var(--c-fluid); font-style:normal;">&mdash; done, see Current</em></span></li>
         <li><span class="pri">P2</span><span class="idea"><span class="stage">3 &middot;</span> Multi-angle fade reel &mdash; crossfade between Studios/cameras; consumes stills from the turntable/std-view batches <em style="color:var(--c-fluid); font-style:normal;">&mdash; done, see Current</em></span></li>

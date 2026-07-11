@@ -1,7 +1,7 @@
 # Script Stock
 
 Project ID: `ksrp-efbe4961`
-Last updated: 2026-07-11 (naming cleanup + 4 backlog items delivered; 1 more in progress overnight)
+Last updated: 2026-07-11 (naming cleanup + 5 backlog items delivered overnight)
 
 Running at-a-glance inventory + priority backlog. Update this file, don't
 replace it, as scripts move status.
@@ -16,6 +16,7 @@ replace it, as scripts move status.
 | 2a | BAT | `2a_BAT_TURNTABLE_AA01.py` | ✅ current | Studios-first turntable batch — kept as-is; "fade between angles" request built as a separate `3_` script instead (see backlog) |
 | 2b | ANI | `2b_ANI_HERO_REVEAL_AA01.py` | ✅ current | Zoom+crane reveal; ground-setter & `getAnimationInfo()` shape still unconfirmed on your build |
 | 2b | ANI | `2b_ANI_CUTAWAY_REVEAL_AA01.py` | ✅ current | Cutaway/cross-section reveal — clip plane sweep through an assembly, camera static. Clipping-plane & bounding-box APIs unconfirmed on your build — probes candidates, degrades to unclipped with a warning |
+| 2b | ANI | `2b_ANI_ASSEMBLY_PROCEDURAL_AA01.py` | ✅ current | Procedural assembly reveal — 4 modes (scatter_settle, staggered_build, spiral_converge, ghost_fade), camera static, parts converge via relative transform deltas. Per-node transform composition, bounding-box sizing, and opacity control all unconfirmed — probes candidates, degrades gracefully. Sub-assembly build is a follow-on, not implemented |
 | 3 | PRC | `3_PRC_CONTACT_SHEET_AA01.py` | ✅ current | Standalone HTML viewer (not a lux script) — renamed from `contact_sheet.py` |
 | 3 | PRC | `3_PRC_FADE_REEL_AA01.py` | ✅ current | Multi-angle crossfade reel from batch stills — pure CSS `@keyframes`, no ffmpeg/dependencies |
 | 4 | CHK | `4_CHK_AUDIT_AA01.py` | ✅ current | Naming-compliance + render-completeness audit — first script in stage 4 |
@@ -32,7 +33,7 @@ replace it, as scripts move status.
 |---|---|---|---|---|
 | P1 | 2b | Hand-staged one-off reveal (particles, rain) | Design | — |
 | P1 | 2b | Assembly reveal — Creo-driven (animate an authored explode state) | Not started | Verify explode data survives plugin import |
-| P1 | 2b | Assembly reveal — procedural modes (scatter/settle, staggered/sub-assembly build, spiral converge, ghost fade-in) | 🔧 in progress (subagent) — `2b_ANI_ASSEMBLY_PROCEDURAL_AA01.py` | — |
+| P1 | 2b | Assembly reveal — procedural modes (scatter/settle, staggered build, spiral converge, ghost fade-in) | ✅ done — `2b_ANI_ASSEMBLY_PROCEDURAL_AA01.py` (sub-assembly build split out as a follow-on, see below) | — |
 | P1 | 2b | Cutaway / cross-section reveal | ✅ done — `2b_ANI_CUTAWAY_REVEAL_AA01.py` | — |
 | P1 | 1 | Material-name lookup table (Creo → KeyShot) | ✅ done — `1_HLP_MAT_LOOKUP_AA01.py` | — |
 | P2 | 3 | Multi-angle fade reel (crossfade between Studios/cameras) | ✅ done — `3_PRC_FADE_REEL_AA01.py` | Consumes stills from `2a_BAT_TURNTABLE`/`2a_BAT_STD_VIEW` |
@@ -42,5 +43,6 @@ replace it, as scripts move status.
 | P2 | 0 | Pre-import geometry/appearance validator | Not started | — |
 | P2 | 4 | Naming-compliance + render-completeness audit | ✅ done — `4_CHK_AUDIT_AA01.py` | — |
 | P3 | — | Archive superseded batch scripts | ✅ done — moved to `scripts/archive/` | — |
+| P2 | 2b | Assembly reveal — sub-assembly build (grouped convergence) | Not started | Extension of `2b_ANI_ASSEMBLY_PROCEDURAL_AA01.py`; extension point noted in that script's `get_parts()`/`schedule_staggered_windows()` |
 
 See `RESEARCH_CREO_KEYSHOT.md` for the thinking behind the backlog.
