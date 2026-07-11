@@ -12,6 +12,18 @@ pattern) — every proposal below reuses it rather than inventing a new one.
 
 ## 1. Seamless XY tiling (P1 — real functional gap)
 
+**Status: shipped** (scope items 1–3). The Tile Preview toggle (3×3 at 1/3
+scale, display-only, works while animating, exports untouched) is live next
+to Play/Pause. **Noise and Grid tile exactly** in X/Y, static *and* animated
+(Noise: toroidal lattice via `buildValueFieldTiling`/`sampleFieldWrap`, cell
+size snapped to divide the tile, both animated blend fields tiling; Grid:
+shimmer spatial frequency quantized to whole cycles per tile — the static
+grid already tiled). **Still documented non-tiling**: Cellular, Wood Grain,
+Waves, Scratches, Splotches, Cracks, Machining Marks, Paint Strokes — the
+Worley pair (Cellular/Cracks) is the natural next fix per the note below.
+Verified headless (seam wrap-delta vs. interior gradient at 320 + 1024,
+static + mid-animation; other 8 patterns hash-identical at fixed seed).
+
 **The gap:** every pattern's *time* animation is seamless-looping (documented
 and verified per-pattern), but nothing guarantees **spatial** seamlessness —
 whether the texture tiles cleanly when repeated across a surface in X/Y. For

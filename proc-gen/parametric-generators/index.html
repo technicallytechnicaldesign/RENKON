@@ -1703,8 +1703,10 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
      data. Both export as PNG at a higher resolution than the
      live preview. Deliberately kept to one flat screen and a
      small, obviously-extensible generator registry — more pattern
-     types, tiling, and normal-map (not just height) export are
-     the natural next additions.
+     types and normal-map (not just height) export are the natural
+     next additions. Spatial (XY) tiling: Noise and Grid tile
+     exactly (incl. animated); the rest are documented non-tiling —
+     use the Tile Preview toggle to inspect seams.
      ========================================================= */
   const TEXTURE_PREVIEW_SIZE = 320;
   const TEXTURE_EXPORT_SIZE = 1024;
@@ -1744,13 +1746,54 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     return top + (bot - top) * sys;
   }
 
+  // Toroidal variants used by the Noise pattern so its maps tile exactly in
+  // X and Y (feature backlog #1). Two things differ from the non-tiling pair
+  // above, and both are required: (1) the lattice is snapped to a whole
+  // number of cells per tile (cell count = round(w / requestedCellSize),
+  // min 1) — a cellSize that doesn't divide w/h evenly would still seam even
+  // under modulo sampling; (2) the lattice is sampled with wraparound
+  // ((x0 + 1) % cols) instead of reading into +2 padding rows/cols.
+  // Deliberately a parallel pair rather than a change to
+  // buildValueField/sampleField: Wood Grain, Waves, Machining Marks and
+  // Paint Strokes use those as warp/flow fields and must stay byte-identical.
+  function buildValueFieldTiling(w, h, cellSize, rng) {
+    const cols = Math.max(1, Math.round(w / cellSize));
+    const rows = Math.max(1, Math.round(h / cellSize));
+    const grid = [];
+    for (let y = 0; y < rows; y++) {
+      const row = [];
+      for (let x = 0; x < cols; x++) row.push(rng());
+      grid.push(row);
+    }
+    return { grid, cols, rows, cellW: w / cols, cellH: h / rows };
+  }
+
+  function sampleFieldWrap(field, x, y) {
+    const { grid, cols, rows, cellW, cellH } = field;
+    const gx = x / cellW, gy = y / cellH;
+    let x0 = Math.floor(gx), y0 = Math.floor(gy);
+    const sx = gx - x0, sy = gy - y0;
+    x0 = ((x0 % cols) + cols) % cols;
+    y0 = ((y0 % rows) + rows) % rows;
+    const x1 = (x0 + 1) % cols, y1 = (y0 + 1) % rows;
+    const smooth = t => t * t * (3 - 2 * t);
+    const sxs = smooth(sx), sys = smooth(sy);
+    const v00 = grid[y0][x0], v10 = grid[y0][x1];
+    const v01 = grid[y1][x0], v11 = grid[y1][x1];
+    const top = v00 + (v10 - v00) * sxs;
+    const bot = v01 + (v11 - v01) * sxs;
+    return top + (bot - top) * sys;
+  }
+
   function noiseData(w, h, p, seed) {
     const rng = mulberry32(seed);
     const octaves = Math.max(1, Math.round(p.octaves));
     const fields = [];
     let freq = Math.max(4, p.scale);
     for (let o = 0; o < octaves; o++) {
-      fields.push(buildValueField(w, h, Math.max(4, freq), rng));
+      // Tiling lattice per octave -> every octave (and therefore the summed
+      // fBm) wraps exactly at x = w and y = h.
+      fields.push(buildValueFieldTiling(w, h, Math.max(4, freq), rng));
       freq = Math.max(4, freq / 2);
     }
     const amps = []; let amp = 1, maxAmp = 0;
@@ -1759,7 +1802,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         let v = 0;
-        for (let o = 0; o < octaves; o++) v += sampleField(fields[o], x, y) * amps[o];
+        for (let o = 0; o < octaves; o++) v += sampleFieldWrap(fields[o], x, y) * amps[o];
         data[y * w + x] = v / maxAmp;
       }
     }
@@ -1772,6 +1815,8 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     // Animated: cyclically blend toward a second independent field and back.
     // weight = 0 at time 0 and 1, peaks at 0.5 -> guaranteed-seamless loop; the
     // static (time 0 / animation-off) frame is identical to the un-animated output.
+    // Both fields come from noiseData and therefore both tile spatially, so
+    // every blended frame of the animation tiles too.
     const dataB = noiseData(w, h, p, (p.seed ^ 0x9e3779b9) >>> 0);
     const wgt = 0.5 - 0.5 * Math.cos(2 * Math.PI * (p.time || 0));
     for (let i = 0; i < data.length; i++) data[i] = data[i] * (1 - wgt) + dataB[i] * wgt;
@@ -1788,11 +1833,20 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     // reads as heat-shimmer / vibration. Period 1 in time -> seamless loop.
     const tm = p.time || 0;
     const shimmer = p.animate ? spacing * 0.18 : 0;
+    // Spatial tiling (feature backlog #1): the static grid already tiles
+    // because spacing = w / count divides w exactly (per-pixel jitter is
+    // structureless noise, uniform across the seam). The shimmer's spatial
+    // frequency is quantized to a whole number of cycles per tile (nearest
+    // to the old fixed 0.06 rad/px; ~3 cycles at 320px) so animated frames
+    // wrap exactly at x = w and y = h with the same visual character.
+    const TAU = 2 * Math.PI;
+    const shimFreqY = TAU * Math.max(1, Math.round(0.06 * h / TAU)) / h;
+    const shimFreqX = TAU * Math.max(1, Math.round(0.06 * w / TAU)) / w;
     const data = new Float32Array(w * h);
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
-        const jx = x + (rng() - 0.5) * jitter + shimmer * Math.sin(2 * Math.PI * tm + y * 0.06);
-        const jy = y + (rng() - 0.5) * jitter + shimmer * Math.cos(2 * Math.PI * tm + x * 0.06);
+        const jx = x + (rng() - 0.5) * jitter + shimmer * Math.sin(TAU * tm + y * shimFreqY);
+        const jy = y + (rng() - 0.5) * jitter + shimmer * Math.cos(TAU * tm + x * shimFreqX);
         const mx = ((jx % spacing) + spacing) % spacing;
         const my = ((jy % spacing) + spacing) % spacing;
         data[y * w + x] = (mx < thickness || my < thickness) ? 1 : 0.15;
@@ -2575,10 +2629,38 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     foot.innerHTML = `The Height/Bump Map export is the actual grayscale data — usable directly in a bump/height texture slot. The Preview Render is a simulated relief shading of that same data so you can judge depth and light direction before exporting; it is not itself a texture map. Export Frame Sequence renders the animated height map across one full loop as a numbered PNG sequence (opens in a new tab) — the deliverable a render engine wants for an animated bump channel.`;
     main.appendChild(foot);
 
+    // --- Tile Preview (display-only QA view, feature backlog #1): when on,
+    // both preview panels show the already-computed map repeated 3x3 at 1/3
+    // scale so spatial seams become visible on every pattern — including the
+    // ones documented as non-tiling. It lives outside `state` and never
+    // touches computeTextureData or any export path: exports always produce
+    // the single un-tiled map. ---
+    let tilePreview = false;
+    const tileScratchTex = document.createElement("canvas");
+    const tileScratchBump = document.createElement("canvas");
+    function drawTiled3x3(dst, src, size) {
+      dst.width = size; dst.height = size;
+      const ctx = dst.getContext("2d");
+      const third = size / 3;
+      for (let ty = 0; ty < 3; ty++) {
+        for (let tx = 0; tx < 3; tx++) ctx.drawImage(src, tx * third, ty * third, third, third);
+      }
+    }
+
     function regenerate() {
       const data = computeTextureData(TEXTURE_PREVIEW_SIZE, state);
-      paintHeightMap(textureCanvas, data, TEXTURE_PREVIEW_SIZE, TEXTURE_PREVIEW_SIZE);
-      paintBumpPreview(bumpCanvas, data, TEXTURE_PREVIEW_SIZE, TEXTURE_PREVIEW_SIZE, state.bumpStrength, state.lightAngle);
+      // With Tile Preview on, paint into offscreen scratch canvases and
+      // drawImage them 3x3 into the visible panels — the map is never
+      // regenerated at a different size. Runs per rAF frame while animating,
+      // so each fresh animated frame is tiled too.
+      const texTarget = tilePreview ? tileScratchTex : textureCanvas;
+      const bumpTarget = tilePreview ? tileScratchBump : bumpCanvas;
+      paintHeightMap(texTarget, data, TEXTURE_PREVIEW_SIZE, TEXTURE_PREVIEW_SIZE);
+      paintBumpPreview(bumpTarget, data, TEXTURE_PREVIEW_SIZE, TEXTURE_PREVIEW_SIZE, state.bumpStrength, state.lightAngle);
+      if (tilePreview) {
+        drawTiled3x3(textureCanvas, tileScratchTex, TEXTURE_PREVIEW_SIZE);
+        drawTiled3x3(bumpCanvas, tileScratchBump, TEXTURE_PREVIEW_SIZE);
+      }
     }
 
     // --- Animation: live rAF preview (§6.2). Static export is unchanged; this
@@ -2630,8 +2712,19 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
       }
     }
     playBtn.addEventListener("click", () => setAnimate(!animate));
+    const tileBtn = document.createElement("button");
+    tileBtn.className = "btn";
+    tileBtn.type = "button";
+    tileBtn.textContent = "Tile Preview";
+    tileBtn.title = "QA view: repeat the current map 3×3 at 1/3 scale to reveal spatial seams. Display-only — exports are unaffected.";
+    tileBtn.addEventListener("click", () => {
+      tilePreview = !tilePreview;
+      tileBtn.classList.toggle("primary", tilePreview);
+      regenerate();
+    });
     animRow.appendChild(animLabel);
     animRow.appendChild(playBtn);
+    animRow.appendChild(tileBtn);
     animRow.appendChild(loopInput);
     animRow.appendChild(loopVal);
     controls.appendChild(animRow);

@@ -11,6 +11,45 @@ Versioning: informal `vN` milestones tagged in git as `paramgen-vN`.
 
 ## [Unreleased]
 
+### Added — seamless XY tiling: Tile Preview toggle; Noise + Grid tile exactly (backlog #1)
+- **Tile Preview toggle** next to Play/Pause in the animation row of the
+  Texture & Bump Map Generator: a display-only QA view that repeats the
+  already-computed map 3×3 at 1/3 scale in both preview panels (Texture /
+  Height Map and Bump Preview), making spatial seams visible on every
+  pattern — including the ones that remain non-tiling. It re-tiles each
+  fresh frame while the animation is playing, and never touches `state`,
+  `computeTextureData`, or any export path: exports always produce the
+  single un-tiled map (verified — export data hash identical with the
+  toggle on vs. off).
+- **Noise now tiles exactly in X and Y**, static and animated. Each octave's
+  value-noise lattice is snapped to a whole number of cells per tile and
+  sampled with toroidal wraparound (`buildValueFieldTiling` /
+  `sampleFieldWrap`); both independently-seeded fields the animated path
+  blends go through the same tiling build, so every animated frame tiles
+  too. Verified: seam wrap-delta (last column/row vs. first) dropped from
+  ~25–45× the interior-gradient level to below it, at preview (320) and
+  export (1024) sizes, static and mid-animation.
+- **Grid now tiles exactly when animated.** The static grid already tiled
+  (spacing divides the tile exactly; per-pixel jitter is structureless);
+  what seamed was the animated shimmer's fixed spatial frequency
+  (0.06 rad/px doesn't complete whole cycles per tile). That frequency is
+  now quantized to the nearest whole number of cycles per tile (~3 at
+  320px) — same visual character, exact wrap at any size.
+- **Expected small output change** (fixed seed) for Noise (snapped lattice
+  cell size + wraparound sampling) and animated Grid (quantized shimmer
+  frequency, ~2% at 320px). Static Grid is byte-identical. The other 8
+  patterns (Cellular, Wood Grain, Waves, Scratches, Splotches, Cracks,
+  Machining Marks, Paint Strokes) are byte-identical before vs. after
+  (per-pattern FNV hash at a fixed seed, static + animated) — the tiling
+  field builders are a parallel pair, and the non-tiling
+  `buildValueField`/`sampleField` warp/flow paths those patterns use are
+  untouched.
+- **Documented non-tiling for this pass**: Cellular, Wood Grain, Waves,
+  Scratches, Splotches, Cracks, Machining Marks, Paint Strokes. Use the
+  Tile Preview toggle to judge whether a given seed/placement seams badly
+  enough to matter; Cellular/Cracks are the natural next fix (toroidal
+  Worley neighbor search — see `docs/FEATURE_BACKLOG.md` item #1).
+
 ### Added — Pro Finish patterns + per-pattern custom params (Advanced Textures P1)
 - **New pattern group "Pro Finish"** on the Texture & Bump Map Generator, with
   two art-directed patterns modeled on real finishing processes (10 patterns
