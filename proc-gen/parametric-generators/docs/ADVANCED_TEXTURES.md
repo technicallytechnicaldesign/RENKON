@@ -174,21 +174,81 @@ snap at the loop boundary here rather than forcing a seamless in-place loop;
 call this out explicitly in the in-file comment so it's not mistaken for a
 bug later.
 
-## P2 — stretch goals, only if time remains (each is its own small plan)
+## P2 — stretch goals, fleshed out (operator pass, 2026-07-11)
 
-Sketch only — flesh out before building if you get here:
+P1 shipped cleanly (commit `bd8e079`) and the custom-param mechanism proved
+out across a real backlog of later work (tiling, normal maps, presets — see
+`CHANGELOG.md`), so these are worth building. Grounded in the actual shipped
+mechanism, not the original sketch-only notes:
 
 - **Orange Peel**: fine, soft, layered Worley/noise combo (small cell size,
   low contrast, no sharp edges) mimicking spray-paint surface dimpling.
-  Reuses `buildWorleyField` at a much smaller `cellSize` than Cellular, plus
-  a touch of `buildValueField` noise blended in for irregularity.
-- **Knurling**: two `generateWaves`-style directional bands crossed at
-  roughly ±45°, multiplied together, to form a diamond-knurl bump grid.
-  Straight-knurl variant = just one band set, no cross.
-  Custom params: `angle`, `pitch`, `diamond` (bool: cross the second band or not).
-- **Anodize Swirl**: radial variant of brushed strokes — same flow-field
-  stroke technique as Paint Strokes, but flow direction is tangential to
-  circles around a center point instead of warp-perturbed straight lines.
+  Build on `buildWorleyField`/`sampleWorley` (same helpers as Cellular) at a
+  `cellSize` roughly `w / (count * 3)` — noticeably finer than Cellular's own
+  `w / count`, since "orange peel" reads as fine dimpling, not blobs — and
+  blend in `buildValueField` noise for irregularity so cells don't look
+  perfectly regular: `data[i] = worleyValue * (1 - blend) + noiseValue *
+  blend`. Custom params: `blend` (range 0–0.6, default 0.25, how much raw
+  noise vs. clean Worley) — likely the only custom param needed; reuse
+  shared `count` for cell density and `roughness` for the Worley falloff
+  softness (same role `roughness` plays in `generateCellular`).
+  `params: { scale: false, octaves: false, count: true }`. Low `contrast`
+  (~0.6–0.9) is the right *default* look but that's already a shared slider,
+  not a new param — don't duplicate it as a custom one. Animate: reuse
+  Cellular's wiggle-the-feature-points trick (already seamless, already
+  proven) rather than inventing new motion — this is a finish variant of
+  Cellular, not a new animation personality.
+- **Knurling**: two directional bands (reuse the projected-sine math from
+  `generateWaves`, not the function itself — `generateWaves` picks a random
+  seeded angle and an organic warp field; Knurling wants a *user-controlled*
+  angle and no organic warp, since a knurl pattern is a precise machined
+  grid) crossed at `angle` and `angle + 90°` (derive the second band from
+  `angle + 90` rather than hardcoding ±45, so the `angle` param controls the
+  whole pattern's orientation and a "diamond" knurl is whatever crossing the
+  user dials in), multiplied together: `data[i] = bandA[i] * bandB[i]` when
+  crossed, `data[i] = bandA[i]` alone (straight knurl) when not. Each band:
+  `0.5 + 0.5*cos(2π * projectedDistance / pitch)` — same cosine-groove
+  profile Machining Marks already established, for visual-family consistency
+  within Pro Finish. Custom params: `angle` (range 0–90, default 30 — full
+  0–180 is redundant since bands are symmetric), `pitch` (range, same
+  px-at-preview-size normalization convention as Machining Marks' pitch —
+  reuse the `res = w / TEXTURE_PREVIEW_SIZE` trick), and a diamond/straight
+  toggle modeled as a 2-option `select` (`{value:"cross"}` /
+  `{value:"straight"}`, same shape as Machining's `direction` select — the
+  shipped mechanism has no boolean/checkbox custom type, don't add one for
+  this alone). `params: { scale: false, octaves: false, count: false }` —
+  pitch and angle fully replace scale/count here. Animate: advance both
+  bands' phase together (same phase-subtraction-in-the-cosine trick as
+  Machining Marks/Wood Grain/Waves) — reads as the tool still cutting.
+- **Anodize Swirl**: radial variant of Paint Strokes — reuse
+  `generatePaintStrokes`'s accumulation loop shape (seed points, step-and-
+  deposit-a-dab, `Math.min(1, existing + dab)`) but replace the flow-field-
+  perturbed *straight* base angle with a *tangential* direction: at each
+  step, `baseAngle = atan2(y - cy, x - cx) + PI/2` (perpendicular to the
+  radius vector from canvas center = tangential), still perturbed by the
+  same turbulence-scaled flow-field bend Paint Strokes already uses so it
+  doesn't look mechanically perfect. Bias seed points toward a ring rather
+  than uniform-random across the canvas (radial brushing is denser away from
+  dead-center): `r = maxRadius * Math.sqrt(rng())` for a uniform-area
+  distribution, `theta = rng() * 2π`, seed at `(cx + r*cos(theta), cy +
+  r*sin(theta))`. Custom params: `strokeLength` and `turbulence`, same names
+  and normalization as Paint Strokes — no collision risk since the mechanism
+  namespaces by pattern kind (`state.custom[kind]`), this is a distinct
+  `PATTERN_META` entry (e.g. key `anodize`). `params: { scale: false,
+  octaves: false, count: true }`. Animate: same progressive-reveal trick as
+  Paint Strokes, including the same documented one-frame loop-boundary snap
+  — call it out in the in-file comment the same way Paint Strokes' comment
+  does, don't let it silently read as a new bug.
+
+Build-order suggestion if doing all three: Knurling first (cheapest, pure
+math, no new accumulation pattern), then Orange Peel (small extension of
+existing Cellular machinery), then Anodize Swirl (most work, extends Paint
+Strokes' accumulation loop with new seeding + tangential direction). Each is
+independent — fine to ship together in one commit or as separate commits,
+implementer's call — but verify all three with the same headless-Edge rigor
+as P1 (no NaN, non-degenerate spread, animation frames genuinely differ,
+existing 10 patterns + tiling + normal-map export + presets all unaffected)
+before pushing.
 
 ## Build & verification notes (read this — it'll save you time)
 
