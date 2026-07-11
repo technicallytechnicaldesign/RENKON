@@ -2263,6 +2263,40 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     ctx.putImageData(img, 0, 0);
   }
 
+  // Sobel-filter height-to-normal-map conversion (feature backlog #2). Operates
+  // on the same grayscale `data` array computeTextureData produces, at export
+  // size — pattern-agnostic (works for all 10 patterns unmodified). `at()`
+  // wraps toroidally regardless of whether the source pattern actually tiles
+  // (see docs/FEATURE_BACKLOG.md item #2): for non-tiling patterns this is a
+  // harmless one-pixel-wide inaccuracy at the border, and avoids needing
+  // separate edge-clamping logic. `strength` reuses state.bumpStrength so the
+  // normal map's apparent intensity matches the bump preview already shown.
+  function heightToNormalMap(data, w, h, strength) {
+    const out = new Uint8ClampedArray(w * h * 4);
+    const at = (x, y) => data[((y + h) % h) * w + ((x + w) % w)];
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const l = at(x - 1, y), r = at(x + 1, y), u = at(x, y - 1), d = at(x, y + 1);
+        const dx = (l - r) * strength, dy = (u - d) * strength;
+        const len = Math.sqrt(dx * dx + dy * dy + 1);
+        const idx = (y * w + x) * 4;
+        out[idx]     = Math.round((dx / len * 0.5 + 0.5) * 255); // R
+        out[idx + 1] = Math.round((dy / len * 0.5 + 0.5) * 255); // G
+        out[idx + 2] = Math.round((1 / len * 0.5 + 0.5) * 255);  // B
+        out[idx + 3] = 255;
+      }
+    }
+    return out;
+  }
+
+  function paintNormalMap(canvas, data, w, h, bumpStrength) {
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    const img = ctx.createImageData(w, h);
+    img.data.set(heightToNormalMap(data, w, h, bumpStrength));
+    ctx.putImageData(img, 0, 0);
+  }
+
   function computeTextureData(size, state) {
     const gen = TEXTURE_GENERATORS[state.pattern] || generateNoise;
     const data = gen(size, size, state);
@@ -2563,6 +2597,21 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
       }, 10);
     });
 
+    const exportNormalBtn = document.createElement("button");
+    exportNormalBtn.className = "btn";
+    exportNormalBtn.textContent = "Export Normal Map PNG";
+    exportNormalBtn.addEventListener("click", () => {
+      statusLine.textContent = "Rendering at " + TEXTURE_EXPORT_SIZE + "px…";
+      setTimeout(() => {
+        const data = computeTextureData(TEXTURE_EXPORT_SIZE, state);
+        const exportCanvas = document.createElement("canvas");
+        paintNormalMap(exportCanvas, data, TEXTURE_EXPORT_SIZE, TEXTURE_EXPORT_SIZE, state.bumpStrength);
+        openPngInNewTab(exportCanvas, "normal_" + state.pattern + "_" + state.seed + ".png");
+        statusLine.textContent = "Normal map opened in a new tab — save it from there";
+        setTimeout(() => statusLine.textContent = "", 3500);
+      }, 10);
+    });
+
     const frameCountSelect = document.createElement("select");
     frameCountSelect.className = "btn";
     [12, 24, 48].forEach(n => {
@@ -2621,12 +2670,13 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
 
     actions.appendChild(exportTextureBtn);
     actions.appendChild(exportPreviewBtn);
+    actions.appendChild(exportNormalBtn);
     actions.appendChild(frameCountSelect);
     actions.appendChild(exportFramesBtn);
 
     const foot = document.createElement("footer");
     foot.className = "note";
-    foot.innerHTML = `The Height/Bump Map export is the actual grayscale data — usable directly in a bump/height texture slot. The Preview Render is a simulated relief shading of that same data so you can judge depth and light direction before exporting; it is not itself a texture map. Export Frame Sequence renders the animated height map across one full loop as a numbered PNG sequence (opens in a new tab) — the deliverable a render engine wants for an animated bump channel.`;
+    foot.innerHTML = `The Height/Bump Map export is the actual grayscale data — usable directly in a bump/height texture slot. The Preview Render is a simulated relief shading of that same data so you can judge depth and light direction before exporting; it is not itself a texture map. The Normal Map export is a tangent-space RGB normal map derived from the same height data via a Sobel filter (strength from Bump Strength) — the channel a render engine typically wants over a height map for surface detail. Export Frame Sequence renders the animated height map across one full loop as a numbered PNG sequence (opens in a new tab) — the deliverable a render engine wants for an animated bump channel.`;
     main.appendChild(foot);
 
     // --- Tile Preview (display-only QA view, feature backlog #1): when on,

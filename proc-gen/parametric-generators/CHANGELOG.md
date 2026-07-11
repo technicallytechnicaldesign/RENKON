@@ -11,6 +11,49 @@ Versioning: informal `vN` milestones tagged in git as `paramgen-vN`.
 
 ## [Unreleased]
 
+### Added — normal map export (backlog #2)
+- **Export Normal Map PNG** button on the Texture & Bump Map Generator, next
+  to Export Height/Bump Map PNG and Export Preview Render PNG. Produces a
+  tangent-space RGB normal map — the material channel a render engine
+  typically wants over a raw height map — via a Sobel filter (`heightToNormalMap`)
+  applied to the same `data` array `computeTextureData` already produces at
+  `TEXTURE_EXPORT_SIZE` (1024). Pattern-agnostic: works unmodified across all
+  10 patterns (the 8 base patterns plus Machining Marks/Paint Strokes from
+  Advanced Textures) since it operates purely on the generic height field, not
+  any pattern-specific state.
+- **Reuses `state.bumpStrength`** as the Sobel strength input — no new
+  slider — so the normal map's apparent intensity matches what the Bump
+  Preview panel is already showing for the same setting.
+- The Sobel `at(x, y)` sampler wraps toroidally (`(x + w) % w`) independent of
+  whether the source pattern actually tiles (see `docs/FEATURE_BACKLOG.md`
+  item #1/#2) — a deliberate one-pixel-wide inaccuracy at the border for
+  non-tiling patterns, in exchange for not needing edge-clamp special-casing.
+  Separate from, and doesn't reuse, the tiling-QA `buildValueFieldTiling`/
+  `sampleFieldWrap` helpers added for Noise/Grid generation — those wrap the
+  noise lattice at generation time; this wraps the already-rendered pixel
+  grid at export time.
+- Output is a real 4-channel `Uint8ClampedArray` (`paintNormalMap`, mirroring
+  `paintHeightMap`/`paintBumpPreview`'s `ctx.createImageData` +
+  `putImageData` pattern) and exports via the same `openPngInNewTab` blob-URL
+  pattern as the other two static exports. Filename: `normal_<pattern>_<seed>.png`.
+- Verified headless (driver clicks the real button through the live UI,
+  stubs `window.open` to capture the blob URL, and reloads that exact blob
+  as an `<img>` to read back pixels — not just the underlying function in
+  isolation): output is 1024×1024, alpha is 255 across every pixel of the
+  actual exported image, filename matches convention. Also verified directly
+  on `heightToNormalMap`'s output: no NaN on Grid/Noise/Machining Marks; B
+  channel reads 255 (straight-up) on a near-flat region (Noise at
+  `bumpStrength` 0.05) and 205–255 across Grid at `bumpStrength` 1 (edges
+  pull it down from full flat, as expected); Grid's R and G channels both
+  swing the full 41–214 range (edges run both axes on a 2D grid), Machining
+  Marks swings R 86–164 / G 67–188 (anisotropic, as expected for directional
+  grooves); raising `bumpStrength` 0.1 → 3.0 raises the max R-channel
+  deviation from 128 (flat) from 12 to 120, confirming strength drives
+  intensity. The two existing static exports and frame-sequence export are
+  untouched code (diff is additive-only — no edits inside `paintHeightMap`,
+  `paintBumpPreview`, `computeTextureData`, or the two existing export
+  handlers) and reproduce identical hashes at a fixed seed/pattern.
+
 ### Added — seamless XY tiling: Tile Preview toggle; Noise + Grid tile exactly (backlog #1)
 - **Tile Preview toggle** next to Play/Pause in the animation row of the
   Texture & Bump Map Generator: a display-only QA view that repeats the

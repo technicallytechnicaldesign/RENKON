@@ -67,6 +67,13 @@ frame and mid-animation.
 
 ## 2. Normal map export (P1 — natural extension, real KeyShot value)
 
+**Status: shipped.** `Export Normal Map PNG` is live in `index.html`, built
+per this spec's `heightToNormalMap()` reference almost verbatim (the `at()`
+wraparound sampler kept as specced). Reuses `state.bumpStrength`, works
+unmodified across all 10 patterns, exports via the same `openPngInNewTab`
+blob-URL pattern as the other two static exports. See `CHANGELOG.md` for
+verification detail.
+
 **What:** alongside the existing Height/Bump Map PNG export, add an **Export
 Normal Map PNG** button. A normal map (tangent-space, RGB) is the standard
 material channel a render engine actually wants for surface detail — more
