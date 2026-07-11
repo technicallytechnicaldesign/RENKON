@@ -72,6 +72,45 @@ addition to the normal `p` state.
 Keep it **backward compatible**: the 8 existing patterns get no `custom` key
 (or an empty array) and are completely unaffected.
 
+## Operator refinements (2026-07-11, verified against index.html as of commit 12f0476)
+
+Read these alongside the sections below — they resolve four gaps between the
+plan as written and the actual current code:
+
+1. **Roughness needs no mechanism change.** The plan below says machining
+   should "set `params.roughness = true`, everything else in the shared set
+   off" — but the real code only show/hides the `scale`/`octaves`/`count`
+   rows via `PATTERN_META[kind].params`; Roughness, Contrast, Bump Strength,
+   Light Angle, and Levels are *unconditionally visible* for every pattern.
+   So: give new patterns `params: { scale: false, octaves: false, count: … }`
+   and simply *use* `p.roughness` in the generator — do not build a
+   roughness-visibility toggle.
+2. **Normalize custom length params by resolution.** Params like `pitch` and
+   `strokeLength` are specified "in px" — but generators run at both
+   `TEXTURE_PREVIEW_SIZE` (320) and `TEXTURE_EXPORT_SIZE` (1024), so a raw
+   pixel value produces a visibly different (much finer) texture at export
+   than in the preview. Treat custom length values as "px at preview size"
+   and scale inside the generator: `const px = value * (w / 320)` (use the
+   `TEXTURE_PREVIEW_SIZE` constant, with a comment). The existing `count`
+   params dodge this via `spacing = w / count`; new absolute-length params
+   must handle it explicitly, or preview and export won't match.
+3. **Custom-param state + row lifecycle.** Initialize `state.custom` eagerly
+   at mount: for every `PATTERN_META` entry with a `custom` array, populate
+   `state.custom[kind][key] = default`. Build each pattern's custom rows
+   *once* at mount into a per-pattern container div (hidden unless that
+   pattern is selected, toggled in the same pattern-button click handler
+   that toggles `scaleRow`/`octaveRow`/`countRow`) — don't rebuild rows on
+   every switch, so slider positions persist the same way the shared rows
+   do. Generators read `const c = p.custom[p.pattern] || {}`. Because
+   `exportFrameSequence` and both static exports pass `state` straight into
+   `computeTextureData`, custom params flow into every export path with
+   zero export-code changes.
+4. **Radial machining center: use the canvas center** (`w/2, h/2`), not a
+   seeded off-center point like Wood Grain's pith — a lathe/faced part reads
+   as centered, and a predictable center makes the map placeable. (Wood
+   Grain keeps its seeded pith; that's the organic look, this is the
+   machined one.)
+
 ## P1 — build these two (the ones actually asked for)
 
 ### 1. Machining Marks
