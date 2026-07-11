@@ -11,6 +11,25 @@ Versioning: informal `vN` milestones tagged in git as `paramgen-vN`.
 
 ## [Unreleased]
 
+### Added — four new texture patterns, grouped selector, Levels
+- **New patterns**: Cellular, Wood Grain, Waves, Cracks — alongside the
+  existing Noise, Grid, Scratches, Splotches (8 total). Cellular and Cracks
+  share a new Worley (cellular-noise) helper (`buildWorleyField` /
+  `sampleWorley`, jittered-grid nearest-point search) — Cellular fills each
+  cell from its distance to the nearest feature point, Cracks thresholds the
+  gap between nearest and second-nearest into thin boundary lines. Wood Grain
+  is warped concentric rings from a seeded pith point; Waves is a warped
+  directional sine band. All four are animated (seamless loop) using the same
+  conventions as the original four.
+- **Grouped pattern selector**: patterns are organized into Organic (Noise,
+  Cellular, Wood Grain), Geometric (Grid, Waves), and Weathering (Scratches,
+  Splotches, Cracks), each its own labeled row instead of one flat button
+  list. Which of Scale/Octaves/Count show per pattern is now a lookup table
+  (`PATTERN_META`) instead of a two-branch ternary.
+- **Levels**: Black Point / White Point / Gamma sliders, Photoshop-style —
+  remaps to the [black, white] range then applies a gamma curve. Runs after
+  Contrast, before Invert, in `computeTextureData`.
+
 ### Added — animated frame-sequence export (BLOB-URL-GALL)
 - **Export Frame Sequence (PNG)** on the Texture & Bump Map Generator. Renders
   N frames (12/24/48, selectable) across one `state.time` loop at

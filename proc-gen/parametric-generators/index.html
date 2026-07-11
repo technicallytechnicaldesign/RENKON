@@ -115,7 +115,17 @@
 
   .texture-controls { align-items: flex-start; }
   .texture-sliders { display: flex; flex-wrap: wrap; gap: 18px; }
+  .pattern-groups { display: flex; flex-wrap: wrap; gap: 18px; }
+  .pattern-group { display: flex; flex-direction: column; gap: 6px; }
+  .pattern-group-label {
+    font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+  }
   .pattern-select { display: flex; gap: 6px; }
+  .param-panel .section-label {
+    flex-basis: 100%; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; margin-top: -4px;
+  }
+  .param-panel .section-label:first-child { border-top: none; padding-top: 0; margin-top: 0; }
   .canvas-row { display: flex; flex-wrap: wrap; gap: 1px; background: var(--line); border: 1px solid var(--line); margin-bottom: 16px; }
   .canvas-panel { background: var(--panel-bg); padding: 16px; flex: 1 1 260px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
   .canvas-panel-title { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); align-self: flex-start; }
@@ -1854,11 +1864,166 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     return data;
   }
 
-  const TEXTURE_GENERATORS = { noise: generateNoise, grid: generateGrid, scratches: generateScratches, splotches: generateSplotches };
+  // Shared Worley (cellular noise) field: a jittered grid of one feature point
+  // per cell, searched over its 3x3 cell neighborhood -- the standard
+  // efficient approach so a per-pixel nearest-point query stays O(1) instead
+  // of O(n). Cellular and Cracks both build on this; they differ only in how
+  // they read d1 (distance to nearest point) / d2 (second-nearest).
+  function buildWorleyField(w, h, cellSize, rng) {
+    const cols = Math.ceil(w / cellSize) + 2, rows = Math.ceil(h / cellSize) + 2;
+    const pts = [];
+    for (let gy = 0; gy < rows; gy++) {
+      const row = [];
+      for (let gx = 0; gx < cols; gx++) {
+        row.push({ x: (gx - 1 + rng()) * cellSize, y: (gy - 1 + rng()) * cellSize, phase: rng() });
+      }
+      pts.push(row);
+    }
+    return { pts, cellSize };
+  }
+
+  function sampleWorley(field, x, y, wiggle, time) {
+    const { pts, cellSize } = field;
+    const cx = Math.floor(x / cellSize) + 1, cy = Math.floor(y / cellSize) + 1;
+    let d1 = Infinity, d2 = Infinity;
+    for (let oy = -1; oy <= 1; oy++) {
+      const row = pts[cy + oy];
+      for (let ox = -1; ox <= 1; ox++) {
+        const pt = row[cx + ox];
+        let px = pt.x, py = pt.y;
+        if (wiggle) {
+          const a = 2 * Math.PI * (time - pt.phase);
+          px += wiggle * Math.sin(a); py += wiggle * Math.cos(a);
+        }
+        const dx = x - px, dy = y - py;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) { d2 = d; }
+      }
+    }
+    return { d1, d2 };
+  }
+
+  function generateCellular(w, h, p) {
+    const rng = mulberry32(p.seed);
+    const count = Math.max(2, Math.round(p.count));
+    const cellSize = Math.max(4, w / count);
+    const field = buildWorleyField(w, h, cellSize, rng);
+    // Animated: feature points wiggle around their own seeded phase -- cells
+    // breathe/drift in place. Period 1 in time -> seamless loop.
+    const wiggle = p.animate ? cellSize * 0.18 : 0;
+    const tm = p.time || 0;
+    const soft = 0.15 + p.roughness * 0.7;
+    const data = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const { d1 } = sampleWorley(field, x, y, wiggle, tm);
+        data[y * w + x] = 1 - Math.min(1, d1 / (cellSize * soft));
+      }
+    }
+    return data;
+  }
+
+  function generateCracks(w, h, p) {
+    const rng = mulberry32(p.seed);
+    const count = Math.max(2, Math.round(p.count));
+    const cellSize = Math.max(4, w / count);
+    const field = buildWorleyField(w, h, cellSize, rng);
+    const wiggle = p.animate ? cellSize * 0.1 : 0;
+    const tm = p.time || 0;
+    const width = Math.max(0.01, 0.06 + p.roughness * 0.12) * cellSize;
+    const data = new Float32Array(w * h).fill(1);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const { d1, d2 } = sampleWorley(field, x, y, wiggle, tm);
+        const edge = d2 - d1;
+        if (edge < width) data[y * w + x] = edge / width;
+      }
+    }
+    return data;
+  }
+
+  function generateWood(w, h, p) {
+    const seedRng = mulberry32(p.seed);
+    const cx = (0.2 + seedRng() * 0.6) * w, cy = (0.2 + seedRng() * 0.6) * h;
+    const warpField = buildValueField(w, h, Math.max(8, p.scale), mulberry32((p.seed ^ 0x2545F491) >>> 0));
+    const ringSpacing = Math.max(3, p.scale * 0.35);
+    const warpAmt = p.roughness * ringSpacing * 2;
+    // Animated: rings travel outward from the pith at a steady rate -- phase
+    // is subtracted inside the sine, so time 0 and time 1 land on the same
+    // ring position (seamless loop).
+    const phase = p.animate ? (p.time || 0) : 0;
+    const data = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const dx = x - cx, dy = y - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const warp = (sampleField(warpField, x, y) - 0.5) * warpAmt;
+        const ring = Math.sin((dist + warp) / ringSpacing * 2 * Math.PI - phase * 2 * Math.PI);
+        data[y * w + x] = 0.5 + 0.5 * ring;
+      }
+    }
+    return data;
+  }
+
+  function generateWaves(w, h, p) {
+    const rng = mulberry32(p.seed);
+    const freq = Math.max(4, p.scale);
+    const angle = rng() * Math.PI;
+    const ax = Math.cos(angle), ay = Math.sin(angle);
+    const warpField = buildValueField(w, h, Math.max(8, p.scale), mulberry32((p.seed ^ 0x85EBCA6B) >>> 0));
+    const warpAmt = p.roughness * freq * 0.6;
+    // Animated: bands travel along their own axis -- phase subtracted inside
+    // the sine gives a seamless loop, same trick as Wood Grain's rings.
+    const phase = p.animate ? (p.time || 0) : 0;
+    const data = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const warp = (sampleField(warpField, x, y) - 0.5) * warpAmt;
+        const proj = (x * ax + y * ay + warp) / freq;
+        const wave = Math.sin(proj * 2 * Math.PI - phase * 2 * Math.PI);
+        data[y * w + x] = 0.5 + 0.5 * wave;
+      }
+    }
+    return data;
+  }
+
+  const TEXTURE_GENERATORS = {
+    noise: generateNoise, cellular: generateCellular, wood: generateWood,
+    grid: generateGrid, waves: generateWaves,
+    scratches: generateScratches, splotches: generateSplotches, cracks: generateCracks
+  };
+
+  const PATTERN_GROUPS = [
+    { label: "Organic", kinds: ["noise", "cellular", "wood"] },
+    { label: "Geometric", kinds: ["grid", "waves"] },
+    { label: "Weathering", kinds: ["scratches", "splotches", "cracks"] }
+  ];
+  const PATTERN_META = {
+    noise:     { name: "Noise",     params: { scale: true,  octaves: true,  count: false } },
+    cellular:  { name: "Cellular",  params: { scale: false, octaves: false, count: true  } },
+    wood:      { name: "Wood Grain",params: { scale: true,  octaves: false, count: false } },
+    grid:      { name: "Grid",      params: { scale: true,  octaves: false, count: true  } },
+    waves:     { name: "Waves",     params: { scale: true,  octaves: false, count: false } },
+    scratches: { name: "Scratches", params: { scale: true,  octaves: false, count: true  } },
+    splotches: { name: "Splotches", params: { scale: true,  octaves: false, count: true  } },
+    cracks:    { name: "Cracks",    params: { scale: false, octaves: false, count: true  } }
+  };
 
   function applyContrast(data, contrast) {
     for (let i = 0; i < data.length; i++) {
       data[i] = Math.min(1, Math.max(0, (data[i] - 0.5) * contrast + 0.5));
+    }
+  }
+
+  // Photoshop-style levels: remap [black, white] to [0, 1] then apply a gamma
+  // (midtone) curve. Runs after contrast, before invert.
+  function applyLevels(data, black, white, gamma) {
+    const range = Math.max(1e-4, white - black);
+    const invGamma = 1 / Math.max(0.05, gamma);
+    for (let i = 0; i < data.length; i++) {
+      let v = (data[i] - black) / range;
+      v = Math.min(1, Math.max(0, v));
+      data[i] = Math.pow(v, invGamma);
     }
   }
 
@@ -1899,6 +2064,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     const gen = TEXTURE_GENERATORS[state.pattern] || generateNoise;
     const data = gen(size, size, state);
     applyContrast(data, state.contrast);
+    applyLevels(data, state.levelsBlack, state.levelsWhite, state.levelsGamma);
     if (state.invert) { for (let i = 0; i < data.length; i++) data[i] = 1 - data[i]; }
     return data;
   }
@@ -1908,7 +2074,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
 
     main.appendChild(buildPageHead(
       "Texture & Bump Map Generator",
-      "Procedural grayscale texture and bump previews, driven by a few seeded generation criteria. Hit Play for a live, seamless-looping animation of any pattern — each has its own motion (noise breathes, grid shimmers, scratches flicker, splotches boil). Export a single static PNG, or the full animated loop as a numbered frame sequence.",
+      "Procedural grayscale texture and bump previews, driven by a few seeded generation criteria. Hit Play for a live, seamless-looping animation of any pattern — each has its own motion. Export a single static PNG, or the full animated loop as a numbered frame sequence.",
       { label: "Parametric Generators", hash: "" }
     ));
 
@@ -1919,6 +2085,9 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
       count: 24,
       roughness: 0.5,
       contrast: 1.2,
+      levelsBlack: 0,
+      levelsWhite: 1,
+      levelsGamma: 1,
       bumpStrength: 1,
       lightAngle: 135,
       invert: false,
@@ -1937,7 +2106,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     patternLabel.textContent = "Pattern";
     patternRow.appendChild(patternLabel);
     const patternGroup = document.createElement("div");
-    patternGroup.className = "pattern-select";
+    patternGroup.className = "pattern-groups";
     patternRow.appendChild(patternGroup);
     controls.appendChild(patternRow);
 
@@ -1987,7 +2156,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
       return rowEl;
     }
 
-    row("scale", "Scale", 8, 160, 2);
+    const scaleRow = row("scale", "Scale", 8, 160, 2);
     const octaveRow = row("octaves", "Octaves", 1, 6, 1);
     const countRow = row("count", "Count", 2, 80, 1);
     row("roughness", "Roughness", 0.1, 0.9, 0.05);
@@ -1995,6 +2164,14 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     row("bumpStrength", "Bump Strength", 0.1, 3, 0.05);
     row("lightAngle", "Light Angle", 0, 360, 5);
     countRow.style.display = "none";
+
+    const levelsLabel = document.createElement("div");
+    levelsLabel.className = "section-label";
+    levelsLabel.textContent = "Levels";
+    sliderRowsWrap.appendChild(levelsLabel);
+    row("levelsBlack", "Black Point", 0, 0.9, 0.01);
+    row("levelsWhite", "White Point", 0.1, 1, 0.01);
+    row("levelsGamma", "Gamma", 0.2, 3, 0.05);
 
     const invertRow = document.createElement("div");
     invertRow.className = "param-row";
@@ -2011,19 +2188,35 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     invertRow.appendChild(invertInput);
     sliderRowsWrap.appendChild(invertRow);
 
-    ["noise", "grid", "scratches", "splotches"].forEach(kind => {
-      const btn = document.createElement("button");
-      btn.className = "btn" + (state.pattern === kind ? " primary" : "");
-      btn.textContent = kind.charAt(0).toUpperCase() + kind.slice(1);
-      btn.addEventListener("click", () => {
-        state.pattern = kind;
-        Array.from(patternGroup.children).forEach(b => b.classList.remove("primary"));
-        btn.classList.add("primary");
-        octaveRow.style.display = kind === "noise" ? "flex" : "none";
-        countRow.style.display = kind === "noise" ? "none" : "flex";
-        regenerate();
+    const allPatternBtns = [];
+    PATTERN_GROUPS.forEach(group => {
+      const groupWrap = document.createElement("div");
+      groupWrap.className = "pattern-group";
+      const groupLabel = document.createElement("div");
+      groupLabel.className = "pattern-group-label";
+      groupLabel.textContent = group.label;
+      groupWrap.appendChild(groupLabel);
+      const groupBtns = document.createElement("div");
+      groupBtns.className = "pattern-select";
+      group.kinds.forEach(kind => {
+        const meta = PATTERN_META[kind];
+        const btn = document.createElement("button");
+        btn.className = "btn" + (state.pattern === kind ? " primary" : "");
+        btn.textContent = meta.name;
+        btn.addEventListener("click", () => {
+          state.pattern = kind;
+          allPatternBtns.forEach(b => b.classList.remove("primary"));
+          btn.classList.add("primary");
+          scaleRow.style.display = meta.params.scale ? "flex" : "none";
+          octaveRow.style.display = meta.params.octaves ? "flex" : "none";
+          countRow.style.display = meta.params.count ? "flex" : "none";
+          regenerate();
+        });
+        allPatternBtns.push(btn);
+        groupBtns.appendChild(btn);
       });
-      patternGroup.appendChild(btn);
+      groupWrap.appendChild(groupBtns);
+      patternGroup.appendChild(groupWrap);
     });
 
     seedValue.textContent = String(state.seed);
