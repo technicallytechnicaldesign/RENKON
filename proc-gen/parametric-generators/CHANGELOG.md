@@ -11,6 +11,46 @@ Versioning: informal `vN` milestones tagged in git as `paramgen-vN`.
 
 ## [Unreleased]
 
+### Changed — Title bar redesign: integrated toolbar, closed-by-default panels
+Two changes, both site-wide (`assets/menu.js` + all four pages' header CSS):
+
+- **Nav is no longer a floating overlay.** `.rk-nav` (Home + Menu) used to be
+  `position: fixed`, sitting on top of the page independent of the header —
+  which is what made it read as two disconnected chunky buttons rather than
+  part of the page. `menu.js` now finds the page's own header
+  (`#app-header`/`header`) and appends the nav cluster into it as a normal
+  flex child, set off with a hairline `border-left` divider. Every page's
+  header is now `position: sticky; top: 0`, so the toolbar (crumbs/wordmark,
+  divider, nav) stays reachable while scrolling — a consistent, predictable
+  "app toolbar" everywhere, not just on the one page that happened to be
+  sticky before.
+- **Buttons redesigned to look integrated, not bolted on.** Shrunk from
+  54px solid-fill squares to a compact 36px (32px on mobile) pair with
+  a shared neutral border — Home differentiated by an accent-colored icon
+  (plus a thin accent border when it's the current page) instead of a
+  full accent-fill block. Softer hover/press easing (no more spring-bounce)
+  reads calmer and more professional. `.rk-pop`'s anchor offset tightened
+  to match the smaller buttons.
+- Root/keyshot header CSS lost the padding-right pixel-reservation hack from
+  the last mobile-fix pass — no longer needed, since the nav is in normal
+  flex flow now instead of floating over reserved space. proc-gen's crumbs
+  keep their `flex: 1 1 auto` + ellipsis truncation, which now does double
+  duty: filling space AND pushing the nav cluster to the row's end.
+- **All texture-tool `<details>` panels (Preset, Pattern, Shape, Surface &
+  Tone, Preview & Animation, and the Animated export group) now load
+  closed by default**, per direct request — a first look at the panel is a
+  short list of section headers, not five sections of controls at once.
+  Nothing is removed; every section is one click away, same content as
+  before. (The Overlay Customizer's palette panel and the primary "Static
+  maps" export actions were already closed-by-default / always-open
+  respectively, and are unchanged.)
+- Verified headless: nav renders inside `#app-header`/`header` (not
+  `position: fixed`), zero overlap with crumbs/wordmark at 390px, header
+  stays pinned to top on scroll (`sticky`), popover opens fully within the
+  viewport, all 5 control sections + the Animated export group start closed
+  and expand correctly on click, Home's `aria-current="page"` accent border
+  shows correctly on the root page and correctly absent elsewhere.
+
 ### Added — Icon-driven pattern filter + fixed pattern-row overflow
 The Pattern section's per-group button rows (`.pattern-select`) had no
 `flex-wrap`, so on narrow viewports the third button in each 3-across group

@@ -4,8 +4,13 @@
  *   so it works at any page depth AND both locally (file://) and under the
  *   /RENKON/ GitHub Pages base.
  * - Injects its own styles + DOM; no external CSS, no dependencies.
- * - Home is always one click (accent button) or the `H` hotkey. Other areas
- *   live behind a playful pop-out menu. Esc / click-outside closes it.
+ * - Mounts *inside* the page's own header (#app-header, else <header>) as a
+ *   normal flex child — a compact two-button toolbar cluster, not a
+ *   floating overlay — so it scrolls/sits with the header instead of
+ *   sitting on top of it. Every page's header is position:sticky, so the
+ *   cluster stays reachable without needing to float.
+ * - Home is always one click (accent icon) or the `H` hotkey. Other areas
+ *   live behind an expandable menu. Esc / click-outside closes it.
  *
  * Add to a page with:  <script src="<path-to>/assets/menu.js"></script>
  */
@@ -43,24 +48,26 @@
   });
 
   // --- styles ------------------------------------------------------------
+  // Nav lives in-flow inside the header now (see mount()), not fixed over
+  // the page — a compact two-button toolbar cluster, right-aligned by the
+  // header's own flex layout, set off with a hairline divider.
   var css = ''
-    + '.rk-nav{position:fixed;top:10px;right:16px;z-index:9999;'
-    + 'font-family:"IBM Plex Mono","Courier New",monospace;display:flex;gap:10px;align-items:flex-start}'
+    + '.rk-nav{display:flex;gap:8px;align-items:center;flex:none;'
+    + 'font-family:"IBM Plex Mono","Courier New",monospace;'
+    + 'margin-left:14px;padding-left:14px;border-left:1px solid var(--line,#1c2733)}'
     + '.rk-nav *{box-sizing:border-box}'
     + '.rk-btn{-webkit-appearance:none;appearance:none;cursor:pointer;border:1px solid var(--line,#1c2733);'
-    + 'background:var(--panel-bg,#0d1520);color:var(--text,#e8e8e0);width:54px;height:54px;padding:11px;'
+    + 'background:transparent;color:var(--text,#e8e8e0);width:36px;height:36px;padding:8px;'
     + 'display:flex;align-items:center;justify-content:center;border-radius:0;'
-    + 'transition:transform .18s cubic-bezier(.34,1.56,.64,1),background .15s,border-color .15s,box-shadow .15s}'
-    + '.rk-btn svg{width:30px;height:30px;display:block}'
-    + '.rk-btn:hover{transform:translateY(-2px)}'
-    + '.rk-btn:active{transform:translateY(0) scale(.92)}'
+    + 'transition:transform .15s ease,background .15s ease,border-color .15s ease,color .15s ease}'
+    + '.rk-btn svg{width:18px;height:18px;display:block}'
+    + '.rk-btn:hover{background:var(--panel-bg-raised,#101a27);border-color:var(--c-accent,#E8792E);transform:translateY(-1px)}'
+    + '.rk-btn:active{transform:translateY(0) scale(.94)}'
     + '.rk-btn:focus-visible{outline:2px solid var(--c-accent,#E8792E);outline-offset:2px}'
-    + '.rk-home{background:var(--c-accent,#E8792E);border-color:var(--c-accent,#E8792E);color:#0a0f16}'
-    + '.rk-home:hover{box-shadow:0 6px 18px -6px var(--c-accent,#E8792E)}'
-    + '.rk-home svg{transition:transform .18s cubic-bezier(.34,1.56,.64,1)}'
-    + '.rk-home:hover svg{transform:translateY(-2px)}'
+    + '.rk-home{color:var(--c-accent,#E8792E)}'
+    + '.rk-home[aria-current="page"]{border-color:var(--c-accent,#E8792E)}'
     + '.rk-menu-btn[aria-expanded="true"]{border-color:var(--c-accent,#E8792E);color:var(--c-accent,#E8792E)}'
-    + '.rk-pop{position:absolute;top:62px;right:0;min-width:230px;background:var(--panel-bg,#0d1520);'
+    + '.rk-pop{position:absolute;top:44px;right:0;min-width:230px;background:var(--panel-bg,#0d1520);'
     + 'border:1px solid var(--line,#1c2733);transform-origin:top right;'
     + 'opacity:0;transform:scale(.9) translateY(-6px);pointer-events:none;'
     + 'transition:opacity .16s ease,transform .18s cubic-bezier(.34,1.56,.64,1)}'
@@ -84,9 +91,9 @@
     + 'font-size:9px;letter-spacing:.1em;text-transform:uppercase}'
     + '.rk-hint kbd{border:1px solid var(--line,#1c2733);padding:1px 5px;color:var(--text,#e8e8e0);'
     + 'font-family:inherit;font-size:9px}'
-    + '@media (prefers-reduced-motion:reduce){.rk-btn,.rk-home svg,.rk-pop,.rk-item{transition:none}'
-    + '.rk-btn:hover,.rk-home:hover svg{transform:none}}'
-    + '@media (max-width:480px){.rk-nav{top:8px;right:10px;gap:8px}.rk-btn{width:48px;height:48px;padding:10px}.rk-btn svg{width:26px;height:26px}}';
+    + '@media (prefers-reduced-motion:reduce){.rk-btn,.rk-pop,.rk-item{transition:none}.rk-btn:hover{transform:none}}'
+    + '@media (max-width:480px){.rk-nav{gap:6px;margin-left:10px;padding-left:10px}'
+    + '.rk-btn{width:32px;height:32px;padding:7px}.rk-btn svg{width:16px;height:16px}}';
 
   var style = document.createElement("style");
   style.textContent = css;
@@ -165,9 +172,14 @@
     if (e.key === "h" || e.key === "H") { location.href = homeHref; }
   });
 
-  // On the toolkit page, hide its header's right-side mark so the pill sits clean.
+  // Mount inside the page's own header, as its last flex child, so the
+  // cluster reads as part of the toolbar instead of floating over it. Every
+  // page's header is a flex row with something upstream (wordmark, or on
+  // proc-gen the breadcrumb trail) set to grow/auto-margin — see the
+  // per-page <style> — so appending last is enough to land top-right.
   function mount() {
-    document.body.appendChild(nav);
+    var header = document.querySelector("#app-header") || document.querySelector("header");
+    (header || document.body).appendChild(nav);
     var mark = document.querySelector("#app-header .mark");
     if (mark) mark.style.display = "none";
   }
