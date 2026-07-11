@@ -1987,17 +1987,147 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     return data;
   }
 
+  /* ---------------------------------------------------------
+     PRO FINISH -- art-directed fabrication textures
+     (docs/ADVANCED_TEXTURES.md). Unlike the generic patterns
+     above, these model a specific real finishing process, and
+     they use the per-pattern custom-param mechanism: extra
+     controls declared in PATTERN_META[kind].custom, values
+     living in state.custom[kind][key]. Custom *length* params
+     (pitch, strokeLength) are specified in px at preview size
+     and normalized by w / TEXTURE_PREVIEW_SIZE inside the
+     generator, so the 320px preview and the 1024px export show
+     the same texture rather than a 3x-finer one.
+     --------------------------------------------------------- */
+
+  function generateMachining(w, h, p) {
+    const c = (p.custom && p.custom.machining) || {};
+    const res = w / TEXTURE_PREVIEW_SIZE; // custom lengths are "px at preview size"
+    const pitch = Math.max(2, c.pitch != null ? c.pitch : 10) * res;
+    const waviness = c.waviness != null ? c.waviness : 0.15;
+    const radial = c.direction === "radial";
+    const rng = mulberry32(p.seed);
+    const angle = rng() * Math.PI; // seeded pass direction (linear mode)
+    const ax = Math.cos(angle), ay = Math.sin(angle);
+    // Low-frequency toolpath wander: a real mill/lathe pass is not perfectly
+    // straight at the pixel level. Amplitude driven by `waviness`, kept
+    // proportional to pitch so grooves wander without smearing together.
+    const warpField = buildValueField(w, h, Math.max(8, pitch * 4), mulberry32((p.seed ^ 0x3C6EF372) >>> 0));
+    const warpAmt = waviness * pitch * 1.5;
+    // Roughness = groove-edge sharpness: low keeps the crisp full-depth
+    // cosine groove, high flattens it toward mid-gray (a worn / fine pass).
+    const depth = Math.min(1, 1.05 - p.roughness);
+    // Animated: the toolpath advances -- phase subtracted inside the cosine,
+    // so time 0 and time 1 land on the same groove position (seamless loop).
+    const phase = p.animate ? (p.time || 0) : 0;
+    const data = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const warp = (sampleField(warpField, x, y) - 0.5) * warpAmt;
+        let d;
+        if (radial) {
+          // Lathe/faced part: concentric grooves around the canvas center --
+          // deliberately centered (unlike Wood Grain's seeded pith), because
+          // a machined face reads as centered and stays placeable.
+          const dx = x - w / 2, dy = y - h / 2;
+          d = Math.sqrt(dx * dx + dy * dy);
+        } else {
+          d = x * ax + y * ay;
+        }
+        const groove = Math.cos(((d + warp) / pitch - phase) * 2 * Math.PI);
+        data[y * w + x] = 0.5 + 0.5 * groove * depth;
+      }
+    }
+    return data;
+  }
+
+  function generatePaintStrokes(w, h, p) {
+    const c = (p.custom && p.custom.paint) || {};
+    const res = w / TEXTURE_PREVIEW_SIZE; // custom lengths are "px at preview size"
+    const strokeLength = Math.max(8, c.strokeLength != null ? c.strokeLength : 80) * res;
+    const turbulence = c.turbulence != null ? c.turbulence : 0.5;
+    const rng = mulberry32(p.seed);
+    const baseAngle = rng() * Math.PI;
+    // Low-frequency flow field: each stroke bends with the local field value,
+    // so strokes share a smoothly-varying regional direction (hand-brushed)
+    // instead of one fixed global angle (printed) or unrelated random
+    // segments (Scratches).
+    const flowField = buildValueField(w, h, Math.max(16, w / 5), mulberry32((p.seed ^ 0x1B873593) >>> 0));
+    const count = Math.max(1, Math.round(p.count));
+    const stepLen = Math.max(1, 2 * res);
+    const brushR = Math.max(1.5, 5 * res);
+    // Roughness = dab softness: low keeps a hard-edged dab, high pushes the
+    // falloff exponent up for a soft, feathered edge.
+    const soft = 0.8 + p.roughness * 2.4;
+    const tm = p.time || 0;
+    const data = new Float32Array(w * h).fill(0.18);
+    for (let i = 0; i < count; i++) {
+      // All per-stroke randomness is drawn up front (never inside the step
+      // loop), so a partially-revealed stroke follows the exact same path as
+      // the fully-grown one and later strokes are unaffected by reveal.
+      let sx = rng() * w, sy = rng() * h;
+      const strength = 0.3 + rng() * 0.4;
+      const stagger = rng();
+      // Animated: progressive reveal -- each stroke grows along its length as
+      // time runs 0 -> 1 (slightly staggered per stroke), then resets and
+      // re-grows each cycle. NOTE (deliberate exception to the seamless-loop
+      // convention): the frame just before the loop point shows fully grown
+      // strokes and frame 0 shows them at 0%, i.e. a one-frame "snap" at the
+      // loop boundary. Documented as acceptable in docs/ADVANCED_TEXTURES.md
+      // -- not a bug. Static (animate off) renders the fully grown strokes.
+      const reveal = p.animate ? Math.max(0, Math.min(1, tm * 1.25 - stagger * 0.25)) : 1;
+      const steps = Math.max(2, Math.round(strokeLength / stepLen));
+      const drawn = Math.round(steps * reveal);
+      for (let s = 0; s < drawn; s++) {
+        const t = s / steps;
+        // soft round brush dab, width tapering slightly at both stroke ends
+        const r = brushR * (0.45 + 0.55 * Math.sin(Math.PI * t));
+        const x0 = Math.max(0, Math.floor(sx - r)), x1 = Math.min(w, Math.ceil(sx + r));
+        const y0 = Math.max(0, Math.floor(sy - r)), y1 = Math.min(h, Math.ceil(sy + r));
+        for (let yy = y0; yy < y1; yy++) {
+          for (let xx = x0; xx < x1; xx++) {
+            const dx = xx - sx, dy = yy - sy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < r) {
+              const fall = Math.pow(1 - dist / r, soft);
+              const idx = yy * w + xx;
+              data[idx] = Math.min(1, data[idx] + fall * strength * 0.45);
+            }
+          }
+        }
+        // step along the local flow direction; turbulence scales how far the
+        // field bends the stroke off the shared base angle. Sample coords are
+        // clamped to the canvas: strokes may wander off-canvas (their dabs
+        // just stop depositing) but the value field only covers the canvas
+        // plus a small margin -- sampling beyond it reads off the grid.
+        const fx = Math.min(w - 1, Math.max(0, sx));
+        const fy = Math.min(h - 1, Math.max(0, sy));
+        const bend = (sampleField(flowField, fx, fy) - 0.5) * turbulence * 3;
+        sx += Math.cos(baseAngle + bend) * stepLen;
+        sy += Math.sin(baseAngle + bend) * stepLen;
+      }
+    }
+    return data;
+  }
+
   const TEXTURE_GENERATORS = {
     noise: generateNoise, cellular: generateCellular, wood: generateWood,
     grid: generateGrid, waves: generateWaves,
-    scratches: generateScratches, splotches: generateSplotches, cracks: generateCracks
+    scratches: generateScratches, splotches: generateSplotches, cracks: generateCracks,
+    machining: generateMachining, paint: generatePaintStrokes
   };
 
   const PATTERN_GROUPS = [
     { label: "Organic", kinds: ["noise", "cellular", "wood"] },
     { label: "Geometric", kinds: ["grid", "waves"] },
-    { label: "Weathering", kinds: ["scratches", "splotches", "cracks"] }
+    { label: "Weathering", kinds: ["scratches", "splotches", "cracks"] },
+    { label: "Pro Finish", kinds: ["machining", "paint"] }
   ];
+  // Each entry may optionally declare a `custom` array of extra controls on
+  // top of the shared slider set: { key, label, type: "range"|"select", ... }.
+  // Rows for these are built once at mount (see mountTextureTool) and the
+  // values live in state.custom[kind][key], so they never collide across
+  // patterns. The 8 generic patterns declare none and are unaffected.
   const PATTERN_META = {
     noise:     { name: "Noise",     params: { scale: true,  octaves: true,  count: false } },
     cellular:  { name: "Cellular",  params: { scale: false, octaves: false, count: true  } },
@@ -2006,7 +2136,26 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     waves:     { name: "Waves",     params: { scale: true,  octaves: false, count: false } },
     scratches: { name: "Scratches", params: { scale: true,  octaves: false, count: true  } },
     splotches: { name: "Splotches", params: { scale: true,  octaves: false, count: true  } },
-    cracks:    { name: "Cracks",    params: { scale: false, octaves: false, count: true  } }
+    cracks:    { name: "Cracks",    params: { scale: false, octaves: false, count: true  } },
+    machining: {
+      name: "Machining Marks",
+      params: { scale: false, octaves: false, count: false },
+      custom: [
+        { key: "direction", label: "Direction", type: "select",
+          options: [{ value: "linear", label: "Linear" }, { value: "radial", label: "Radial" }],
+          default: "linear" },
+        { key: "pitch", label: "Pitch", type: "range", min: 2, max: 40, step: 1, default: 10 },
+        { key: "waviness", label: "Waviness", type: "range", min: 0, max: 1, step: 0.05, default: 0.15 }
+      ]
+    },
+    paint: {
+      name: "Paint Strokes",
+      params: { scale: false, octaves: false, count: true },
+      custom: [
+        { key: "strokeLength", label: "Stroke Length", type: "range", min: 20, max: 200, step: 5, default: 80 },
+        { key: "turbulence", label: "Turbulence", type: "range", min: 0, max: 1, step: 0.05, default: 0.5 }
+      ]
+    }
   };
 
   function applyContrast(data, contrast) {
@@ -2093,8 +2242,20 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
       invert: false,
       seed: Math.floor(Math.random() * 1e9),
       animate: false,
-      time: 0
+      time: 0,
+      custom: {}
     };
+
+    // Per-pattern custom params (Pro Finish patterns): eagerly seed every
+    // declared custom param with its default. Because every export path
+    // (static PNG + frame sequence) passes `state` straight into
+    // computeTextureData, custom params flow into exports with no
+    // export-code changes.
+    Object.keys(PATTERN_META).forEach(kind => {
+      (PATTERN_META[kind].custom || []).forEach(def => {
+        (state.custom[kind] = state.custom[kind] || {})[def.key] = def.default;
+      });
+    });
 
     const controls = document.createElement("div");
     controls.className = "param-panel texture-controls";
@@ -2159,6 +2320,73 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     const scaleRow = row("scale", "Scale", 8, 160, 2);
     const octaveRow = row("octaves", "Octaves", 1, 6, 1);
     const countRow = row("count", "Count", 2, 80, 1);
+
+    // Custom control rows (declared per pattern in PATTERN_META[kind].custom):
+    // built once at mount into one container per pattern -- shown only while
+    // that pattern is selected (toggled in the pattern-button handler, same as
+    // scaleRow/octaveRow/countRow) -- and reading/writing
+    // state.custom[kind][key], so values persist across pattern switches
+    // exactly like the shared sliders do.
+    function customRangeRow(kind, def) {
+      const rowEl = document.createElement("div");
+      rowEl.className = "param-row";
+      const lab = document.createElement("label");
+      lab.textContent = def.label;
+      const input = document.createElement("input");
+      input.type = "range";
+      input.min = def.min; input.max = def.max; input.step = def.step;
+      input.value = state.custom[kind][def.key];
+      const valSpan = document.createElement("span");
+      valSpan.className = "param-value";
+      valSpan.textContent = state.custom[kind][def.key];
+      input.addEventListener("input", () => {
+        state.custom[kind][def.key] = parseFloat(input.value);
+        valSpan.textContent = state.custom[kind][def.key];
+        regenerate();
+      });
+      rowEl.appendChild(lab); rowEl.appendChild(input); rowEl.appendChild(valSpan);
+      return rowEl;
+    }
+    function customSelectRow(kind, def) {
+      const rowEl = document.createElement("div");
+      rowEl.className = "param-row";
+      const lab = document.createElement("label");
+      lab.textContent = def.label;
+      rowEl.appendChild(lab);
+      const group = document.createElement("div");
+      group.className = "pattern-select";
+      const btns = [];
+      def.options.forEach(opt => {
+        const btn = document.createElement("button");
+        btn.className = "btn" + (state.custom[kind][def.key] === opt.value ? " primary" : "");
+        btn.textContent = opt.label;
+        btn.addEventListener("click", () => {
+          state.custom[kind][def.key] = opt.value;
+          btns.forEach(b => b.classList.remove("primary"));
+          btn.classList.add("primary");
+          regenerate();
+        });
+        btns.push(btn);
+        group.appendChild(btn);
+      });
+      rowEl.appendChild(group);
+      return rowEl;
+    }
+    // display:contents so the rows inside participate directly in the
+    // .texture-sliders flex flow, identical to the shared slider rows.
+    const customWraps = {};
+    Object.keys(PATTERN_META).forEach(kind => {
+      const defs = PATTERN_META[kind].custom;
+      if (!defs || !defs.length) return;
+      const wrap = document.createElement("div");
+      wrap.style.display = kind === state.pattern ? "contents" : "none";
+      defs.forEach(def => {
+        wrap.appendChild(def.type === "select" ? customSelectRow(kind, def) : customRangeRow(kind, def));
+      });
+      sliderRowsWrap.appendChild(wrap);
+      customWraps[kind] = wrap;
+    });
+
     row("roughness", "Roughness", 0.1, 0.9, 0.05);
     row("contrast", "Contrast", 0.5, 3, 0.05);
     row("bumpStrength", "Bump Strength", 0.1, 3, 0.05);
@@ -2210,6 +2438,9 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
           scaleRow.style.display = meta.params.scale ? "flex" : "none";
           octaveRow.style.display = meta.params.octaves ? "flex" : "none";
           countRow.style.display = meta.params.count ? "flex" : "none";
+          Object.keys(customWraps).forEach(k => {
+            customWraps[k].style.display = k === kind ? "contents" : "none";
+          });
           regenerate();
         });
         allPatternBtns.push(btn);

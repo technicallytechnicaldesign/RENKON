@@ -11,6 +11,46 @@ Versioning: informal `vN` milestones tagged in git as `paramgen-vN`.
 
 ## [Unreleased]
 
+### Added — Pro Finish patterns + per-pattern custom params (Advanced Textures P1)
+- **New pattern group "Pro Finish"** on the Texture & Bump Map Generator, with
+  two art-directed patterns modeled on real finishing processes (10 patterns
+  total). Both are seeded/deterministic and reuse the whole existing pipeline
+  (Contrast, Levels, Invert, bump preview, static + frame-sequence export)
+  unmodified:
+  - **Machining Marks** — regular tool-mark grooves with a cosine profile
+    (rounded in the bump preview, not razor edges). *Linear* mode is a
+    mill/planing pass (parallel grooves at a fixed pitch with low-frequency
+    toolpath waviness); *Radial* is a lathe/turning pass (concentric grooves
+    around the canvas center — deliberately centered, unlike Wood Grain's
+    seeded pith, so the map stays placeable). Custom params: Direction
+    (Linear/Radial), Pitch, Waviness; the shared Roughness slider controls
+    groove-edge sharpness. Animated: the toolpath advances (phase-shift,
+    seamless loop, same trick as Wood Grain/Waves).
+  - **Paint Strokes** — hand-brushed streaks that follow a low-frequency flow
+    field (`buildValueField`), so strokes share a smoothly-varying regional
+    direction instead of one printed angle or Scratches' unrelated segments.
+    Each stroke deposits soft round brush dabs (Splotches-style accumulation)
+    with width tapering at both ends. Custom params: Stroke Length,
+    Turbulence; shared Count = number of strokes, Roughness = dab edge
+    softness. Animated: strokes *grow* progressively along their length each
+    loop — a directional reveal, deliberately accepting a one-frame snap at
+    the loop boundary instead of a seamless in-place loop (documented in-file;
+    not a bug). Static output renders the fully grown strokes.
+- **Per-pattern custom-param mechanism**: a `PATTERN_META[kind].custom` array
+  declares extra controls (`type: "range"` slider rows or `type: "select"`
+  button groups) beyond the shared slider set. Rows are built once at mount
+  into a per-pattern container (shown only while that pattern is selected),
+  and values live in `state.custom[kind][key]` so they persist across pattern
+  switches and never collide. Because every export path passes `state`
+  straight into `computeTextureData`, custom params flow into static and
+  frame-sequence exports with zero export-code changes. Custom *length*
+  params (Pitch, Stroke Length) are defined in px at preview size and
+  normalized by `w / TEXTURE_PREVIEW_SIZE` inside the generators, so the
+  320px preview and 1024px export show the same texture. The 8 existing
+  patterns declare no custom params and are unaffected — verified
+  pixel-identical (per-pattern FNV hash over the rendered canvas) before vs.
+  after at a fixed seed.
+
 ### Added — four new texture patterns, grouped selector, Levels
 - **New patterns**: Cellular, Wood Grain, Waves, Cracks — alongside the
   existing Noise, Grid, Scratches, Splotches (8 total). Cellular and Cracks

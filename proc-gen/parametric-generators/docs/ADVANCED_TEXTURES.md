@@ -1,9 +1,11 @@
 # Advanced Textures module — plan for a subagent
 
-Status: **planned, not started.** This is a handoff brief for whoever (human
-or subagent) picks this up next. Read `HANDOFF_BRIEF_v2.md` and
-`ANIMATED_EXPORT.md` first for context on the existing Texture & Bump Map
-Generator this builds on.
+**Status: P1 shipped.** The "Pro Finish" pattern group (Machining Marks +
+Paint Strokes) and the per-pattern custom-param mechanism are live in
+`index.html`, built per this plan including the operator refinements — see
+`CHANGELOG.md`. The P2 stretch goals (Orange Peel, Knurling, Anodize Swirl)
+are still open. Read `HANDOFF_BRIEF_v2.md` and `ANIMATED_EXPORT.md` first for
+context on the existing Texture & Bump Map Generator this builds on.
 
 ## Why this exists
 
