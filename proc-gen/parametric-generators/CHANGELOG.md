@@ -11,6 +11,32 @@ Versioning: informal `vN` milestones tagged in git as `paramgen-vN`.
 
 ## [Unreleased]
 
+### Added — Icon-driven pattern filter + fixed pattern-row overflow
+The Pattern section's per-group button rows (`.pattern-select`) had no
+`flex-wrap`, so on narrow viewports the third button in each 3-across group
+(e.g. Cracks, Knurling) overflowed past the panel's right edge instead of
+wrapping to a new line. Fixed, and used the occasion to make the pattern
+picker itself less busy, per the "icon driven filter... more icon / nested
+structure" ask:
+- **`.pattern-select { flex-wrap: wrap }`** — the actual overflow fix.
+- **Icon-driven group filter chips** above the pattern list: All + one chip
+  per group (Organic/Geometric/Weathering/Pro Finish), each with a small
+  monoline SVG glyph. Selecting a chip narrows the list below to just that
+  group (all groups stay in the DOM, this only toggles `display` — same
+  approach already used for per-pattern custom-param rows — so nothing is
+  removed or re-wired); "All" (default) shows everything, same as before.
+- **Every pattern button now carries its own icon** (13 new small glyphs —
+  noise as scattered dots, cellular as voronoi cells, wood as tree rings,
+  cracks as a branching fracture line, etc.) alongside its label, so the grid
+  reads by shape as well as by text.
+- Verified headless at 390px: zero buttons overflow their panel; all 5
+  filter chips render with icons; filtering to a single group shows only
+  that group's patterns and marks the chip active; selecting a pattern
+  inside a filtered view still updates state/custom-rows correctly;
+  switching back to "All" restores all 4 groups. Full regression: clicked
+  through all 13 patterns across every filter (3+2+3+5=13), loaded a preset,
+  confirmed canvas output — zero JS console errors.
+
 ### Fixed — Responsive nav collision + expandable menus (mobile follow-up)
 On narrow viewports the `.rk-nav` pill (`assets/menu.js`) — centered and, since
 the light/dark pass, three buttons wide (Home/Menu/Theme) — floated directly on
