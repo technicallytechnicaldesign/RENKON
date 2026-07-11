@@ -1,7 +1,7 @@
 # Script Stock
 
 Project ID: `ksrp-efbe4961`
-Last updated: 2026-07-11 (naming cleanup + 2 backlog items delivered; 3 more in progress overnight)
+Last updated: 2026-07-11 (naming cleanup + 4 backlog items delivered; 1 more in progress overnight)
 
 Running at-a-glance inventory + priority backlog. Update this file, don't
 replace it, as scripts move status.
@@ -17,6 +17,8 @@ replace it, as scripts move status.
 | 2b | ANI | `2b_ANI_HERO_REVEAL_AA01.py` | ✅ current | Zoom+crane reveal; ground-setter & `getAnimationInfo()` shape still unconfirmed on your build |
 | 2b | ANI | `2b_ANI_CUTAWAY_REVEAL_AA01.py` | ✅ current | Cutaway/cross-section reveal — clip plane sweep through an assembly, camera static. Clipping-plane & bounding-box APIs unconfirmed on your build — probes candidates, degrades to unclipped with a warning |
 | 3 | PRC | `3_PRC_CONTACT_SHEET_AA01.py` | ✅ current | Standalone HTML viewer (not a lux script) — renamed from `contact_sheet.py` |
+| 3 | PRC | `3_PRC_FADE_REEL_AA01.py` | ✅ current | Multi-angle crossfade reel from batch stills — pure CSS `@keyframes`, no ffmpeg/dependencies |
+| 4 | CHK | `4_CHK_AUDIT_AA01.py` | ✅ current | Naming-compliance + render-completeness audit — first script in stage 4 |
 | 2a | BAT | `archive/batch_turntable.py` | 🗑️ archived | Raw-camera-only predecessor of `2a_BAT_TURNTABLE_AA01.py` — moved to `scripts/archive/`, out of the active pipeline |
 | 2a | BAT | `archive/batch_import_and_render_all_views.py` | 🗑️ archived | Raw-camera-only predecessor of `2a_BAT_STD_VIEW_AA01.py` — moved to `scripts/archive/`, out of the active pipeline |
 | 0 | NGS | `0_NGS_MAT_STEEL.py` | ❓ exists elsewhere | Not in this project's files |
@@ -33,12 +35,12 @@ replace it, as scripts move status.
 | P1 | 2b | Assembly reveal — procedural modes (scatter/settle, staggered/sub-assembly build, spiral converge, ghost fade-in) | 🔧 in progress (subagent) — `2b_ANI_ASSEMBLY_PROCEDURAL_AA01.py` | — |
 | P1 | 2b | Cutaway / cross-section reveal | ✅ done — `2b_ANI_CUTAWAY_REVEAL_AA01.py` | — |
 | P1 | 1 | Material-name lookup table (Creo → KeyShot) | ✅ done — `1_HLP_MAT_LOOKUP_AA01.py` | — |
-| P2 | 3 | Multi-angle fade reel (crossfade between Studios/cameras) | 🔧 in progress (subagent) — `3_PRC_FADE_REEL_AA01.py` | Consumes stills from `2a_BAT_TURNTABLE`/`2a_BAT_STD_VIEW` |
+| P2 | 3 | Multi-angle fade reel (crossfade between Studios/cameras) | ✅ done — `3_PRC_FADE_REEL_AA01.py` | Consumes stills from `2a_BAT_TURNTABLE`/`2a_BAT_STD_VIEW` |
 | P2 | 3 | BOM-driven manifest (opt-in) | Not started | Research Q3 — BOM access method |
 | P2 | 2b | Dynamic BOM callouts on assembly renders | Not started | BOM-driven manifest, above |
 | P2 | 1 | Studio/camera-rig template library | Not started | — |
 | P2 | 0 | Pre-import geometry/appearance validator | Not started | — |
-| P2 | 4 | Naming-compliance + render-completeness audit | 🔧 in progress (subagent) — `4_CHK_AUDIT_AA01.py` | — |
+| P2 | 4 | Naming-compliance + render-completeness audit | ✅ done — `4_CHK_AUDIT_AA01.py` | — |
 | P3 | — | Archive superseded batch scripts | ✅ done — moved to `scripts/archive/` | — |
 
 See `RESEARCH_CREO_KEYSHOT.md` for the thinking behind the backlog.

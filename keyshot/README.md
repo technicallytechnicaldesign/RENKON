@@ -33,6 +33,8 @@ don't replace it, as scripts move through the pipeline.
 | [`2b_ANI_HERO_REVEAL_AA01.py`](scripts/2b_ANI_HERO_REVEAL_AA01.py) | 2b &middot; ANI | Zoom+crane hero reveal, synced to Model Set animation |
 | [`2b_ANI_CUTAWAY_REVEAL_AA01.py`](scripts/2b_ANI_CUTAWAY_REVEAL_AA01.py) | 2b &middot; ANI | Cutaway / cross-section reveal, sweeps a clip plane through an assembly |
 | [`3_PRC_CONTACT_SHEET_AA01.py`](scripts/3_PRC_CONTACT_SHEET_AA01.py) | 3 &middot; PRC | Standalone HTML contact sheet from a batch's rendered output |
+| [`3_PRC_FADE_REEL_AA01.py`](scripts/3_PRC_FADE_REEL_AA01.py) | 3 &middot; PRC | Multi-angle crossfade reel between Studio/camera stills, pure CSS, no dependencies |
+| [`4_CHK_AUDIT_AA01.py`](scripts/4_CHK_AUDIT_AA01.py) | 4 &middot; CHK | Naming-compliance + render-completeness audit |
 
 ### Archived (`scripts/archive/`)
 

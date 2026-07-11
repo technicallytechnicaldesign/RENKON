@@ -286,6 +286,33 @@
           </div>
           <div class="status current">Current</div>
         </div>
+        <div class="stage-row" data-stage="3">
+          <div class="stage-tag">3<span class="area">PRC</span></div>
+          <div class="stage-body">
+            <div class="name"><a href="scripts/3_PRC_FADE_REEL_AA01.py">3_PRC_FADE_REEL_AA01.py</a></div>
+            <div class="note">Multi-angle fade reel &mdash; a "turntable fade" built from fixed
+              stills instead of a continuous 360&deg; spin. Standalone (not a
+              <code style="color:var(--c-fluid)">lux</code> script); scans a batch's rendered
+              stills, groups by part, and writes one self-contained HTML file per part that
+              crossfades between its views on a pure-CSS <code style="color:var(--c-fluid)">@keyframes</code>
+              loop &mdash; no ffmpeg, no external dependencies.</div>
+          </div>
+          <div class="status current">Current</div>
+        </div>
+        <div class="stage-row" data-stage="4">
+          <div class="stage-tag">4<span class="area">CHK</span></div>
+          <div class="stage-body">
+            <div class="name"><a href="scripts/4_CHK_AUDIT_AA01.py">4_CHK_AUDIT_AA01.py</a></div>
+            <div class="note">Naming-compliance + render-completeness audit &mdash; the first script
+              in stage 4. Validates every <code style="color:var(--c-fluid)">.py</code> filename in
+              a folder against the <code style="color:var(--c-fluid)">{PREFIX}_{AREA}_{NAME}_{REV}.py</code>
+              convention (skipping <code style="color:var(--c-fluid)">archive/</code>), and
+              cross-checks every <code style="color:var(--c-fluid)">*_manifest.csv</code> row's
+              output path against what's actually on disk, flagging missing files and
+              failed/skipped statuses separately.</div>
+          </div>
+          <div class="status current">Current</div>
+        </div>
         <div class="empty-note">No current scripts at this stage.</div>
       </div>
 
@@ -369,15 +396,15 @@
       <ul class="backlog">
         <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Hand-staged one-off reveal (particles, rain) &mdash; design stage</span></li>
         <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Assembly reveal, Creo-driven &mdash; animate an authored explode state; depends on verifying explode data survives the plugin import</span></li>
-        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Assembly reveal, procedural modes &mdash; scatter/settle, staggered/sub-assembly build, spiral converge, ghost fade-in</span></li>
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Assembly reveal, procedural modes &mdash; scatter/settle, staggered/sub-assembly build, spiral converge, ghost fade-in <em style="color:var(--c-accent); font-style:normal;">&mdash; in progress</em></span></li>
         <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Cutaway / cross-section reveal <em style="color:var(--c-fluid); font-style:normal;">&mdash; done, see Current</em></span></li>
         <li><span class="pri">P1</span><span class="idea"><span class="stage">1 &middot;</span> Material-name lookup table (Creo &rarr; KeyShot) <em style="color:var(--c-fluid); font-style:normal;">&mdash; done, see Current</em></span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">3 &middot;</span> Multi-angle fade reel &mdash; crossfade between Studios/cameras; consumes stills from the turntable/std-view batches</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">3 &middot;</span> Multi-angle fade reel &mdash; crossfade between Studios/cameras; consumes stills from the turntable/std-view batches <em style="color:var(--c-fluid); font-style:normal;">&mdash; done, see Current</em></span></li>
         <li><span class="pri">P2</span><span class="idea"><span class="stage">3 &middot;</span> BOM-driven manifest (opt-in) &mdash; BOM access method still TBD</span></li>
         <li><span class="pri">P2</span><span class="idea"><span class="stage">2b &middot;</span> Dynamic BOM callouts on assembly renders &mdash; depends on the BOM manifest above</span></li>
         <li><span class="pri">P2</span><span class="idea"><span class="stage">1 &middot;</span> Studio/camera-rig template library</span></li>
         <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> Pre-import geometry/appearance validator</span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">4 &middot;</span> Naming-compliance + render-completeness audit</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">4 &middot;</span> Naming-compliance + render-completeness audit <em style="color:var(--c-fluid); font-style:normal;">&mdash; done, see Current</em></span></li>
         <li><span class="pri">P3</span><span class="idea"><span class="stage">&mdash; &middot;</span> Archive superseded batch scripts <em style="color:var(--c-fluid); font-style:normal;">&mdash; done</em></span></li>
       </ul>
     </section>
