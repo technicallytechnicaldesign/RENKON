@@ -2212,6 +2212,63 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     }
   };
 
+  // --- Preset library (backlog #3) --------------------------------------
+  // Built-in presets are hardcoded state snapshots (never touch storage),
+  // merged into the dropdown alongside any user-saved presets. Each is built
+  // from a shared "look" baseline plus overrides, with a full custom-param
+  // object seeded from PATTERN_META defaults for every pattern kind (so a
+  // preset stays well-formed even if the active pattern later changes).
+  function defaultCustomState() {
+    const custom = {};
+    Object.keys(PATTERN_META).forEach(kind => {
+      (PATTERN_META[kind].custom || []).forEach(def => {
+        (custom[kind] = custom[kind] || {})[def.key] = def.default;
+      });
+    });
+    return custom;
+  }
+  function builtinPresetState(overrides, customOverrides) {
+    const s = Object.assign({
+      pattern: "noise", scale: 60, octaves: 4, count: 24, roughness: 0.5,
+      contrast: 1.2, levelsBlack: 0, levelsWhite: 1, levelsGamma: 1,
+      bumpStrength: 1, lightAngle: 135, invert: false
+    }, overrides);
+    s.custom = defaultCustomState();
+    if (customOverrides) {
+      Object.keys(customOverrides).forEach(kind => {
+        s.custom[kind] = Object.assign({}, s.custom[kind], customOverrides[kind]);
+      });
+    }
+    return s;
+  }
+  // 5 built-ins spanning all 4 pattern groups (Organic/Geometric/Weathering/
+  // Pro Finish), including two Pro Finish looks per the backlog's example.
+  const BUILTIN_PRESETS = {
+    "Steel — Brushed": builtinPresetState(
+      { pattern: "machining", roughness: 0.3, contrast: 1.4, levelsBlack: 0.05,
+        levelsWhite: 0.95, bumpStrength: 1.2, lightAngle: 135 },
+      { machining: { direction: "linear", pitch: 6, waviness: 0.1 } }
+    ),
+    "Weathered Paint": builtinPresetState(
+      { pattern: "paint", count: 40, roughness: 0.6, contrast: 1.1, levelsBlack: 0.1,
+        levelsWhite: 0.9, levelsGamma: 1.3, bumpStrength: 0.8, lightAngle: 200 },
+      { paint: { strokeLength: 140, turbulence: 0.8 } }
+    ),
+    "Rubber — Pebbled": builtinPresetState(
+      { pattern: "splotches", scale: 40, count: 60, roughness: 0.5, contrast: 1.6,
+        levelsBlack: 0.15, levelsWhite: 0.85, levelsGamma: 0.9, bumpStrength: 1.5,
+        lightAngle: 120, invert: true }
+    ),
+    "Wood — Oak": builtinPresetState(
+      { pattern: "wood", scale: 90, roughness: 0.4, contrast: 1.3, levelsBlack: 0.05,
+        levelsWhite: 0.95, levelsGamma: 1.1, bumpStrength: 1.0, lightAngle: 150 }
+    ),
+    "Waves — Ripples": builtinPresetState(
+      { pattern: "waves", scale: 50, roughness: 0.35, contrast: 1.2, bumpStrength: 1.1,
+        lightAngle: 90 }
+    )
+  };
+
   function applyContrast(data, contrast) {
     for (let i = 0; i < data.length; i++) {
       data[i] = Math.min(1, Math.max(0, (data[i] - 0.5) * contrast + 0.5));
@@ -2381,8 +2438,26 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     seedRow.appendChild(seedLabel);
     seedRow.appendChild(seedValue);
     seedRow.appendChild(randomizeBtn);
+
+    // Preset dropdown + Save button live next to Randomize (backlog #3).
+    // Population/wiring happens further down, once every control that a
+    // preset can affect (sliders, custom rows, pattern buttons, invert) has
+    // been built — the dropdown's change handler needs to resync all of it.
+    const presetSelect = document.createElement("select");
+    presetSelect.className = "btn";
+    presetSelect.title = "Load a saved preset";
+    const savePresetBtn = document.createElement("button");
+    savePresetBtn.className = "btn";
+    savePresetBtn.textContent = "Save Preset";
+    const presetStatus = document.createElement("span");
+    presetStatus.className = "param-value";
+    presetStatus.style.minWidth = "0";
+    seedRow.appendChild(presetSelect);
+    seedRow.appendChild(savePresetBtn);
+    seedRow.appendChild(presetStatus);
     controls.appendChild(seedRow);
 
+    const sliderRefs = {};
     function row(key, label, min, max, step) {
       const rowEl = document.createElement("div");
       rowEl.className = "param-row";
@@ -2402,6 +2477,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
       });
       rowEl.appendChild(lab); rowEl.appendChild(input); rowEl.appendChild(valSpan);
       sliderRowsWrap.appendChild(rowEl);
+      sliderRefs[key] = { input, valSpan };
       return rowEl;
     }
 
@@ -2415,6 +2491,8 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     // scaleRow/octaveRow/countRow) -- and reading/writing
     // state.custom[kind][key], so values persist across pattern switches
     // exactly like the shared sliders do.
+    const customRangeRefs = {};
+    const customSelectRefs = {};
     function customRangeRow(kind, def) {
       const rowEl = document.createElement("div");
       rowEl.className = "param-row";
@@ -2433,6 +2511,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
         regenerate();
       });
       rowEl.appendChild(lab); rowEl.appendChild(input); rowEl.appendChild(valSpan);
+      (customRangeRefs[kind] = customRangeRefs[kind] || {})[def.key] = { input, valSpan };
       return rowEl;
     }
     function customSelectRow(kind, def) {
@@ -2458,6 +2537,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
         group.appendChild(btn);
       });
       rowEl.appendChild(group);
+      (customSelectRefs[kind] = customSelectRefs[kind] || {})[def.key] = { btns, def };
       return rowEl;
     }
     // display:contents so the rows inside participate directly in the
@@ -2505,6 +2585,22 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     sliderRowsWrap.appendChild(invertRow);
 
     const allPatternBtns = [];
+    const patternBtnByKind = {};
+    // Shared resync used both by the pattern-button click handler and by
+    // preset loading (backlog #3) — whichever changes state.pattern must run
+    // the same active-button / row-visibility / custom-wrap sync so the UI
+    // never silently drifts from state.
+    function syncPatternUI(kind) {
+      const meta = PATTERN_META[kind];
+      allPatternBtns.forEach(b => b.classList.remove("primary"));
+      if (patternBtnByKind[kind]) patternBtnByKind[kind].classList.add("primary");
+      scaleRow.style.display = meta.params.scale ? "flex" : "none";
+      octaveRow.style.display = meta.params.octaves ? "flex" : "none";
+      countRow.style.display = meta.params.count ? "flex" : "none";
+      Object.keys(customWraps).forEach(k => {
+        customWraps[k].style.display = k === kind ? "contents" : "none";
+      });
+    }
     PATTERN_GROUPS.forEach(group => {
       const groupWrap = document.createElement("div");
       groupWrap.className = "pattern-group";
@@ -2521,22 +2617,173 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
         btn.textContent = meta.name;
         btn.addEventListener("click", () => {
           state.pattern = kind;
-          allPatternBtns.forEach(b => b.classList.remove("primary"));
-          btn.classList.add("primary");
-          scaleRow.style.display = meta.params.scale ? "flex" : "none";
-          octaveRow.style.display = meta.params.octaves ? "flex" : "none";
-          countRow.style.display = meta.params.count ? "flex" : "none";
-          Object.keys(customWraps).forEach(k => {
-            customWraps[k].style.display = k === kind ? "contents" : "none";
-          });
+          syncPatternUI(kind);
           regenerate();
         });
         allPatternBtns.push(btn);
+        patternBtnByKind[kind] = btn;
         groupBtns.appendChild(btn);
       });
       groupWrap.appendChild(groupBtns);
       patternGroup.appendChild(groupWrap);
     });
+
+    // --- Preset library wiring (backlog #3) --------------------------------
+    // Storage: window.storage (used by the Overlay Customizer's palette
+    // save/load, see buildPalettePanel above) is an environment-injected API
+    // that is never defined anywhere in this file — it's only present in
+    // whatever sandboxed host provides it, and silently falls through to
+    // "Storage unavailable" otherwise. This app is also opened as a plain
+    // local file and served static on GitHub Pages (see root CLAUDE.md), both
+    // plain-browser contexts with no such global. Presets use `localStorage`
+    // directly instead, under the same key-naming scheme the spec specifies
+    // (`texturepreset:<name>`, `texturepreset:index`) so the feature actually
+    // persists in every context this app runs in.
+    function presetStorageGet(key) {
+      try { return localStorage.getItem(key); } catch (e) { return null; }
+    }
+    function presetStorageSet(key, value) {
+      try { localStorage.setItem(key, value); return true; } catch (e) { return false; }
+    }
+    function loadPresetIndex() {
+      try {
+        const arr = JSON.parse(presetStorageGet("texturepreset:index") || "[]");
+        return Array.isArray(arr) ? arr : [];
+      } catch (e) { return []; }
+    }
+    function savePresetIndex(names) {
+      presetStorageSet("texturepreset:index", JSON.stringify(names));
+    }
+    function getPresetByName(name) {
+      if (BUILTIN_PRESETS[name]) return BUILTIN_PRESETS[name];
+      try {
+        const raw = presetStorageGet("texturepreset:" + name);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) { return null; }
+    }
+    // Saves the *look*, not the session: everything in `state` except `seed`
+    // (explicit in the spec — a preset should look like itself on any seed)
+    // and also except `time`/`animate` (a judgment call beyond the spec: those
+    // are transient playback state, not parameters of the look, and blindly
+    // restoring `animate` would desync the Play/Pause button and rAF loop
+    // from state.animate since those are only ever meant to change together
+    // via setAnimate()). Name collisions with a built-in are rejected outright
+    // rather than silently overwritten or renamed, so the shipped reference
+    // presets always stay exactly what's documented in CHANGELOG.md.
+    function savePresetAs(name) {
+      name = (name || "").trim();
+      if (!name) return { ok: false, reason: "empty" };
+      if (BUILTIN_PRESETS[name]) return { ok: false, reason: "builtin-collision" };
+      const toSave = {
+        pattern: state.pattern, scale: state.scale, octaves: state.octaves, count: state.count,
+        roughness: state.roughness, contrast: state.contrast, levelsBlack: state.levelsBlack,
+        levelsWhite: state.levelsWhite, levelsGamma: state.levelsGamma,
+        bumpStrength: state.bumpStrength, lightAngle: state.lightAngle, invert: state.invert,
+        custom: JSON.parse(JSON.stringify(state.custom))
+      };
+      presetStorageSet("texturepreset:" + name, JSON.stringify(toSave));
+      const idx = loadPresetIndex();
+      if (!idx.includes(name)) { idx.push(name); savePresetIndex(idx); }
+      refreshPresetDropdown();
+      return { ok: true };
+    }
+    function syncSharedSlidersUI() {
+      Object.keys(sliderRefs).forEach(key => {
+        const { input, valSpan } = sliderRefs[key];
+        input.value = state[key];
+        valSpan.textContent = state[key];
+      });
+    }
+    function syncCustomControlsUI() {
+      Object.keys(customRangeRefs).forEach(kind => {
+        Object.keys(customRangeRefs[kind]).forEach(key => {
+          const { input, valSpan } = customRangeRefs[kind][key];
+          const v = state.custom[kind][key];
+          input.value = v;
+          valSpan.textContent = v;
+        });
+      });
+      Object.keys(customSelectRefs).forEach(kind => {
+        Object.keys(customSelectRefs[kind]).forEach(key => {
+          const { btns, def } = customSelectRefs[kind][key];
+          const v = state.custom[kind][key];
+          btns.forEach(b => b.classList.remove("primary"));
+          const idx = def.options.findIndex(o => o.value === v);
+          if (idx >= 0) btns[idx].classList.add("primary");
+        });
+      });
+    }
+    // Applies every field of a saved/built-in preset object to `state`
+    // (leaving state.seed untouched) and resyncs every control that could be
+    // showing a now-stale value: shared sliders, custom-param rows for every
+    // pattern kind, the Invert checkbox, and the pattern-button/row-visibility
+    // resync shared with the pattern-button click handler.
+    function applyPresetState(preset) {
+      state.pattern = preset.pattern;
+      state.scale = preset.scale;
+      state.octaves = preset.octaves;
+      state.count = preset.count;
+      state.roughness = preset.roughness;
+      state.contrast = preset.contrast;
+      state.levelsBlack = preset.levelsBlack;
+      state.levelsWhite = preset.levelsWhite;
+      state.levelsGamma = preset.levelsGamma;
+      state.bumpStrength = preset.bumpStrength;
+      state.lightAngle = preset.lightAngle;
+      state.invert = preset.invert;
+      state.custom = JSON.parse(JSON.stringify(preset.custom || {}));
+      // Defensive: fill in any pattern kind the saved preset predates (e.g. a
+      // preset saved before a new Pro Finish pattern shipped custom params).
+      Object.keys(PATTERN_META).forEach(kind => {
+        if (!state.custom[kind]) {
+          state.custom[kind] = {};
+          (PATTERN_META[kind].custom || []).forEach(def => { state.custom[kind][def.key] = def.default; });
+        }
+      });
+      invertInput.checked = state.invert;
+      syncSharedSlidersUI();
+      syncCustomControlsUI();
+      syncPatternUI(state.pattern);
+      regenerate();
+    }
+    function refreshPresetDropdown() {
+      const savedNames = loadPresetIndex().filter(n => !BUILTIN_PRESETS[n]);
+      const allNames = Object.keys(BUILTIN_PRESETS).concat(savedNames);
+      const prevValue = presetSelect.value;
+      presetSelect.innerHTML = "";
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "Load preset…";
+      presetSelect.appendChild(placeholder);
+      allNames.forEach(name => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name + (BUILTIN_PRESETS[name] ? " ★" : "");
+        presetSelect.appendChild(opt);
+      });
+      presetSelect.value = allNames.includes(prevValue) ? prevValue : "";
+    }
+    presetSelect.addEventListener("change", () => {
+      const name = presetSelect.value;
+      presetSelect.value = "";
+      if (!name) return;
+      const preset = getPresetByName(name);
+      if (preset) applyPresetState(preset);
+    });
+    savePresetBtn.addEventListener("click", () => {
+      const name = window.prompt("Save current settings as preset:", "");
+      if (name == null) return;
+      const result = savePresetAs(name);
+      if (result.ok) {
+        presetStatus.textContent = "Saved “" + name.trim() + "”";
+      } else if (result.reason === "builtin-collision") {
+        presetStatus.textContent = "Name reserved by a built-in — pick another";
+      } else {
+        presetStatus.textContent = "";
+      }
+      setTimeout(() => presetStatus.textContent = "", 3000);
+    });
+    refreshPresetDropdown();
 
     seedValue.textContent = String(state.seed);
 

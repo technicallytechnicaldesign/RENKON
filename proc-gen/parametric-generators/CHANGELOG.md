@@ -11,6 +11,80 @@ Versioning: informal `vN` milestones tagged in git as `paramgen-vN`.
 
 ## [Unreleased]
 
+### Added — preset library (backlog #3)
+- **Save Preset / preset dropdown** next to Randomize on the Texture & Bump
+  Map Generator. Save Preset `prompt()`s for a name (same UX level as the
+  Overlay Customizer's palette Save/Load — this file doesn't avoid `prompt()`
+  for this kind of thing) and serializes the current look — `pattern`,
+  `scale`, `octaves`, `count`, `roughness`, `contrast`, `levelsBlack`,
+  `levelsWhite`, `levelsGamma`, `bumpStrength`, `lightAngle`, `invert`, and
+  the *full* `state.custom` object (every pattern kind's custom params, not
+  just the active one) — to storage. The dropdown lists built-ins first, then
+  user-saved presets, and applies every field to `state` on selection.
+- **Storage: `localStorage`, not `window.storage`.** The spec pointed at
+  `window.storage` (the API the Overlay Customizer's palette Save/Load already
+  uses — see `buildPalettePanel`), but that global is never defined anywhere
+  in this file; it's only ever referenced behind an `if (window.storage)`
+  guard that falls through to "Storage unavailable" otherwise. It's an
+  environment-injected API present in whatever sandboxed host supplies it —
+  not in a plain browser tab. Since this app is also opened as a plain local
+  file and served static on GitHub Pages (see root `CLAUDE.md`), building the
+  preset library on `window.storage` would ship a feature that silently does
+  nothing in this app's primary deployment targets. Presets use `localStorage`
+  directly instead, under the exact key-naming scheme the spec specifies:
+  `texturepreset:<name>` per preset, `texturepreset:index` (a JSON array of
+  user-saved names — built-ins are never added to this index) for
+  enumeration. Verified this actually persists (not just an in-memory
+  variable) via a genuine iframe reload, not just re-selecting in the same
+  session.
+- **Seed is deliberately excluded** from both save and load, per spec — a
+  preset is a *look* ("Steel — Brushed"), not a specific instance, and should
+  render that look on whatever seed is currently active. Verified: saving at
+  one seed, randomizing to a different seed, changing several other fields,
+  then reloading the preset restores every field except seed, and seed keeps
+  the randomized value rather than reverting.
+- **`time`/`animate` are also excluded** (a judgment call beyond the literal
+  spec text, which only calls out excluding seed): these are transient
+  playback state, not parameters of a look, and naively restoring `animate`
+  would desync the Play/Pause button and rAF loop from `state.animate` —
+  those two are only ever meant to change together via the existing
+  `setAnimate()` function, which a raw state write bypasses.
+- **UI resync on load**: applying a preset updates every control that could
+  otherwise go stale — shared sliders (position + numeric readout), the
+  active pattern button, `scaleRow`/`octaveRow`/`countRow` visibility, every
+  pattern's custom-param rows (both `range` and `select` types), and the
+  Invert checkbox — reusing the exact same row-visibility/custom-wrap resync
+  the pattern-button click handler already did (factored out into
+  `syncPatternUI`, called from both places) rather than duplicating it.
+- **5 built-in presets**, hardcoded in `index.html` (never touch storage),
+  spanning all 4 pattern groups: **Steel — Brushed** (Machining Marks,
+  linear, tight pitch) and **Weathered Paint** (Paint Strokes, high
+  turbulence) for Pro Finish per the backlog's own example pairing; **Rubber
+  — Pebbled** (Splotches, high count/contrast, inverted) for Weathering;
+  **Wood — Oak** (Wood Grain) for Organic; **Waves — Ripples** for Geometric.
+  Available in the dropdown with no prior save action (marked with a ★ to
+  distinguish them from user saves).
+- **Name-collision handling**: saving under a name that matches a built-in is
+  rejected outright (status line reads "Name reserved by a built-in — pick
+  another") rather than silently overwriting the built-in's stored value or
+  silently renaming the user's save — keeps the shipped reference presets
+  always exactly what's documented above.
+- Verified headless (Edge, driven through the live UI via `contentDocument`/
+  `contentWindow`, not by calling internal functions directly): fresh load
+  with empty storage lists all 5 built-ins spanning Pro Finish + the other 3
+  groups; save-then-reload at a fixed seed reproduces a byte-identical canvas
+  hash; the full round trip (save → randomize seed → change pattern/scale/
+  invert/contrast → reload preset) restores every non-seed field exactly
+  (pattern, all 10 shared sliders incl. Invert, and Machining Marks' Direction/
+  Pitch/Waviness) while seed keeps the randomized value; UI resync confirmed
+  via the actual DOM (active pattern button, Scale/Octaves/Count rows hidden
+  for Machining Marks, custom rows populated); a genuine iframe reload (not
+  just re-selecting) still lists and correctly loads the saved preset,
+  confirming real persistence; smoke-checked all 10 patterns for non-degenerate
+  canvas stats (no NaN, sensible min/max spread) and all 3 static exports
+  (Height/Bump, Preview Render, Normal Map) still fire `window.open` with no
+  thrown errors after these changes.
+
 ### Added — normal map export (backlog #2)
 - **Export Normal Map PNG** button on the Texture & Bump Map Generator, next
   to Export Height/Bump Map PNG and Export Preview Render PNG. Produces a

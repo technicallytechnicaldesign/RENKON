@@ -125,6 +125,22 @@ alternating R or G depending on edge orientation).
 
 ## 3. Preset library (P2 — nice-to-have, uses existing infra)
 
+**Status: shipped.** Save Preset button + preset dropdown live next to
+Randomize in `index.html`. Built on `localStorage` (`texturepreset:<name>` /
+`texturepreset:index`), **not** `window.storage` as originally suggested
+below — that global is never defined anywhere in this file (it's an
+environment-injected API, present only in whatever sandboxed host supplies
+it) and this app also runs as a plain local file / static GitHub Pages, where
+it doesn't exist; `window.storage`-backed save/load would have silently done
+nothing there. Serializes the full state (all shared sliders + Invert + the
+complete `state.custom` for every pattern kind) excluding `seed` (and,
+beyond spec, excluding `time`/`animate` — see `CHANGELOG.md` for the
+reasoning), with full UI resync on load (sliders, active pattern button,
+row visibility, custom rows, Invert). Ships 5 built-in presets spanning all
+4 pattern groups — Steel — Brushed / Weathered Paint (Pro Finish), Rubber —
+Pebbled (Weathering), Wood — Oak (Organic), Waves — Ripples (Geometric).
+See `CHANGELOG.md` for full verification detail.
+
 **What:** save/recall named parameter presets per pattern (e.g. "Steel —
 brushed", "Rubber — pebbled") instead of re-dialing sliders from scratch
 each session. The palette section of the Overlay Asset Customizer already
