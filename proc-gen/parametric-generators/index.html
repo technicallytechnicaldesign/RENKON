@@ -178,7 +178,6 @@
   </div>
   <canvas id="capture-canvas" style="display:none"></canvas>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
 <script>
 (function () {
   "use strict";
@@ -1573,17 +1572,17 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     statusLine.className = "status-line";
 
     const pngBtn = document.createElement("button");
-    pngBtn.className = "btn";
+    pngBtn.className = "btn primary";
     pngBtn.textContent = "Export PNG";
     pngBtn.addEventListener("click", () => exportPNG(asset, stage, statusLine));
     actions.appendChild(pngBtn);
 
     if (asset.engine !== "static") {
-      const gifBtn = document.createElement("button");
-      gifBtn.className = "btn primary";
-      gifBtn.textContent = "Export GIF";
-      gifBtn.addEventListener("click", () => exportGIF(asset, stage, statusLine, gifBtn));
-      actions.appendChild(gifBtn);
+      const framesBtn = document.createElement("button");
+      framesBtn.className = "btn";
+      framesBtn.textContent = "Export Frames";
+      framesBtn.addEventListener("click", () => exportFrameSequence(asset, stage, statusLine, framesBtn));
+      actions.appendChild(framesBtn);
     }
 
     main.appendChild(actions);
@@ -1591,7 +1590,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
 
     const foot = document.createElement("footer");
     foot.className = "note";
-    foot.innerHTML = `Colors and adjustments apply live and carry back to the type/subtype screens. GIF export uses gif.js from cdnjs (its worker is fetched and re-hosted as a blob: URL, since browsers block Worker() on a cross-origin script); SMIL assets are frame-scrubbed via native SVG time control, CSS assets via the Web Animations API.`;
+    foot.innerHTML = `Colors and adjustments apply live and carry back to the type/subtype screens. Export Frames renders a numbered PNG sequence and opens it in a new tab (blob: URLs, no worker, no external dependency) &mdash; SMIL assets are frame-scrubbed via native SVG time control, CSS assets via the Web Animations API.`;
     main.appendChild(foot);
   }
 
@@ -3227,21 +3226,6 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     return true;
   }
 
-  let gifWorkerBlobUrlPromise = null;
-  function getGifWorkerBlobUrl() {
-    // Browsers refuse to construct a Worker directly from a cross-origin
-    // script URL (cdnjs here) — gif.js would then never emit "finished"
-    // or throw anywhere catchable. Fetching the script and re-hosting it
-    // as a blob: URL sidesteps that, since blob: URLs are same-origin to
-    // the page that created them.
-    if (!gifWorkerBlobUrlPromise) {
-      gifWorkerBlobUrlPromise = fetch("https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js")
-        .then(r => { if (!r.ok) throw new Error("worker fetch failed: " + r.status); return r.text(); })
-        .then(text => URL.createObjectURL(new Blob([text], { type: "application/javascript" })));
-    }
-    return gifWorkerBlobUrlPromise;
-  }
-
   async function exportPNG(asset, stage, statusLine) {
     statusLine.textContent = "Rendering PNG\u2026";
     try {
@@ -3264,13 +3248,10 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     setTimeout(() => statusLine.textContent = "", 2500);
   }
 
-  async function exportGIF(asset, stage, statusLine, btn) {
-    if (typeof GIF === "undefined") {
-      statusLine.textContent = "gif.js failed to load";
-      return;
-    }
+  async function exportFrameSequence(asset, stage, statusLine, btn) {
     btn.disabled = true;
-    statusLine.textContent = "Preparing encoder\u2026";
+    statusLine.textContent = "Preparing capture\u2026";
+    const frames = [];
     try {
       const svgEl = stage.querySelector("svg");
       const { w, h } = viewBoxSize(svgEl);
@@ -3278,21 +3259,10 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
       const frameCount = 20;
       const speed = getParams(asset).speed || 1;
       const effectiveDurationMs = asset.durationMs / speed;
-      const delay = Math.max(30, Math.round(effectiveDurationMs / frameCount));
 
       const canvas = document.getElementById("capture-canvas");
       canvas.width = w * scale; canvas.height = h * scale;
       const ctx = canvas.getContext("2d");
-
-      const workerUrl = await getGifWorkerBlobUrl();
-      const gif = new GIF({
-        workers: 2, quality: 10, width: canvas.width, height: canvas.height,
-        workerScript: workerUrl
-      });
-      gif.on("error", () => {
-        statusLine.textContent = "GIF encoder error";
-        btn.disabled = false;
-      });
 
       statusLine.textContent = "Capturing frames 0%";
 
@@ -3306,7 +3276,11 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
           const img = await svgToImage(markup);
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          gif.addFrame(ctx, { copy: true, delay });
+          const blob = await new Promise(res => canvas.toBlob(res, "image/png"));
+          if (!blob) throw new Error("toBlob failed");
+          const url = URL.createObjectURL(blob);
+          const filename = asset.id + "_" + String(i + 1).padStart(4, "0") + ".png";
+          frames.push({ url, filename });
           statusLine.textContent = "Capturing frames " + Math.round(((i + 1) / frameCount) * 100) + "%";
         }
         anims.forEach(a => a.cancel());
@@ -3329,26 +3303,25 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
           const img = await svgToImage(markup);
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          gif.addFrame(ctx, { copy: true, delay });
+          const blob = await new Promise(res => canvas.toBlob(res, "image/png"));
+          if (!blob) throw new Error("toBlob failed");
+          const url = URL.createObjectURL(blob);
+          const filename = asset.id + "_" + String(i + 1).padStart(4, "0") + ".png";
+          frames.push({ url, filename });
           statusLine.textContent = "Capturing frames " + Math.round(((i + 1) / frameCount) * 100) + "%";
         }
         svgEl.unpauseAnimations();
       }
 
-      statusLine.textContent = "Encoding GIF\u2026";
-      gif.on("finished", (blob) => {
-        const url = URL.createObjectURL(blob);
-        downloadDataUrl(url, asset.id + ".gif");
-        URL.revokeObjectURL(url);
-        statusLine.textContent = "GIF downloaded";
-        btn.disabled = false;
-        renderAssetInto(stage, asset);
-        setTimeout(() => statusLine.textContent = "", 2500);
-      });
-      gif.render();
+      openFrameGalleryInNewTab(frames, asset.id);
+      statusLine.textContent = "Frame sequence (" + frameCount + ") opened in a new tab \u2014 save from there";
+      renderAssetInto(stage, asset);
     } catch (e) {
-      statusLine.textContent = "GIF export failed";
+      statusLine.textContent = "Frame sequence export failed";
+      frames.forEach(f => URL.revokeObjectURL(f.url));
+    } finally {
       btn.disabled = false;
+      setTimeout(() => statusLine.textContent = "", 3500);
     }
   }
 

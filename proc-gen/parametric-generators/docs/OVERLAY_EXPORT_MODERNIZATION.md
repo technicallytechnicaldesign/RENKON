@@ -1,6 +1,10 @@
 # Overlay Asset Customizer: retire GIF export, ship frame-sequence export
 
-Status: **planned, not started.** Independent of `ADVANCED_TEXTURES.md` and
+Status: **shipped.** `exportGIF()` and `gif.js` are gone; the Overlay Asset
+Customizer's "Export Frames" button now uses the same Worker-free,
+dependency-free `blob:` URL frame-sequence gallery as the Texture & Bump Map
+Generator — see `CHANGELOG.md`'s "Export Frames (retires `gif.js`)" entry.
+Independent of `ADVANCED_TEXTURES.md` and
 `FEATURE_BACKLOG.md` (those are both the Texture & Bump Map Generator half of
 this file; this plan is the **Overlay Asset Customizer** half — different
 tool, same `index.html`). Safe to pick up in parallel with those, but

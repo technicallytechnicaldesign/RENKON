@@ -53,8 +53,10 @@ Practical rules:
 ## Build & conventions
 
 - **No build step, no framework.** Tools are self-contained single-file HTML
-  apps that open directly in a browser. Minimize dependencies (the only current
-  one is `gif.js` via CDN, and that's the broken path — see the toolkit brief).
+  apps that open directly in a browser. No external dependencies — everything
+  is native browser APIs (Canvas, `blob:` URLs, Web Animations API, native SVG
+  time control); the last CDN dependency (`gif.js`) was removed in favor of a
+  Worker-free, dependency-free frame-sequence export.
 - **Shared aesthetic** across all pages (keep new pages consistent):
   - Dark: `--bg:#0a0f16`, `--panel-bg:#0d1520`, `--line:#1c2733`,
     `--text:#e8e8e0`, `--muted:#7a7f83`.

@@ -11,6 +11,35 @@ Versioning: informal `vN` milestones tagged in git as `paramgen-vN`.
 
 ## [Unreleased]
 
+### Added — Overlay Asset Customizer: Export Frames (retires `gif.js`)
+- **Export Frames** on the Overlay Asset Customizer replaces the old
+  **Export GIF** button. `exportFrameSequence()` reuses the existing
+  frame-capture loop from the old `exportGIF()` almost verbatim — the
+  `asset.engine === "css"` / `"smil"` branches, `bakeCssFreeze`/
+  `bakeSmilFreeze`, `resolvedSvgMarkup`, `svgToImage`, the 20-frame /
+  speed-adjusted timing math — but instead of feeding frames to `gif.js`'s
+  encoder, each frame goes `canvas.toBlob()` → `URL.createObjectURL()` →
+  `{ url, filename }`, matching the Texture & Bump Map Generator's own
+  frame-sequence export. Filenames follow the same convention:
+  `<asset.id>_0001.png … _0020.png`. On completion it calls the existing,
+  unmodified `openFrameGalleryInNewTab(frames, asset.id)` — same numbered
+  gallery + "Download All" UX the texture tool already ships. Static-engine
+  assets are unaffected — they still get no animated-export button at all.
+- PNG export now carries the `primary` button styling (previously reserved
+  for GIF, the "recommended" export); Export Frames is a plain `btn` — PNG is
+  the simple default, Frames is the animated-export path for assets that
+  loop or play once.
+
+### Removed — `gif.js` (last external dependency in the repo)
+- Deleted the `<script src="https://cdnjs.cloudflare.com/…/gif.js">` tag,
+  `getGifWorkerBlobUrl()`/`gifWorkerBlobUrlPromise` (the same-origin Worker
+  re-hosting workaround gif.js needed), and the old `exportGIF()` function.
+  This was the last external dependency anywhere in the repo — everything is
+  now native browser APIs (Canvas, `blob:` URLs, Web Animations API, native
+  SVG time control), no CDN, no Worker, no build step. Updated the footer
+  note in `mountOverlayKit` and root `CLAUDE.md`'s dependency callout to
+  match.
+
 ### Added — preset library (backlog #3)
 - **Save Preset / preset dropdown** next to Randomize on the Texture & Bump
   Map Generator. Save Preset `prompt()`s for a name (same UX level as the
