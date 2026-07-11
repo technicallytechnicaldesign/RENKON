@@ -11,6 +11,94 @@ Versioning: informal `vN` milestones tagged in git as `paramgen-vN`.
 
 ## [Unreleased]
 
+### Changed — Site-wide design review: readability, cohesion, light/dark mode, generator usability
+Implements `docs/DESIGN_REVIEW.md` (all four lenses) across all four live pages
+(root `index.html`, this tool, `keyshot/index.html`, `keyshot/scripts.html`).
+Reorg/labels/tooltips only — no generator or export logic changed.
+
+- **Light/dark mode (new)**: added `assets/theme.js`, a single dependency-free
+  script (same philosophy as `assets/menu.js`) loaded synchronously as the
+  *first* `<script>` in every page's `<head>` — sets `documentElement`'s
+  `data-theme` and injects the light-theme variable overrides before first
+  paint (no flash), resolves from `localStorage('renkon-theme')` else
+  `prefers-color-scheme`, and injects a sun/moon toggle button into the
+  `.rk-nav` pill `menu.js` builds (pill becomes Home + Menu + Theme). Light
+  palette keeps all three brand roles recognizable (`--c-structural` blue
+  unchanged, `--c-fluid` teal deepened slightly, `--c-accent` orange deepened)
+  while passing AA contrast on the light backgrounds. Preview/relief
+  viewports (`--stage-bg`) intentionally stay dark in both themes — a
+  texture/normal-map preview reads best on a dark stage. Fixed the
+  chrome colors that were previously theme-blind: `.mini-stage`,
+  `.canvas-panel canvas`, `.large-stage` now use `var(--stage-bg)`;
+  `.text-field-wrap input` uses `var(--panel-bg)`; `.btn.primary:hover`'s
+  hard-coded `color:#001A33` is now `var(--bg)`. New-tab export pages (PNG
+  viewer, frame gallery — separate `document`s with no RENKON chrome) stay
+  hard-coded dark by design, not wired to theme.
+- **Readability**: smallest label/chip tier 9px → 10px; body/help copy
+  (`.tile p`/`.card p`, `.param-hint`, `.status-line`, footers) 11px → 12px;
+  tracking on the two 10px uppercase section-labels (`.pattern-group-label`,
+  `.section-label`) tightened 0.1em → 0.06em; `--muted` lightened
+  `#7a7f83` → `#93999e` (≈6.4:1 on `--panel-bg`, was ≈4.0:1); `footer.note`
+  capped at `max-width:74ch`. Same token bumps applied to root and both
+  keyshot pages.
+- **Cohesion**: this tool now loads `reveal.js` (previously the only one of
+  the four pages without it) — content fades in on first paint; hash-router
+  navigations do **not** re-trigger it (`reveal.js`'s `run()` is single-shot
+  by design, guarding the root landing page's splash handoff — re-arming it
+  safely for a second run was out of scope for this pass, so proc-gen
+  intentionally only gets the first-paint reveal, never a blank page).
+  `.page-head h1` now 17px and focus-outline offset 3px, matching the other
+  three pages. Added the RENKON wordmark to `#app-header` (links to
+  `../../index.html`), kept sticky. Back-nav now reads "← Back to {label}"
+  (was "↑ Up to {label}"), matching keyshot's metaphor. `.card h2` aligned to
+  13px/weight 500 to match `.tile h2` on the other pages (layout/class
+  untouched — `.card` was deliberately *not* re-plumbed into `.tile`).
+- **Generator usability (Texture & Bump Map Generator)**: the flat
+  `.texture-controls` wall is now six ordered, labeled sections — **Preset**
+  (moved up front, split out of the old combined Seed row), **Pattern**
+  (pattern buttons + Seed/Randomize), **Shape** (Scale/Octaves/Count + a
+  "Pattern Options" sub-label over the per-pattern custom rows), **Surface &
+  Tone** (Roughness/Contrast/Levels/Invert, in a `<details open>`), **Preview
+  & Animation** (Bump Strength/Light Angle + Animate/Tile Preview, renamed
+  "Tile Preview (QA)"). Preview canvases got one-line captions ("This is the
+  exportable data." / "Lighting preview only…"). Export is now a labeled
+  section split into **Static maps** (Height/Bump, Preview Render, Normal
+  Map) and an **Animated** `<details open>` group (frame count + Export Frame
+  Sequence), each button carrying a `title` tooltip; the footer paragraph
+  stays as the long-form backup. This is DOM reorder + label/caption/
+  `<details>` nodes only — `state`, `computeTextureData`, `syncPatternUI`,
+  `regenerate()`, every export handler, and the preset engine are
+  byte-identical in behavior. Verified via headless Edge: all 13 patterns
+  still produce non-degenerate, NaN-free output after the reorg; all 5
+  built-in presets, Randomize, Tile Preview, Play/loop, and all 4 export
+  buttons + frame-count select remain present and functional; both
+  `<details open>` blocks default open.
+- **Generator usability (Overlay Asset Customizer)**: the 6-swatch palette
+  panel — which used to render fully expanded on every asset's customize
+  screen — is now a `<details>` collapsed by default ("Palette (advanced) —
+  recolor all assets"); this is the one intentionally collapsed-by-default
+  disclosure in the whole pass, everything else defaults open. Fixed the
+  dead **Save Palette** button: it called `window.storage`, an
+  environment-injected API that doesn't exist in a plain browser (same root
+  cause the texture-preset `localStorage` wrapper below already documents
+  and works around) — Save/Load Palette now use `localStorage` directly
+  under `palette:default`, and a saved palette is reloaded automatically on
+  mount. Added `title` tooltips to Opacity/Thickness/Speed/Roundness.
+- **Verified headless** (Edge, `--headless=new --allow-file-access-from-files
+  --dump-dom`, driven through the live UI, per `ADVANCED_TEXTURES.md`'s
+  verification pattern): theme resolves correctly pre-paint with no flash on
+  all 4 pages, toggle flips + persists across reload on all 4 pages,
+  `--muted`/`--text` contrast ≈5.9–16.5:1 in both themes on `--panel-bg`
+  (`--c-accent` on `--panel-bg` in light mode measures ≈4.3:1 — a hair under
+  strict AA for small text; this is the doc-specified, unmodified palette
+  value, used mostly for borders/interactive elements rather than body text —
+  flagged, not changed, since the palette was pre-approved in the review
+  doc); Overlay Customizer palette panel confirmed collapsed by default with
+  all 6 swatches reachable, Save Palette confirmed writing to and surviving
+  in `localStorage` across reload; no JS console errors across the full
+  interaction sweep (39 pattern-button clicks, preset load, theme toggles,
+  export clicks).
+
 ### Added — Pro Finish P2: Knurling, Orange Peel, Anodize Swirl
 - Three more art-directed patterns join the **Pro Finish** group (now
   `machining`, `paint`, `knurl`, `peel`, `anodize`), per

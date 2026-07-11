@@ -11,7 +11,7 @@
     --panel-bg-raised: #101a27;
     --line: #1c2733;
     --text: #e8e8e0;
-    --muted: #7a7f83;
+    --muted: #93999e;
 
     --c-structural: #002F67;
     --c-fluid: #2FA8B0;
@@ -32,14 +32,14 @@
   button, input { font-family: inherit; }
   button { cursor: pointer; border-radius: 0; }
   button:focus-visible, input:focus-visible, a:focus-visible {
-    outline: 2px solid var(--c-accent); outline-offset: 2px;
+    outline: 2px solid var(--c-accent); outline-offset: 3px;
   }
   @media (prefers-reduced-motion: reduce) {
     * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; }
   }
 
   #app-header {
-    display: flex; align-items: baseline; justify-content: space-between;
+    display: flex; align-items: baseline; gap: 20px;
     padding: 18px 28px; border-bottom: 1px solid var(--line);
     position: sticky; top: 0; background: var(--bg); z-index: 10;
   }
@@ -49,12 +49,14 @@
     letter-spacing: 0.08em; text-transform: uppercase; padding: 0; font-family: inherit;
   }
   #app-header .crumbs button:hover { text-decoration: underline; }
-  #app-header .mark { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; }
+  #app-header .mark { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; margin-left: auto; }
+  #app-header .wordmark { font-size: 14px; letter-spacing: 0.28em; font-weight: 500; margin-right: 24px; }
+  #app-header .wordmark b { color: var(--c-accent); font-weight: 500; }
   #app-main { padding: 28px; max-width: 1400px; margin: 0 auto; }
 
   .page-head { margin-bottom: 24px; }
   .page-head h1 {
-    font-size: 16px; letter-spacing: 0.08em; text-transform: uppercase;
+    font-size: 17px; letter-spacing: 0.08em; text-transform: uppercase;
     color: var(--text); margin: 0 0 6px 0; font-weight: 500;
   }
   .page-head p { color: var(--muted); font-size: 12px; margin: 0; max-width: 62ch; line-height: 1.6; }
@@ -80,20 +82,32 @@
   .card.active:hover { background: var(--panel-bg-raised); }
   .card .tag { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-accent); }
   .card.planned .tag { color: var(--muted); }
-  .card h2 { font-size: 14px; margin: 0; font-weight: 600; }
-  .card p { font-size: 11px; color: var(--muted); margin: 0; line-height: 1.6; }
+  .card h2 { font-size: 13px; margin: 0; font-weight: 500; }
+  .card p { font-size: 12px; color: var(--muted); margin: 0; line-height: 1.6; }
   .card.planned { opacity: 0.55; border: 1px dashed var(--line); background: transparent; }
   .card.subtype-card { padding-bottom: 12px; }
   .mini-stage {
-    margin-top: 4px; background: #060a10; border: 1px solid var(--line);
+    margin-top: 4px; background: var(--stage-bg, #060a10); border: 1px solid var(--line);
     display: flex; align-items: center; justify-content: center;
     min-height: 90px; padding: 8px; overflow: hidden;
   }
   .mini-stage svg { max-width: 100%; height: auto; display: block; }
 
-  .palette-panel {
-    display: flex; flex-wrap: wrap; gap: 18px; padding: 16px 18px;
+  /* Collapsed-by-default (Lens 4B.1 — the one intentional exception to
+     "everything defaults open" in this pass): a rarely-used advanced panel
+     that used to dominate every customize screen. */
+  .palette-details {
     background: var(--panel-bg); border: 1px solid var(--line); margin-bottom: 16px;
+  }
+  .palette-details > summary {
+    padding: 14px 18px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text); font-weight: 500; cursor: pointer; list-style: none;
+  }
+  .palette-details > summary::-webkit-details-marker { display: none; }
+  .palette-details > summary .chev { display: inline-block; color: var(--c-accent); margin-right: 4px; transition: transform 0.15s ease; }
+  .palette-details[open] > summary .chev { transform: rotate(90deg); }
+  .palette-panel {
+    display: flex; flex-wrap: wrap; gap: 18px; padding: 4px 18px 16px;
   }
   .palette-role { display: flex; align-items: center; gap: 8px; }
   .palette-role label { font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
@@ -111,25 +125,39 @@
   .param-row input[type=checkbox] { accent-color: var(--c-accent); width: 16px; height: 16px; }
   .param-value { font-size: 10px; color: var(--text); min-width: 34px; text-align: right; }
   .param-panel .btn { margin-left: auto; }
-  .param-hint { flex-basis: 100%; font-size: 10px; color: var(--muted); }
+  .param-hint { flex-basis: 100%; font-size: 12px; color: var(--muted); }
 
-  .texture-controls { align-items: flex-start; }
-  .texture-sliders { display: flex; flex-wrap: wrap; gap: 18px; }
+  /* Texture tool control panel: ordered, labeled sections stacked vertically
+     (Lens 4A reorg) — each .control-section holds a .section-label header
+     (or <summary class="section-label"> for the two <details open> blocks)
+     plus a .texture-sliders row-wrap body. */
+  .texture-controls { align-items: stretch; flex-direction: column; flex-wrap: nowrap; gap: 22px; }
+  .control-section { width: 100%; }
+  .texture-sliders { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
   .pattern-groups { display: flex; flex-wrap: wrap; gap: 18px; }
   .pattern-group { display: flex; flex-direction: column; gap: 6px; }
   .pattern-group-label {
-    font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+    font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
   }
   .pattern-select { display: flex; gap: 6px; }
-  .param-panel .section-label {
-    flex-basis: 100%; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
-    color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; margin-top: -4px;
+  .section-label {
+    display: block; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text); font-weight: 500; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 4px;
   }
-  .param-panel .section-label:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+  summary.section-label { cursor: pointer; list-style: none; }
+  summary.section-label::-webkit-details-marker { display: none; }
+  summary.section-label .chev { display: inline-block; color: var(--c-accent); margin-right: 4px; transition: transform 0.15s ease; }
+  details[open] > summary.section-label .chev { transform: rotate(90deg); }
+  details.control-section > .texture-sliders { padding-top: 14px; }
+  .export-section {
+    padding: 14px 18px; background: var(--panel-bg); border: 1px solid var(--line);
+    margin-bottom: 16px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .preview-caption { flex-basis: 100%; font-size: 12px; color: var(--muted); text-align: center; margin-top: 2px; }
   .canvas-row { display: flex; flex-wrap: wrap; gap: 1px; background: var(--line); border: 1px solid var(--line); margin-bottom: 16px; }
   .canvas-panel { background: var(--panel-bg); padding: 16px; flex: 1 1 260px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
   .canvas-panel-title { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); align-self: flex-start; }
-  .canvas-panel canvas { width: 100%; max-width: 320px; height: auto; background: #060a10; border: 1px solid var(--line); }
+  .canvas-panel canvas { width: 100%; max-width: 320px; height: auto; background: var(--stage-bg, #060a10); border: 1px solid var(--line); }
 
   .text-field-wrap {
     display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;
@@ -137,14 +165,14 @@
   }
   .text-field-wrap label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
   .text-field-wrap input[type=text] {
-    background: #060a10; border: 1px solid var(--line); color: var(--text);
+    background: var(--panel-bg-raised, #060a10); border: 1px solid var(--line); color: var(--text);
     padding: 8px 10px; font-size: 13px;
   }
   .text-field-wrap input[type=text]:focus-visible { border-color: var(--c-accent); }
   .text-field-wrap .hint { font-size: 10px; color: var(--muted); }
 
   .large-stage {
-    background: #060a10; border: 1px solid var(--line);
+    background: var(--stage-bg, #060a10); border: 1px solid var(--line);
     display: flex; align-items: center; justify-content: center;
     min-height: 140px; padding: 18px; margin-bottom: 14px;
   }
@@ -156,21 +184,24 @@
   }
   .btn:hover { border-color: var(--c-accent); color: var(--c-accent); }
   .btn.primary { border-color: var(--c-accent); color: var(--c-accent); }
-  .btn.primary:hover { background: var(--c-accent); color: #001A33; }
+  .btn.primary:hover { background: var(--c-accent); color: var(--bg); }
   .btn:disabled { opacity: 0.35; cursor: not-allowed; }
   .btn:disabled:hover { border-color: var(--line); color: var(--text); }
-  .cell-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-  .status-line { font-size: 10px; color: var(--muted); min-height: 14px; margin-top: 8px; }
+  .cell-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .status-line { font-size: 12px; color: var(--muted); min-height: 14px; margin-top: 8px; }
 
   footer.note {
-    margin-top: 26px; font-size: 10px; color: var(--muted); line-height: 1.7;
-    border-top: 1px solid var(--line); padding-top: 14px;
+    margin-top: 26px; font-size: 12px; color: var(--muted); line-height: 1.7;
+    border-top: 1px solid var(--line); padding-top: 14px; max-width: 74ch;
   }
 </style>
+<script src="../../assets/theme.js"></script>
+<script src="../../assets/reveal.js"></script>
 </head>
 <body>
   <div id="app">
     <header id="app-header">
+      <a class="wordmark" href="../../index.html">REN<b>K</b>ON</a>
       <div class="crumbs" id="crumbs"></div>
       <div class="mark">OVERLAY TOOLKIT</div>
     </header>
@@ -214,6 +245,14 @@
   }
 
   let palette = defaultPalette();
+  // Reload a persisted palette on mount (Lens 4B.2 — Save/Load Palette use
+  // localStorage, same reasoning as the texture tool's preset persistence
+  // below: no window.storage global exists in a plain browser). Falls back
+  // silently to the built-in default if nothing was saved yet.
+  try {
+    const savedPalette = localStorage.getItem("palette:default");
+    if (savedPalette) palette = Object.assign(defaultPalette(), JSON.parse(savedPalette));
+  } catch (e) {}
 
   /* =========================================================
      PER-ASSET LIVE PARAMS (opacity / thickness / speed / roundness)
@@ -1390,7 +1429,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     if (up) {
       const upLink = document.createElement("button");
       upLink.className = "up-link";
-      upLink.innerHTML = `<span class="up-icon" aria-hidden="true">&#8593;</span> Up to ${up.label}`;
+      upLink.innerHTML = `<span class="up-icon" aria-hidden="true">&#8592;</span> Back to ${up.label}`;
       upLink.addEventListener("click", () => { location.hash = up.hash; });
       head.appendChild(upLink);
     }
@@ -1484,9 +1523,10 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     wrap.className = "param-panel";
     const p = getParams(asset);
 
-    function row(key, label, min, max, step) {
+    function row(key, label, min, max, step, title) {
       const rowEl = document.createElement("div");
       rowEl.className = "param-row";
+      if (title) rowEl.title = title;
       const lab = document.createElement("label");
       lab.textContent = label;
       const input = document.createElement("input");
@@ -1509,10 +1549,10 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
       return rowEl;
     }
 
-    wrap.appendChild(row("opacity", "Opacity", 0.15, 1, 0.05));
-    wrap.appendChild(row("thickness", "Thickness", 0.25, 3, 0.05));
-    if (asset.engine !== "static") wrap.appendChild(row("speed", "Speed", 0.25, 3, 0.05));
-    if (asset.roundable) wrap.appendChild(row("roundness", "Roundness", 0, 16, 1));
+    wrap.appendChild(row("opacity", "Opacity", 0.15, 1, 0.05, "How see-through the overlay is"));
+    wrap.appendChild(row("thickness", "Thickness", 0.25, 3, 0.05, "Stroke / line-weight multiplier"));
+    if (asset.engine !== "static") wrap.appendChild(row("speed", "Speed", 0.25, 3, 0.05, "Animation playback speed multiplier"));
+    if (asset.roundable) wrap.appendChild(row("roundness", "Roundness", 0, 16, 1, "Corner radius on roundable elements"));
 
     const resetBtn = document.createElement("button");
     resetBtn.className = "btn";
@@ -1618,6 +1658,17 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
   }
 
   function buildPalettePanel() {
+    // Collapsed by default (Lens 4B.1) — the one place a collapsed-by-default
+    // disclosure is correct: this panel is a rarely-used advanced control
+    // (recolors every asset's roles) that dominated every customize screen
+    // even though most visits are here to tweak one asset's opacity/speed.
+    // Every control inside stays one click away.
+    const details = document.createElement("details");
+    details.className = "palette-details";
+    const summary = document.createElement("summary");
+    summary.innerHTML = '<span class="chev" aria-hidden="true">&rsaquo;</span> Palette (advanced) — recolor all assets';
+    details.appendChild(summary);
+
     const panel = document.createElement("div");
     panel.className = "palette-panel";
 
@@ -1643,16 +1694,19 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     const status = document.createElement("span");
     status.className = "save-status";
 
+    // Storage: window.storage is an environment-injected API that's never
+    // defined in a plain browser (see the identical rationale \u2014 and the
+    // same fix \u2014 for the texture tool's preset persistence, mountTextureTool
+    // -> presetStorageGet/Set below). Use localStorage directly so the
+    // button actually works in every context this app runs in.
     const saveBtn = document.createElement("button");
     saveBtn.className = "btn";
     saveBtn.textContent = "Save Palette";
-    saveBtn.addEventListener("click", async () => {
+    saveBtn.addEventListener("click", () => {
       status.textContent = "Saving\u2026";
       try {
-        if (window.storage) {
-          await window.storage.set("palette:default", JSON.stringify(palette), false);
-          status.textContent = "Saved";
-        } else { status.textContent = "Storage unavailable"; }
+        localStorage.setItem("palette:default", JSON.stringify(palette));
+        status.textContent = "Saved";
       } catch (e) { status.textContent = "Save failed"; }
       setTimeout(() => status.textContent = "", 2000);
     });
@@ -1660,18 +1714,16 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     const loadBtn = document.createElement("button");
     loadBtn.className = "btn";
     loadBtn.textContent = "Load Palette";
-    loadBtn.addEventListener("click", async () => {
+    loadBtn.addEventListener("click", () => {
       status.textContent = "Loading\u2026";
       try {
-        if (window.storage) {
-          const res = await window.storage.get("palette:default", false);
-          if (res && res.value) {
-            palette = JSON.parse(res.value);
-            applyPaletteToDOM(palette);
-            panel.querySelectorAll("input[type=color]").forEach((inp, i) => { inp.value = palette[PALETTE_ROLES[i].key]; });
-            status.textContent = "Loaded";
-          } else { status.textContent = "No saved palette"; }
-        } else { status.textContent = "Storage unavailable"; }
+        const raw = localStorage.getItem("palette:default");
+        if (raw) {
+          palette = JSON.parse(raw);
+          applyPaletteToDOM(palette);
+          panel.querySelectorAll("input[type=color]").forEach((inp, i) => { inp.value = palette[PALETTE_ROLES[i].key]; });
+          status.textContent = "Loaded";
+        } else { status.textContent = "No saved palette"; }
       } catch (e) { status.textContent = "None saved yet"; }
       setTimeout(() => status.textContent = "", 2000);
     });
@@ -1690,7 +1742,8 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     actions.appendChild(resetBtn);
     actions.appendChild(status);
     panel.appendChild(actions);
-    return panel;
+    details.appendChild(panel);
+    return details;
   }
 
   /* =========================================================
@@ -2581,6 +2634,66 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     controls.className = "param-panel texture-controls";
     main.appendChild(controls);
 
+    // Ordered, labeled sections (Lens 4A reorg): PRESET -> PATTERN -> SHAPE
+    // (+ PATTERN OPTIONS) -> SURFACE & TONE -> PREVIEW & ANIMATION. Purely a
+    // DOM-grouping helper — every row/control built below is the same
+    // element, wired the same way, just appended into a labeled container
+    // instead of one flat wall. Surface & Tone is a <details open> (expanded
+    // by default, so nothing is hidden — just collapsible for a shorter
+    // panel); see EXPORT below for the other <details open> block.
+    function section(label, opts) {
+      opts = opts || {};
+      const wrap = document.createElement(opts.details ? "details" : "div");
+      wrap.className = "control-section";
+      if (opts.details) wrap.open = true;
+      const head = document.createElement(opts.details ? "summary" : "div");
+      head.className = "section-label";
+      head.innerHTML = opts.details ? `<span class="chev" aria-hidden="true">&rsaquo;</span> ${label}` : label;
+      wrap.appendChild(head);
+      const body = document.createElement("div");
+      body.className = "texture-sliders";
+      wrap.appendChild(body);
+      controls.appendChild(wrap);
+      return body;
+    }
+
+    // --- 1. PRESET ---------------------------------------------------------
+    const presetBody = section("Preset");
+    const presetHelp = document.createElement("div");
+    presetHelp.className = "param-hint";
+    presetHelp.textContent = "Start from a preset, then tweak — or build from scratch below.";
+    presetBody.appendChild(presetHelp);
+
+    const presetRow = document.createElement("div");
+    presetRow.className = "param-row";
+    const presetRowLabel = document.createElement("label");
+    presetRowLabel.textContent = "Preset";
+    presetRow.appendChild(presetRowLabel);
+    // Preset dropdown + Save button. Population/wiring happens further down,
+    // once every control that a preset can affect (sliders, custom rows,
+    // pattern buttons, invert) has been built — the dropdown's change
+    // handler needs to resync all of it.
+    const presetSelect = document.createElement("select");
+    presetSelect.className = "btn";
+    presetSelect.title = "Load a saved preset";
+    const savePresetBtn = document.createElement("button");
+    savePresetBtn.className = "btn";
+    savePresetBtn.textContent = "Save Preset";
+    const presetStatus = document.createElement("span");
+    presetStatus.className = "param-value";
+    presetStatus.style.minWidth = "0";
+    presetRow.appendChild(presetSelect);
+    presetRow.appendChild(savePresetBtn);
+    presetRow.appendChild(presetStatus);
+    presetBody.appendChild(presetRow);
+
+    // --- 2. PATTERN ----------------------------------------------------------
+    const patternBody = section("Pattern");
+    const patternHelp = document.createElement("div");
+    patternHelp.className = "param-hint";
+    patternHelp.textContent = "Pick a base pattern. Groups: Organic, Geometric, Weathering, Pro Finish.";
+    patternBody.appendChild(patternHelp);
+
     const patternRow = document.createElement("div");
     patternRow.className = "param-row";
     const patternLabel = document.createElement("label");
@@ -2589,11 +2702,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     const patternGroup = document.createElement("div");
     patternGroup.className = "pattern-groups";
     patternRow.appendChild(patternGroup);
-    controls.appendChild(patternRow);
-
-    const sliderRowsWrap = document.createElement("div");
-    sliderRowsWrap.className = "texture-sliders";
-    controls.appendChild(sliderRowsWrap);
+    patternBody.appendChild(patternRow);
 
     const seedRow = document.createElement("div");
     seedRow.className = "param-row";
@@ -2613,24 +2722,10 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     seedRow.appendChild(seedLabel);
     seedRow.appendChild(seedValue);
     seedRow.appendChild(randomizeBtn);
+    patternBody.appendChild(seedRow);
 
-    // Preset dropdown + Save button live next to Randomize (backlog #3).
-    // Population/wiring happens further down, once every control that a
-    // preset can affect (sliders, custom rows, pattern buttons, invert) has
-    // been built — the dropdown's change handler needs to resync all of it.
-    const presetSelect = document.createElement("select");
-    presetSelect.className = "btn";
-    presetSelect.title = "Load a saved preset";
-    const savePresetBtn = document.createElement("button");
-    savePresetBtn.className = "btn";
-    savePresetBtn.textContent = "Save Preset";
-    const presetStatus = document.createElement("span");
-    presetStatus.className = "param-value";
-    presetStatus.style.minWidth = "0";
-    seedRow.appendChild(presetSelect);
-    seedRow.appendChild(savePresetBtn);
-    seedRow.appendChild(presetStatus);
-    controls.appendChild(seedRow);
+    // --- 3. SHAPE (+ PATTERN OPTIONS) --------------------------------------
+    let sliderRowsWrap = section("Shape");
 
     const sliderRefs = {};
     function row(key, label, min, max, step) {
@@ -2659,6 +2754,11 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     const scaleRow = row("scale", "Scale", 8, 160, 2);
     const octaveRow = row("octaves", "Octaves", 1, 6, 1);
     const countRow = row("count", "Count", 2, 80, 1);
+
+    const patternOptionsLabel = document.createElement("div");
+    patternOptionsLabel.className = "pattern-group-label";
+    patternOptionsLabel.textContent = "Pattern Options";
+    sliderRowsWrap.appendChild(patternOptionsLabel);
 
     // Custom control rows (declared per pattern in PATTERN_META[kind].custom):
     // built once at mount into one container per pattern -- shown only while
@@ -2729,15 +2829,16 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
       sliderRowsWrap.appendChild(wrap);
       customWraps[kind] = wrap;
     });
-
-    row("roughness", "Roughness", 0.1, 0.9, 0.05);
-    row("contrast", "Contrast", 0.5, 3, 0.05);
-    row("bumpStrength", "Bump Strength", 0.1, 3, 0.05);
-    row("lightAngle", "Light Angle", 0, 360, 5);
     countRow.style.display = "none";
 
+    // --- 4. SURFACE & TONE (<details open> — expanded by default, nothing
+    // hidden, just collapsible for a shorter panel) ------------------------
+    sliderRowsWrap = section("Surface & Tone", { details: true });
+    row("roughness", "Roughness", 0.1, 0.9, 0.05);
+    row("contrast", "Contrast", 0.5, 3, 0.05);
+
     const levelsLabel = document.createElement("div");
-    levelsLabel.className = "section-label";
+    levelsLabel.className = "pattern-group-label";
     levelsLabel.textContent = "Levels";
     sliderRowsWrap.appendChild(levelsLabel);
     row("levelsBlack", "Black Point", 0, 0.9, 0.01);
@@ -2758,6 +2859,16 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     invertRow.appendChild(invertLabel);
     invertRow.appendChild(invertInput);
     sliderRowsWrap.appendChild(invertRow);
+
+    // --- 5. PREVIEW & ANIMATION ---------------------------------------------
+    // Bump Strength / Light Angle drive the Bump Preview + Normal export
+    // lighting (not the height data itself), so they're grouped here with
+    // Animate / Tile Preview — the animate row (built further down, once the
+    // preview canvases exist) is appended into this same section body.
+    const previewAnimBody = section("Preview & Animation");
+    sliderRowsWrap = previewAnimBody;
+    row("bumpStrength", "Bump Strength", 0.1, 3, 0.05);
+    row("lightAngle", "Light Angle", 0, 360, 5);
 
     const allPatternBtns = [];
     const patternBtnByKind = {};
@@ -2966,7 +3077,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     canvasRow.className = "canvas-row";
     main.appendChild(canvasRow);
 
-    function canvasPanel(title) {
+    function canvasPanel(title, caption) {
       const panel = document.createElement("div");
       panel.className = "canvas-panel";
       const h3 = document.createElement("div");
@@ -2975,16 +3086,50 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
       const canvas = document.createElement("canvas");
       panel.appendChild(h3);
       panel.appendChild(canvas);
+      if (caption) {
+        const cap = document.createElement("div");
+        cap.className = "preview-caption";
+        cap.textContent = caption;
+        panel.appendChild(cap);
+      }
       canvasRow.appendChild(panel);
       return canvas;
     }
 
-    const textureCanvas = canvasPanel("Texture / Height Map");
-    const bumpCanvas = canvasPanel("Bump Preview (simulated light)");
+    const textureCanvas = canvasPanel("Texture / Height Map", "This is the exportable data.");
+    const bumpCanvas = canvasPanel("Bump Preview (simulated light)", "Lighting preview only — not exported as a texture. Adjust Bump Strength / Light Angle above.");
 
+    // --- 7. EXPORT: Group A "Static maps" (always visible) + Group B
+    // "Animated" (<details open> — expanded by default, nothing hidden).
+    const exportSection = document.createElement("div");
+    exportSection.className = "export-section";
+    const exportLabel = document.createElement("div");
+    exportLabel.className = "section-label";
+    exportLabel.textContent = "Export";
+    exportSection.appendChild(exportLabel);
+
+    const staticGroupLabel = document.createElement("div");
+    staticGroupLabel.className = "pattern-group-label";
+    staticGroupLabel.textContent = "Static maps";
+    exportSection.appendChild(staticGroupLabel);
     const actions = document.createElement("div");
     actions.className = "cell-actions";
-    main.appendChild(actions);
+    exportSection.appendChild(actions);
+
+    const animDetails = document.createElement("details");
+    animDetails.className = "export-section";
+    animDetails.open = true;
+    const animSummary = document.createElement("summary");
+    animSummary.className = "section-label";
+    animSummary.innerHTML = '<span class="chev" aria-hidden="true">&rsaquo;</span> Animated';
+    animDetails.appendChild(animSummary);
+    const animActions = document.createElement("div");
+    animActions.className = "cell-actions";
+    animDetails.appendChild(animActions);
+
+    main.appendChild(exportSection);
+    main.appendChild(animDetails);
+
     const statusLine = document.createElement("div");
     statusLine.className = "status-line";
     main.appendChild(statusLine);
@@ -2992,6 +3137,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     const exportTextureBtn = document.createElement("button");
     exportTextureBtn.className = "btn primary";
     exportTextureBtn.textContent = "Export Height/Bump Map PNG";
+    exportTextureBtn.title = "The grayscale height data — drop into a bump/height slot";
     exportTextureBtn.addEventListener("click", () => {
       statusLine.textContent = "Rendering at " + TEXTURE_EXPORT_SIZE + "px\u2026";
       setTimeout(() => {
@@ -3007,6 +3153,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     const exportPreviewBtn = document.createElement("button");
     exportPreviewBtn.className = "btn";
     exportPreviewBtn.textContent = "Export Preview Render PNG";
+    exportPreviewBtn.title = "The shaded relief preview as a PNG — visual only, not a texture map";
     exportPreviewBtn.addEventListener("click", () => {
       statusLine.textContent = "Rendering at " + TEXTURE_EXPORT_SIZE + "px\u2026";
       setTimeout(() => {
@@ -3022,6 +3169,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     const exportNormalBtn = document.createElement("button");
     exportNormalBtn.className = "btn";
     exportNormalBtn.textContent = "Export Normal Map PNG";
+    exportNormalBtn.title = "Tangent-space RGB normal map via Sobel — usually preferred over height for surface detail";
     exportNormalBtn.addEventListener("click", () => {
       statusLine.textContent = "Rendering at " + TEXTURE_EXPORT_SIZE + "px…";
       setTimeout(() => {
@@ -3047,6 +3195,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     const exportFramesBtn = document.createElement("button");
     exportFramesBtn.className = "btn";
     exportFramesBtn.textContent = "Export Frame Sequence (PNG)";
+    exportFramesBtn.title = "Renders one full animation loop as a numbered PNG sequence in a new tab";
     exportFramesBtn.addEventListener("click", () => {
       exportFrameSequence(parseInt(frameCountSelect.value, 10));
     });
@@ -3093,8 +3242,8 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     actions.appendChild(exportTextureBtn);
     actions.appendChild(exportPreviewBtn);
     actions.appendChild(exportNormalBtn);
-    actions.appendChild(frameCountSelect);
-    actions.appendChild(exportFramesBtn);
+    animActions.appendChild(frameCountSelect);
+    animActions.appendChild(exportFramesBtn);
 
     const foot = document.createElement("footer");
     foot.className = "note";
@@ -3187,7 +3336,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     const tileBtn = document.createElement("button");
     tileBtn.className = "btn";
     tileBtn.type = "button";
-    tileBtn.textContent = "Tile Preview";
+    tileBtn.textContent = "Tile Preview (QA)";
     tileBtn.title = "QA view: repeat the current map 3×3 at 1/3 scale to reveal spatial seams. Display-only — exports are unaffected.";
     tileBtn.addEventListener("click", () => {
       tilePreview = !tilePreview;
@@ -3199,7 +3348,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     animRow.appendChild(tileBtn);
     animRow.appendChild(loopInput);
     animRow.appendChild(loopVal);
-    controls.appendChild(animRow);
+    previewAnimBody.appendChild(animRow);
 
     regenerate();
   }
