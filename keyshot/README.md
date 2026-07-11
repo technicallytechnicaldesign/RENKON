@@ -10,8 +10,9 @@ conventions.
 
 ```
 keyshot/
-  scripts/    current lux/luxmath scripts (batch render, turntable, animation)
-  index.html  live inventory page
+  scripts/            current lux/luxmath scripts (batch render, turntable, animation, helpers)
+  scripts/archive/    superseded scripts, kept for reference only — not part of the active pipeline
+  index.html          live inventory page
   SCRIPT_STOCK.md            at-a-glance inventory + prioritized backlog
   RESEARCH_CREO_KEYSHOT.md   research notes behind the backlog
 ```
@@ -23,9 +24,18 @@ don't replace it, as scripts move through the pipeline.
 
 | Script | Stage | What it does |
 |---|---|---|
+| [`1_HLP_MAT_PREFLIGHT_AA01.py`](scripts/1_HLP_MAT_PREFLIGHT_AA01.py) | 1 &middot; HLP | Material-template coverage QC, ahead of a full batch render |
 | [`2a_BAT_STD_VIEW_AA01.py`](scripts/2a_BAT_STD_VIEW_AA01.py) | 2a &middot; BAT | Studios-first multi-view batch render |
 | [`2a_BAT_TURNTABLE_AA01.py`](scripts/2a_BAT_TURNTABLE_AA01.py) | 2a &middot; BAT | Studios-first 360&deg; turntable batch |
 | [`2b_ANI_HERO_REVEAL_AA01.py`](scripts/2b_ANI_HERO_REVEAL_AA01.py) | 2b &middot; ANI | Zoom+crane hero reveal, synced to Model Set animation |
+| [`3_PRC_CONTACT_SHEET_AA01.py`](scripts/3_PRC_CONTACT_SHEET_AA01.py) | 3 &middot; PRC | Standalone HTML contact sheet from a batch's rendered output |
+
+### Archived (`scripts/archive/`)
+
+| Script | Superseded by |
+|---|---|
+| `batch_turntable.py` | `2a_BAT_TURNTABLE_AA01.py` |
+| `batch_import_and_render_all_views.py` | `2a_BAT_STD_VIEW_AA01.py` |
 
 ## Naming convention
 
