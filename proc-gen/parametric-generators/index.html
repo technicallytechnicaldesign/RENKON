@@ -2163,18 +2163,168 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     return data;
   }
 
+  // --- P2 stretch goals (docs/ADVANCED_TEXTURES.md, "P2 -- stretch goals,
+  // fleshed out") -- Knurling, Orange Peel, Anodize Swirl. Same Pro Finish
+  // family and custom-param mechanism as Machining Marks/Paint Strokes
+  // above; built in the doc's suggested order (cheapest/most-reused-
+  // machinery first): Knurling (pure math, reuses Machining's cosine-groove
+  // profile), Orange Peel (small extension of Cellular's Worley machinery),
+  // Anodize Swirl (extends Paint Strokes' accumulation loop with ring-biased
+  // seeding + a tangential base direction).
+
+  function generateKnurling(w, h, p) {
+    const c = (p.custom && p.custom.knurl) || {};
+    const res = w / TEXTURE_PREVIEW_SIZE; // custom lengths are "px at preview size"
+    const pitch = Math.max(2, c.pitch != null ? c.pitch : 10) * res;
+    const angleDeg = c.angle != null ? c.angle : 30;
+    const cross = c.mode !== "straight"; // default: diamond (crossed) knurl
+    const angleA = angleDeg * Math.PI / 180;
+    const angleB = angleA + Math.PI / 2; // second band derived from angle+90,
+    // not a hardcoded +-45 -- so `angle` drives the whole pattern's
+    // orientation and any crossing (not just a symmetric diamond) is reachable.
+    const axA = Math.cos(angleA), ayA = Math.sin(angleA);
+    const axB = Math.cos(angleB), ayB = Math.sin(angleB);
+    // Roughness = groove-edge sharpness, same role as Machining Marks (low
+    // keeps a crisp full-depth cosine groove, high flattens toward mid-gray).
+    const depth = Math.min(1, 1.05 - p.roughness);
+    // Animated: both bands' phase advances together -- reads as the tool
+    // still cutting. Phase subtracted inside the cosine -> time 0 and time 1
+    // land on the same groove position (seamless loop).
+    const phase = p.animate ? (p.time || 0) : 0;
+    const data = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const dA = x * axA + y * ayA;
+        const bandA = 0.5 + 0.5 * Math.cos((dA / pitch - phase) * 2 * Math.PI) * depth;
+        if (cross) {
+          const dB = x * axB + y * ayB;
+          const bandB = 0.5 + 0.5 * Math.cos((dB / pitch - phase) * 2 * Math.PI) * depth;
+          data[y * w + x] = bandA * bandB;
+        } else {
+          data[y * w + x] = bandA;
+        }
+      }
+    }
+    return data;
+  }
+
+  function generateOrangePeel(w, h, p) {
+    const c = (p.custom && p.custom.peel) || {};
+    const blend = c.blend != null ? c.blend : 0.25;
+    const rng = mulberry32(p.seed);
+    const count = Math.max(2, Math.round(p.count));
+    // Fine dimpling reads at a noticeably smaller cell size than Cellular's
+    // own blobs -- w/(count*3), not Cellular's w/count.
+    const cellSize = Math.max(3, w / (count * 3));
+    const field = buildWorleyField(w, h, cellSize, rng);
+    // Low-frequency noise blended in for irregularity, so cells don't look
+    // perfectly regular -- sized to the same order as the Worley cells
+    // themselves (not an unrelated frequency) so the two read as one finish.
+    const noiseField = buildValueField(w, h, Math.max(4, cellSize * 1.5), mulberry32((p.seed ^ 0x27D4EB2F) >>> 0));
+    // Animated: reuse Cellular's wiggle-the-feature-points trick verbatim --
+    // already seamless, already proven; this is a finish variant of
+    // Cellular, not a new animation personality.
+    const wiggle = p.animate ? cellSize * 0.18 : 0;
+    const tm = p.time || 0;
+    // Roughness = Worley falloff softness, same role it plays in generateCellular.
+    const soft = 0.15 + p.roughness * 0.7;
+    const data = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const { d1 } = sampleWorley(field, x, y, wiggle, tm);
+        const worleyValue = 1 - Math.min(1, d1 / (cellSize * soft));
+        const noiseValue = sampleField(noiseField, x, y);
+        data[y * w + x] = worleyValue * (1 - blend) + noiseValue * blend;
+      }
+    }
+    return data;
+  }
+
+  function generateAnodizeSwirl(w, h, p) {
+    const c = (p.custom && p.custom.anodize) || {};
+    const res = w / TEXTURE_PREVIEW_SIZE; // custom lengths are "px at preview size"
+    const strokeLength = Math.max(8, c.strokeLength != null ? c.strokeLength : 80) * res;
+    const turbulence = c.turbulence != null ? c.turbulence : 0.5;
+    const rng = mulberry32(p.seed);
+    const cx = w / 2, cy = h / 2;
+    const maxRadius = Math.sqrt(cx * cx + cy * cy);
+    // Same flow field role as Paint Strokes: perturbs the base direction so
+    // strokes don't look mechanically perfect.
+    const flowField = buildValueField(w, h, Math.max(16, w / 5), mulberry32((p.seed ^ 0x1B873593) >>> 0));
+    const count = Math.max(1, Math.round(p.count));
+    const stepLen = Math.max(1, 2 * res);
+    const brushR = Math.max(1.5, 5 * res);
+    // Roughness = dab softness, same role it plays in generatePaintStrokes.
+    const soft = 0.8 + p.roughness * 2.4;
+    const tm = p.time || 0;
+    const data = new Float32Array(w * h).fill(0.18);
+    for (let i = 0; i < count; i++) {
+      // Ring-biased seeding: sqrt(rng()) gives a uniform-area distribution
+      // over the disc (rather than uniform-radius, which over-concentrates
+      // points near dead-center) -- radial brushing reads denser away from
+      // the center, not uniformly across the whole canvas.
+      const r = maxRadius * Math.sqrt(rng());
+      const theta = rng() * 2 * Math.PI;
+      let sx = cx + r * Math.cos(theta), sy = cy + r * Math.sin(theta);
+      const strength = 0.3 + rng() * 0.4;
+      const stagger = rng();
+      // Animated: same progressive-reveal trick as Paint Strokes, including
+      // the same documented one-frame loop-boundary snap (frame just before
+      // the loop shows fully-grown strokes, frame 0 shows 0% grown) -- this
+      // is the same deliberate, accepted trade-off Paint Strokes' own
+      // comment calls out, not a new bug. Static (animate off) renders the
+      // fully grown strokes, matching Paint Strokes' convention.
+      const reveal = p.animate ? Math.max(0, Math.min(1, tm * 1.25 - stagger * 0.25)) : 1;
+      const steps = Math.max(2, Math.round(strokeLength / stepLen));
+      const drawn = Math.round(steps * reveal);
+      for (let s = 0; s < drawn; s++) {
+        const t = s / steps;
+        const rr = brushR * (0.45 + 0.55 * Math.sin(Math.PI * t));
+        const x0 = Math.max(0, Math.floor(sx - rr)), x1 = Math.min(w, Math.ceil(sx + rr));
+        const y0 = Math.max(0, Math.floor(sy - rr)), y1 = Math.min(h, Math.ceil(sy + rr));
+        for (let yy = y0; yy < y1; yy++) {
+          for (let xx = x0; xx < x1; xx++) {
+            const dx = xx - sx, dy = yy - sy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < rr) {
+              const fall = Math.pow(1 - dist / rr, soft);
+              const idx = yy * w + xx;
+              data[idx] = Math.min(1, data[idx] + fall * strength * 0.45);
+            }
+          }
+        }
+        // Tangential base direction, recomputed each step from the stroke's
+        // *current* position -- atan2(y - cy, x - cx) + PI/2 is perpendicular
+        // to the radius vector from canvas center, so the stroke curves
+        // around the center instead of following one fixed straight angle
+        // (that's what makes this "radial variant of Paint Strokes" rather
+        // than just Paint Strokes with a different seed distribution). Still
+        // perturbed by the same turbulence-scaled flow-field bend Paint
+        // Strokes uses, so it doesn't look mechanically perfect.
+        const baseAngle = Math.atan2(sy - cy, sx - cx) + Math.PI / 2;
+        const fx = Math.min(w - 1, Math.max(0, sx));
+        const fy = Math.min(h - 1, Math.max(0, sy));
+        const bend = (sampleField(flowField, fx, fy) - 0.5) * turbulence * 3;
+        sx += Math.cos(baseAngle + bend) * stepLen;
+        sy += Math.sin(baseAngle + bend) * stepLen;
+      }
+    }
+    return data;
+  }
+
   const TEXTURE_GENERATORS = {
     noise: generateNoise, cellular: generateCellular, wood: generateWood,
     grid: generateGrid, waves: generateWaves,
     scratches: generateScratches, splotches: generateSplotches, cracks: generateCracks,
-    machining: generateMachining, paint: generatePaintStrokes
+    machining: generateMachining, paint: generatePaintStrokes,
+    knurl: generateKnurling, peel: generateOrangePeel, anodize: generateAnodizeSwirl
   };
 
   const PATTERN_GROUPS = [
     { label: "Organic", kinds: ["noise", "cellular", "wood"] },
     { label: "Geometric", kinds: ["grid", "waves"] },
     { label: "Weathering", kinds: ["scratches", "splotches", "cracks"] },
-    { label: "Pro Finish", kinds: ["machining", "paint"] }
+    { label: "Pro Finish", kinds: ["machining", "paint", "knurl", "peel", "anodize"] }
   ];
   // Each entry may optionally declare a `custom` array of extra controls on
   // top of the shared slider set: { key, label, type: "range"|"select", ... }.
@@ -2203,6 +2353,32 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     },
     paint: {
       name: "Paint Strokes",
+      params: { scale: false, octaves: false, count: true },
+      custom: [
+        { key: "strokeLength", label: "Stroke Length", type: "range", min: 20, max: 200, step: 5, default: 80 },
+        { key: "turbulence", label: "Turbulence", type: "range", min: 0, max: 1, step: 0.05, default: 0.5 }
+      ]
+    },
+    knurl: {
+      name: "Knurling",
+      params: { scale: false, octaves: false, count: false },
+      custom: [
+        { key: "angle", label: "Angle", type: "range", min: 0, max: 90, step: 1, default: 30 },
+        { key: "pitch", label: "Pitch", type: "range", min: 2, max: 40, step: 1, default: 10 },
+        { key: "mode", label: "Mode", type: "select",
+          options: [{ value: "cross", label: "Cross" }, { value: "straight", label: "Straight" }],
+          default: "cross" }
+      ]
+    },
+    peel: {
+      name: "Orange Peel",
+      params: { scale: false, octaves: false, count: true },
+      custom: [
+        { key: "blend", label: "Blend", type: "range", min: 0, max: 0.6, step: 0.05, default: 0.25 }
+      ]
+    },
+    anodize: {
+      name: "Anodize Swirl",
       params: { scale: false, octaves: false, count: true },
       custom: [
         { key: "strokeLength", label: "Stroke Length", type: "range", min: 20, max: 200, step: 5, default: 80 },
@@ -2321,7 +2497,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
 
   // Sobel-filter height-to-normal-map conversion (feature backlog #2). Operates
   // on the same grayscale `data` array computeTextureData produces, at export
-  // size — pattern-agnostic (works for all 10 patterns unmodified). `at()`
+  // size — pattern-agnostic (works for all pattern kinds unmodified). `at()`
   // wraps toroidally regardless of whether the source pattern actually tiles
   // (see docs/FEATURE_BACKLOG.md item #2): for non-tiling patterns this is a
   // harmless one-pixel-wide inaccuracy at the border, and avoids needing

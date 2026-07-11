@@ -11,6 +11,86 @@ Versioning: informal `vN` milestones tagged in git as `paramgen-vN`.
 
 ## [Unreleased]
 
+### Added — Pro Finish P2: Knurling, Orange Peel, Anodize Swirl
+- Three more art-directed patterns join the **Pro Finish** group (now
+  `machining`, `paint`, `knurl`, `peel`, `anodize`), per
+  `docs/ADVANCED_TEXTURES.md`'s "P2 — stretch goals, fleshed out" spec. All
+  three ship through the existing generic plumbing with zero changes to
+  preset/tiling/export code — `PATTERN_GROUPS`, `PATTERN_META`,
+  `TEXTURE_GENERATORS`, and the custom-param mechanism (`state.custom[kind]`)
+  already covered them; only additive entries were needed.
+- **Knurling**: two directional cosine-groove bands (same profile Machining
+  Marks established) crossed at a user-controlled `angle` and `angle + 90°` —
+  derived, not hardcoded to ±45, so any crossing (not just a symmetric
+  diamond) is reachable. Custom params: `angle` (0–90°, default 30),
+  `pitch` (2–40, preview-size-normalized like Machining's), and `mode` — a
+  2-option `select` (`cross`/`straight`) standing in for a boolean, since the
+  shipped custom-param mechanism has no checkbox type. `cross` multiplies the
+  two bands (`bandA * bandB`) for a diamond knurl; `straight` uses `bandA`
+  alone. Reuses shared `roughness` for groove-edge depth, same role as
+  Machining Marks. Animate: both bands' phase advances together (tool still
+  cutting) — seamless loop, static (animate off) matches the `time=0` frame,
+  same convention as Machining Marks/Wood Grain/Waves.
+- **Orange Peel**: fine Worley dimpling blended with low-frequency noise for
+  irregularity — `data[i] = worleyValue*(1-blend) + noiseValue*blend`. Cell
+  size is `w/(count*3)`, noticeably finer than Cellular's own `w/count`, so
+  it reads as dimpling rather than blobs even at `blend = 0`. Custom param:
+  `blend` (0–0.6, default 0.25); reuses shared `count` (cell density) and
+  `roughness` (Worley falloff softness, same role as in Cellular). Animate:
+  reuses Cellular's wiggle-the-feature-points trick verbatim rather than
+  inventing new motion — this is a finish variant of Cellular, not a new
+  animation personality, so it also inherits Cellular's existing convention
+  where the un-animated static frame (no wiggle) is not pixel-identical to
+  the animated frame at `time=0` (wiggle evaluated at each point's own
+  phase) — that's Cellular's own established, already-shipped behavior, not
+  a regression or a new quirk introduced here.
+- **Anodize Swirl**: a radial variant of Paint Strokes — same accumulation
+  loop (seed points, step-and-deposit-a-dab, `Math.min(1, existing + dab)`),
+  but the base stroke direction is recomputed every step as
+  `atan2(y - cy, x - cx) + PI/2` (tangential to the radius from canvas
+  center) instead of one fixed straight angle, still perturbed by the same
+  turbulence-scaled flow-field bend Paint Strokes uses. Seed points are
+  ring-biased (`r = maxRadius * sqrt(rng())`, uniform-area over the disc)
+  rather than uniform-random, since radial brushing reads denser away from
+  dead-center. Custom params: `strokeLength`/`turbulence`, same names and
+  preview-size normalization as Paint Strokes (safe to reuse — the mechanism
+  namespaces by pattern kind). Animate: same progressive-reveal trick and the
+  same documented one-frame loop-boundary snap as Paint Strokes; static
+  (animate off) renders fully-grown strokes, matching Paint Strokes'
+  convention.
+- **Verified headless** (Edge, driven through the live UI via a scratch
+  `window.__TEST__` hook exposing `state`/`regenerate` — not by calling
+  internal functions directly, and not present in the shipped file): no
+  `NaN` and non-degenerate min/max spread for all 3 new patterns at both
+  320px preview and 1024px export size; custom controls render with correct
+  labels/types (`select` for Knurling's Mode, `range` for Angle/Pitch/Blend/
+  Stroke Length/Turbulence) and are hidden for all other 12 patterns (10
+  pre-existing + the other 2 new ones) — confirmed by inspecting every
+  pattern's custom-wrap visibility across all 13 kinds; changing each custom
+  param changes the output hash; Knurling's `cross` vs `straight` modes
+  produce different hashes and changing `angle`/`pitch` changes structure;
+  Orange Peel's `blend` changes output and, even at `blend = 0`, differs from
+  plain Cellular in both hash and pixel-level structure (finer cell
+  frequency from the `w/(count*3)` cell size) — confirming it doesn't
+  collapse to a re-parameterized Cellular; Anodize Swirl's direction verified
+  genuinely tangential by re-deriving the exact `baseAngle` formula at two
+  canvas points 90° apart — dot product with each point's own radius vector
+  is 0 (perpendicular to radius, ruling out radial-outward) and the two
+  points' direction vectors have a nonzero cross product / zero dot product
+  with each other (not parallel, ruling out one fixed straight angle); 4
+  distinct `time` values produce 4 distinct frame hashes for all 3 new
+  patterns; static-vs-animated-`time=0` matches each pattern's documented
+  convention (Knurling: static == t=0, seamless-loop family; Orange Peel:
+  static != t=0, inherited from Cellular's own established behavior; Anodize
+  Swirl: static == fully-grown != t=0, same accepted snap as Paint Strokes).
+  **Regression**: all 10 pre-existing patterns' static output AND 4 sampled
+  animated frames each are byte-identical (same FNV-1a-style pixel hash)
+  between the pre-edit baseline and the post-edit file, at a fixed seed —
+  zero drift from adding the 3 new patterns. Round-trip: set distinctive
+  custom values on all 5 Pro Finish kinds, hopped through all 13 patterns,
+  confirmed every kind's values survived unchanged (no cross-contamination
+  via the shared `state.custom[kind]` namespacing).
+
 ### Added — Overlay Asset Customizer: Export Frames (retires `gif.js`)
 - **Export Frames** on the Overlay Asset Customizer replaces the old
   **Export GIF** button. `exportFrameSequence()` reuses the existing
