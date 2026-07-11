@@ -40,18 +40,24 @@
 
   #app-header {
     display: flex; align-items: baseline; gap: 20px;
-    padding: 18px 28px; border-bottom: 1px solid var(--line);
+    padding: 18px 150px 18px 28px; border-bottom: 1px solid var(--line);
     position: sticky; top: 0; background: var(--bg); z-index: 10;
   }
-  #app-header .crumbs { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  #app-header .crumbs {
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+    min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   #app-header .crumbs button {
     background: none; border: none; color: var(--c-accent); font-size: 11px;
     letter-spacing: 0.08em; text-transform: uppercase; padding: 0; font-family: inherit;
   }
   #app-header .crumbs button:hover { text-decoration: underline; }
-  #app-header .mark { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; margin-left: auto; }
-  #app-header .wordmark { font-size: 14px; letter-spacing: 0.28em; font-weight: 500; margin-right: 24px; }
+  #app-header .mark { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; margin-left: auto; flex: none; }
+  #app-header .wordmark { font-size: 14px; letter-spacing: 0.28em; font-weight: 500; margin-right: 24px; flex: none; }
   #app-header .wordmark b { color: var(--c-accent); font-weight: 500; }
+  @media (max-width: 600px) {
+    #app-header { padding: 14px 120px 14px 18px; gap: 12px; }
+  }
   #app-main { padding: 28px; max-width: 1400px; margin: 0 auto; }
 
   .page-head { margin-bottom: 24px; }
@@ -2634,13 +2640,17 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     controls.className = "param-panel texture-controls";
     main.appendChild(controls);
 
-    // Ordered, labeled sections (Lens 4A reorg): PRESET -> PATTERN -> SHAPE
-    // (+ PATTERN OPTIONS) -> SURFACE & TONE -> PREVIEW & ANIMATION. Purely a
-    // DOM-grouping helper — every row/control built below is the same
-    // element, wired the same way, just appended into a labeled container
-    // instead of one flat wall. Surface & Tone is a <details open> (expanded
-    // by default, so nothing is hidden — just collapsible for a shorter
-    // panel); see EXPORT below for the other <details open> block.
+    // Ordered, labeled sections (Lens 4A reorg, later made uniformly
+    // collapsible for the mobile-responsiveness pass): PRESET -> PATTERN ->
+    // SHAPE (+ PATTERN OPTIONS) -> SURFACE & TONE -> PREVIEW & ANIMATION.
+    // Purely a DOM-grouping helper — every row/control built below is the
+    // same element, wired the same way, just appended into a labeled
+    // container instead of one flat wall. Every section here is a
+    // <details open> (expanded by default, so nothing is hidden — just
+    // collapsible, so a long control panel doesn't have to stay fully
+    // expanded on a small screen); see EXPORT below for the export group's
+    // own <details open> block. The primary "Static maps" export actions
+    // are deliberately NOT collapsible — see EXPORT.
     function section(label, opts) {
       opts = opts || {};
       const wrap = document.createElement(opts.details ? "details" : "div");
@@ -2658,7 +2668,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     }
 
     // --- 1. PRESET ---------------------------------------------------------
-    const presetBody = section("Preset");
+    const presetBody = section("Preset", { details: true });
     const presetHelp = document.createElement("div");
     presetHelp.className = "param-hint";
     presetHelp.textContent = "Start from a preset, then tweak — or build from scratch below.";
@@ -2688,7 +2698,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     presetBody.appendChild(presetRow);
 
     // --- 2. PATTERN ----------------------------------------------------------
-    const patternBody = section("Pattern");
+    const patternBody = section("Pattern", { details: true });
     const patternHelp = document.createElement("div");
     patternHelp.className = "param-hint";
     patternHelp.textContent = "Pick a base pattern. Groups: Organic, Geometric, Weathering, Pro Finish.";
@@ -2725,7 +2735,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     patternBody.appendChild(seedRow);
 
     // --- 3. SHAPE (+ PATTERN OPTIONS) --------------------------------------
-    let sliderRowsWrap = section("Shape");
+    let sliderRowsWrap = section("Shape", { details: true });
 
     const sliderRefs = {};
     function row(key, label, min, max, step) {
@@ -2865,7 +2875,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     // lighting (not the height data itself), so they're grouped here with
     // Animate / Tile Preview — the animate row (built further down, once the
     // preview canvases exist) is appended into this same section body.
-    const previewAnimBody = section("Preview & Animation");
+    const previewAnimBody = section("Preview & Animation", { details: true });
     sliderRowsWrap = previewAnimBody;
     row("bumpStrength", "Bump Strength", 0.1, 3, 0.05);
     row("lightAngle", "Light Angle", 0, 360, 5);

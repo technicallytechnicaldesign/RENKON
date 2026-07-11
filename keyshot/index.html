@@ -30,12 +30,16 @@
 
   header {
     display: flex; align-items: baseline; justify-content: space-between;
-    padding: 18px 28px; border-bottom: 1px solid var(--line);
+    flex-wrap: wrap; row-gap: 4px; column-gap: 16px;
+    padding: 18px 150px 18px 28px; border-bottom: 1px solid var(--line);
   }
-  header .wordmark { font-size: 14px; letter-spacing: 0.28em; font-weight: 500; }
+  header .wordmark { font-size: 14px; letter-spacing: 0.28em; font-weight: 500; flex: none; }
   header .wordmark b { color: var(--c-accent); font-weight: 500; }
   header .wordmark:hover { color: var(--text); }
   header .meta { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+  @media (max-width: 600px) {
+    header { padding: 14px 120px 14px 18px; }
+  }
 
   main { flex: 1; padding: 40px 28px 56px; max-width: 1120px; margin: 0 auto; width: 100%; }
 

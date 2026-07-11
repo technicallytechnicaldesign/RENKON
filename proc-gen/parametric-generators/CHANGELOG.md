@@ -11,6 +11,46 @@ Versioning: informal `vN` milestones tagged in git as `paramgen-vN`.
 
 ## [Unreleased]
 
+### Fixed — Responsive nav collision + expandable menus (mobile follow-up)
+On narrow viewports the `.rk-nav` pill (`assets/menu.js`) — centered and, since
+the light/dark pass, three buttons wide (Home/Menu/Theme) — floated directly on
+top of the header content on the Texture & Bump Map Generator page, crushing
+the breadcrumb text under it. Fixed the collision and used it as the occasion
+to declutter the nav generally, per the "use expandable menus/icons to make it
+less busy" ask:
+- **`assets/menu.js`**: `.rk-nav` moved from centered-floating (`left:50% +
+  translateX`) to a fixed top-right corner (`right:16px`, `10px`/`480px`
+  breakpoint), so it no longer sits over left-aligned header content at any
+  width.
+- **`assets/theme.js`**: the theme toggle no longer renders as its own
+  persistent third square in the pill. It now folds into menu.js's existing
+  expandable `.rk-pop` popover as the first menu item (icon + "Switch to
+  light/dark mode" label), so the pill itself stays at two buttons (Home +
+  Menu) — literally the same footprint as before light/dark mode shipped.
+  Falls back to the old standalone-button behavior if `.rk-pop` isn't present
+  for some reason.
+- **Header CSS, all four pages**: `header`/`#app-header` now reserve
+  `padding-right` for the pill's footprint and allow wrapping
+  (`flex-wrap: wrap` on root/keyshot, ellipsis-truncation via `min-width: 0` +
+  `text-overflow: ellipsis` on proc-gen's `.crumbs`, since that header is
+  `position: sticky` and shouldn't grow tall). Verified headless at 360–430px:
+  no rect overlap between `.rk-nav` and any header text on any of the four
+  pages.
+- **Texture & Bump Map Generator control panel**: the remaining flat sections
+  (Preset, Pattern, Shape, Preview & Animation) are now `<details open>` with
+  the same chevron affordance Surface & Tone already had, so the whole panel
+  is uniformly collapsible — expanded by default (nothing hidden), collapsible
+  per-section on a small screen instead of one long scroll. The primary
+  "Static maps" export actions stay a plain, always-visible, non-collapsible
+  section — that's the main call to action and shouldn't cost a tap to reach.
+- Verified headless (Edge, mobile viewport 390–430px + a functional regression
+  pass at desktop width): zero nav/header overlap on all four pages; popover
+  opens with the theme item first and 6 items total; theme flips dark→light
+  through the new popover item; all 5 `details.control-section` elements
+  present and open by default on first load; 17 pattern-related buttons, the
+  6-option preset dropdown, Randomize, and all 4 export buttons (with their
+  tooltips) present and clickable with zero JS console errors after the reorg.
+
 ### Changed — Site-wide design review: readability, cohesion, light/dark mode, generator usability
 Implements `docs/DESIGN_REVIEW.md` (all four lenses) across all four live pages
 (root `index.html`, this tool, `keyshot/index.html`, `keyshot/scripts.html`).

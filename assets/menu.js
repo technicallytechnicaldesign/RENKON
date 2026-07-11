@@ -44,8 +44,8 @@
 
   // --- styles ------------------------------------------------------------
   var css = ''
-    + '.rk-nav{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:9999;'
-    + 'font-family:"IBM Plex Mono","Courier New",monospace;display:flex;gap:12px;align-items:flex-start}'
+    + '.rk-nav{position:fixed;top:10px;right:16px;z-index:9999;'
+    + 'font-family:"IBM Plex Mono","Courier New",monospace;display:flex;gap:10px;align-items:flex-start}'
     + '.rk-nav *{box-sizing:border-box}'
     + '.rk-btn{-webkit-appearance:none;appearance:none;cursor:pointer;border:1px solid var(--line,#1c2733);'
     + 'background:var(--panel-bg,#0d1520);color:var(--text,#e8e8e0);width:54px;height:54px;padding:11px;'
@@ -86,7 +86,7 @@
     + 'font-family:inherit;font-size:9px}'
     + '@media (prefers-reduced-motion:reduce){.rk-btn,.rk-home svg,.rk-pop,.rk-item{transition:none}'
     + '.rk-btn:hover,.rk-home:hover svg{transform:none}}'
-    + '@media (max-width:480px){.rk-nav{top:8px;gap:10px}.rk-btn{width:48px;height:48px;padding:10px}.rk-btn svg{width:26px;height:26px}}';
+    + '@media (max-width:480px){.rk-nav{top:8px;right:10px;gap:8px}.rk-btn{width:48px;height:48px;padding:10px}.rk-btn svg{width:26px;height:26px}}';
 
   var style = document.createElement("style");
   style.textContent = css;
