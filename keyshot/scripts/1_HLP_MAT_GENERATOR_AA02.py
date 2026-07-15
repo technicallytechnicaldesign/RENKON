@@ -605,8 +605,15 @@ def add_color_gradient(graph, base_node, base_color):
     ok1 = set_display(n, ["color 1", "start color", "color a"], light, ptype=PT_COLOR)
     ok2 = set_display(n, ["color 2", "end color", "color b"], dark, ptype=PT_COLOR)
     if not (ok1 or ok2):
-        print("  [warn] couldn't find Color Gradient's color-stop parameters -- it will use "
-              "KeyShot's own default gradient colors, which may look more extreme than intended")
+        # KeyShot's Color Gradient is a draggable colour bar with no named
+        # colour-stop params, so we can't set it from script -- it keeps its
+        # default (magenta->cyan) stops. Do NOT wire that into the base colour:
+        # that is the bright-magenta node seen driving the metal in the graph
+        # dump, i.e. the "wild colour" bug. Leave the node unwired (harmless)
+        # and keep the base colour intact.
+        print("  [warn] Color Gradient stops aren't script-settable on this build -- "
+              "leaving it unwired so it can't drive a garbage (magenta) colour")
+        return False
     return wire_scalar_driver(graph, n, base_node,
                               ["color", "diffuse", "tint", "reflectance"], "color")
 
