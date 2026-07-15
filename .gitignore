@@ -1,0 +1,3 @@
+# Python bytecode from local syntax checks / KeyShot script runs
+__pycache__/
+*.pyc

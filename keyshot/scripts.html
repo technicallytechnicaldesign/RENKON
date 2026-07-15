@@ -256,7 +256,7 @@
         'Material-template coverage QC, ahead of a full batch render. Imports every part, applies a material template, and reports which objects\' materials did not change &mdash; a strong signal the template has no entry for that native material name. No rendering, so it runs in seconds.'],
       ['1','HLP','current','1_HLP_MAT_LOOKUP_AA01.py',true,
         'Creo &rarr; KeyShot material-name lookup table. Loads a CSV/JSON map of native appearance names to KeyShot templates, then applies the match per object across a batch import. Prevention, complementing what preflight catches after the fact. Per-object apply is unconfirmed on this build &mdash; probes candidate setters, reports which worked.'],
-      ['1','HLP','current','1_HLP_MAT_GENERATOR_AA01.py',true,
+      ['1','HLP','current','1_HLP_MAT_GENERATOR_AA02.py',true,
         'Procedural material <em>variant</em> generator &mdash; the authoring member of the MAT family. A dialog of independently toggleable feature layers (fine noise, scratches, spots, cellular, rounded edges, fractal/occlusion roughness, colour gradient) combined onto a metal/plastic base at a chosen wear level, each build auto-named <code>MAT-&lt;TYPE&gt;-&lt;WEAR&gt;-&lt;hex&gt;</code>. Loud bump layers are capped and <code>1/&radic;n</code> amplitude-damped so stacks don\'t compound into chaos. Cellular + Colour Gradient are getattr-guarded experimental layers.'],
       ['2a','BAT','current','2a_BAT_STD_VIEW_AA01.py',true,
         'Studios-first multi-view batch render. Imports every model of a chosen extension from a folder, applies an optional material template, then renders every Studio (camera + environment) defined per part &mdash; falls back to raw cameras only when a part has none. Logs a CSV manifest.'],

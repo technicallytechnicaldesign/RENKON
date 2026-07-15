@@ -3,7 +3,7 @@
 **UID:** MWR-9C4E21
 **Rev:** 1
 **Date:** 2026-07-15
-**Audience:** whoever extends `1_HLP_MAT_GENERATOR_AA01.py` next (TJ + agent).
+**Audience:** whoever extends `1_HLP_MAT_GENERATOR_AA02.py` next (TJ + agent).
 **Status:** research/design spec — nothing built yet. This is the answer to
 "can we make wear land only where it physically would — scratches on edges,
 grime in crevices, the odd fingerprint on polished metal — instead of

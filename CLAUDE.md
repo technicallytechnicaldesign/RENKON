@@ -46,6 +46,15 @@ Practical rules:
 
 - **Git is the version history**, not filenames. Do **not** create
   `index_8.html`, `toolkit_v9.html`, etc. Keep filenames stable, commit changes.
+- **One sanctioned exception -- the `keyshot/scripts/*.py` `_REV` suffix.**
+  These follow `{PREFIX}_{AREA}_{NAME}_{REV}.py` (e.g. `_AA02`); the `_REV` is
+  *meant* to iterate. **Step it on each meaningful revision** -- rename the file
+  **and** bump the `# REV` header (letter for a breaking change, number for a
+  routine one), then update its references (README, SCRIPT_STOCK, scripts.html).
+  There is always exactly one file whose name reflects its current REV -- this
+  is NOT spawning parallel `_v8` copies (still forbidden). Per-commit churn
+  lives in git; REV marks the revision. (Missed this once -- AA01 sat static
+  across three substantive commits before being caught.)
 - Each tool carries its own `CHANGELOG.md` (human-readable narrative) and
   `README.md`. Tag milestones in git (e.g. `paramgen-v8`).
 - You review diffs → commit → push. Commit identity is set repo-local to the

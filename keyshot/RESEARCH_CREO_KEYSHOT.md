@@ -211,7 +211,7 @@ them through this map:
 | `contact_sheet.py` | `3_PRC_CONTACT_SHEET_AA01.py` |
 | `3_report` (report script) | `4_CHK_AUDIT_AA01.py` (nearest current equivalent) |
 
-### 1. Procedural material generator → now `1_HLP_MAT_GENERATOR_AA01.py`
+### 1. Procedural material generator → now `1_HLP_MAT_GENERATOR_AA02.py`
 The dropped generator is the material-*authoring* member of the `1_HLP_MAT_*`
 family (preflight = coverage QC, lookup = Creo→KeyShot mapping, **generator =
 build a material from toggleable feature layers**). It's `lux`/headless-
