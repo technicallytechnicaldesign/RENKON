@@ -93,6 +93,10 @@ things change.
 
 ## Status & priorities (2026-07-11)
 
+> **KeyShot workstream is mid-build (2026-07-15).** For the live KeyShot state,
+> test queue, next phases, and hard constraints (ASCII/no-f-strings!), read
+> **`keyshot/PICKUP.md`** first — it supersedes the KeyShot notes below.
+
 Cross-cutting snapshot for picking this repo back up. Each tool's own
 `CHANGELOG.md` has full detail; this is the summary. Update this section in
 place as things land — don't let it go stale like the old "keyshot is a
