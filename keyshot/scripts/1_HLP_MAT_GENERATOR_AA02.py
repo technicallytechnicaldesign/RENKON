@@ -571,6 +571,13 @@ def add_scratches_bump(graph, wear_mult, damping=1.0):
         set_display(n, ["directional noise"], BASE["scratch_dir_noise"])
         set_display(n, ["noise"], BASE["scratch_noise"])
         set_display(n, ["levels"], BASE["scratch_levels"])
+        # Recessed + visible: the scratch line (Color) is dark, so it reads as a
+        # groove cut INTO the surface (dark = recessed in KeyShot's bump) and,
+        # when driven into roughness, a matte streak (KeyShot treats darker as
+        # rougher). The Background (surrounding surface) stays light so the base
+        # finish and its gloss show through between scratches.
+        set_display(n, ["color"], (0.10, 0.10, 0.10), ptype=PT_COLOR)
+        set_display(n, ["background"], (0.85, 0.85, 0.85), ptype=PT_COLOR)
     return n
 
 
@@ -727,13 +734,14 @@ def build_material(opts):
     # Masking is applied per-layer here: a masked layer gets a Curvature/
     # Occlusion mask mapped onto its bump-height before it joins the bump chain.
     bump_sources = []
+    scratches_node = None  # captured so scratches can also drive roughness (below)
     if features["add_fine_noise"]:
         bump_sources.append(add_fine_noise_bump(graph))
     if features["add_scratches"]:
-        scr = add_scratches_bump(graph, wear_mult, damping)
+        scratches_node = add_scratches_bump(graph, wear_mult, damping)
         if mask_scratches:
-            scr = mask_bump_layer(graph, scr, add_curvature_mask(graph), "scratches->edges")
-        bump_sources.append(scr)
+            mask_bump_layer(graph, scratches_node, add_curvature_mask(graph), "scratches->edges")
+        bump_sources.append(scratches_node)
     if features["add_rounded_edges"]:
         bump_sources.append(add_rounded_edges_bump(graph, wear_mult, damping))
     if features["add_spots"]:
@@ -753,8 +761,14 @@ def build_material(opts):
         else:
             print("  [warn] base material has no bump input")
 
-    # --- roughness-domain: first enabled driver wins -----------------------
-    if features["add_fractal_roughness"]:
+    # --- roughness-domain: single input, first driver wins -----------------
+    # Scratches take priority: driving roughness (matte streaks) is what makes
+    # them read on a glossy metal -- bump alone is near-invisible on a mirror.
+    # Falls back to the broad fractal/occlusion drivers when scratches are off.
+    if scratches_node is not None:
+        wire_scalar_driver(graph, scratches_node, base_node, ["roughness"],
+                           "roughness (scratches)")
+    elif features["add_fractal_roughness"]:
         add_fractal_roughness(graph, base_node)
     elif features["add_occlusion_roughness"]:
         add_occlusion_roughness(graph, base_node)
