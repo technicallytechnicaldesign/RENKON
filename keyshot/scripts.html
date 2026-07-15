@@ -280,14 +280,8 @@
       ['2a','BAT','archive','batch_import_and_render_all_views.py',true,
         'Raw-camera-only predecessor of <code>2a_BAT_STD_VIEW</code>.'],
 
-      ['0','NGS','locked','0_NGS_MAT_STEEL.py',false,
-        'Not in this project\'s files &mdash; exists elsewhere.'],
-      ['0','NGS','locked','0_NGS_PROC_MATS.py',false,
-        'Not in this project\'s files &mdash; exists elsewhere.'],
       ['2b','ANI','locked','2ANI_SCATTERANIMATION_AQ.py',false,
         'Scatter tech reference for the planned particle / assembly-scatter script &mdash; exists elsewhere.'],
-      ['4','CHK','locked','3_NGS_CHECK_REPORT.py',false,
-        'Exists elsewhere; reads like a post-check under the new scheme &mdash; recommend re-prefixing <code>3_</code> &rarr; <code>4_</code> next time it\'s in a session.'],
     ];
 
     /* stage metadata for the "by stage" zones and the pipeline sub-headers */
@@ -319,10 +313,7 @@
         ['scripts/archive/batch_import_and_render_all_views.py', true, 'Raw-camera predecessor of <code>2a_BAT_STD_VIEW</code>.']
       ]},
       { code: 'REF', title: 'Referenced elsewhere', blurb: 'Scripts named in the inventory that live outside this repo &mdash; tracked so they\'re not lost.', items: [
-        ['0_NGS_MAT_STEEL.py', false, 'Steel material script &mdash; exists elsewhere.'],
-        ['0_NGS_PROC_MATS.py', false, 'Procedural materials script &mdash; exists elsewhere.'],
-        ['2ANI_SCATTERANIMATION_AQ.py', false, 'Scatter tech reference for the planned particle script.'],
-        ['3_NGS_CHECK_REPORT.py', false, 'Reads like a post-check &mdash; re-prefix <code>3_</code>&rarr;<code>4_</code> next session.']
+        ['2ANI_SCATTERANIMATION_AQ.py', false, 'Scatter tech reference for the planned particle script.']
       ]},
       { code: 'DISC', title: 'Discipline', blurb: 'Cross-cutting conventions the whole pipeline follows &mdash; see the full conventions panel below.', items: [
         ['{PREFIX}_{AREA}_{NAME}_{REV}.py', false, 'The filename convention every script obeys &mdash; stage prefix, 3-letter area, short name, revision.'],
@@ -463,7 +454,7 @@
           <code>2a_</code> batch render &middot; <code>2b_</code> animation &middot;
           <code>3_</code> post-process &middot; <code>4_</code> post-check</li>
         <li>AREA: 3-letter code &mdash; <code>BAT</code>, <code>ANI</code>, <code>HLP</code>,
-          <code>PRC</code>, <code>VAL</code>, <code>CHK</code>, <code>NGS</code>&hellip;</li>
+          <code>PRC</code>, <code>VAL</code>, <code>CHK</code>&hellip;</li>
         <li>REV: <code>XX01</code> &mdash; letter steps for a breaking change, number steps for a routine one</li>
         <li>Python 3.10+, <code>lux</code> / <code>luxmath</code> modules</li>
         <li>Headless CLI runs anything marked <code>HEADLESS COMPLIANT</code>; still needs a machine with a licensed KeyShot install</li>

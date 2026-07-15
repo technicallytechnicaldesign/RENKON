@@ -1,7 +1,7 @@
 # Script Stock
 
 Project ID: `ksrp-efbe4961`
-Last updated: 2026-07-15 (filed the procedural material generator into stage 1; synthesised the AUTO/PRO launcher research into RESEARCH_CREO_KEYSHOT.md + new backlog items)
+Last updated: 2026-07-15 (retired the NGS scripts — `1_HLP_MAT_GENERATOR` is now the single source of truth for the material generator; made it KeyShot-load-safe + fixed the empty-dialog-default crash; earlier: filed the generator into stage 1, synthesised the AUTO/PRO launcher research, added masked-wear + launcher backlog)
 
 Running at-a-glance inventory + priority backlog. Update this file, don't
 replace it, as scripts move status.
@@ -26,10 +26,9 @@ replace it, as scripts move status.
 | 4 | CHK | `4_CHK_AUDIT_AA01.py` | ✅ current | Naming-compliance + render-completeness audit — first script in stage 4 |
 | 2a | BAT | `archive/batch_turntable.py` | 🗑️ archived | Raw-camera-only predecessor of `2a_BAT_TURNTABLE_AA01.py` — moved to `scripts/archive/`, out of the active pipeline |
 | 2a | BAT | `archive/batch_import_and_render_all_views.py` | 🗑️ archived | Raw-camera-only predecessor of `2a_BAT_STD_VIEW_AA01.py` — moved to `scripts/archive/`, out of the active pipeline |
-| 0 | NGS | `0_NGS_MAT_STEEL.py` | ❓ exists elsewhere | Not in this project's files |
-| 0 | NGS | `0_NGS_PROC_MATS.py` | ❓ exists elsewhere | Not in this project's files |
 | 2b | ANI | `2ANI_SCATTERANIMATION_AQ.py` | ❓ exists elsewhere | Scatter tech — reference for the planned particle script |
-| 4* | CHK | `3_NGS_CHECK_REPORT.py` | ❓ exists elsewhere | Recommend re-prefixing `3_`→`4_` next time it's in a session |
+
+_NGS scripts retired 2026-07-15: the whole `0_NGS_*` deploy on the KeyShot machine is being dropped. `0_NGS_PROC_MATS.py` (the deployed material generator) is superseded by `1_HLP_MAT_GENERATOR` here, which is now the single source of truth — deploy from this repo, not from the old NGS copies._
 
 ## Planned / backlog (priority order)
 
