@@ -121,6 +121,7 @@ WEAR_ABBR = {"Pristine": "PRI", "Light Wear": "LGT", "Moderate Wear": "MOD", "He
 # these read as much stronger visually than the raw [0,1] numbers suggest.
 BASE = {
     "fine_noise_scale":    0.15,
+    "fine_noise_bump":     0.01,
     "fractal_scale":       4.0,
     "scratch_bump_height": 0.02,
     "scratch_density":     0.12,
@@ -548,6 +549,10 @@ def mask_bump_layer(graph, effect_node, mask_node, label):
                    label="{0}: mask -> bump height".format(label))
     if not ok:
         print("  [info] {0}: bump-height not mappable here -- left unmasked".format(label))
+        try:
+            graph.removeNode(mask_node)  # don't leave the mask node orphaned in the graph
+        except Exception:
+            pass
     return effect_node
 
 
@@ -559,25 +564,32 @@ def add_fine_noise_bump(graph):
     n = try_new_node(graph, "SHADER_TYPE_NOISE_TEXTURE", "Fine Noise")
     if n:
         set_display(n, ["scale"], BASE["fine_noise_scale"])
+        # Give it an actual (small) bump amplitude -- without this the micro-grain
+        # is dormant and surfaces read as flat CAD.
+        set_display(n, ["bump height"], BASE["fine_noise_bump"])
     return n
 
 
-def add_scratches_bump(graph, wear_mult, damping=1.0):
+def add_scratches_bump(graph, wear_mult, base_roughness, damping=1.0):
     n = try_new_node(graph, "SHADER_TYPE_SCRATCHES", "Scratches")
     if n:
-        set_display(n, ["bump height"], clamp01(BASE["scratch_bump_height"] * wear_mult * damping))
+        # NEGATIVE bump height so the scratch cuts INTO the surface (a groove),
+        # decoupled from the colour (which is set for the roughness drive below).
+        set_display(n, ["bump height"], -clamp01(BASE["scratch_bump_height"] * wear_mult * damping))
         set_display(n, ["density"], clamp01(BASE["scratch_density"] * wear_mult))
         set_display(n, ["size"], clamp01(BASE["scratch_size"] * wear_mult))
         set_display(n, ["directional noise"], BASE["scratch_dir_noise"])
         set_display(n, ["noise"], BASE["scratch_noise"])
         set_display(n, ["levels"], BASE["scratch_levels"])
-        # Recessed + visible: the scratch line (Color) is dark, so it reads as a
-        # groove cut INTO the surface (dark = recessed in KeyShot's bump) and,
-        # when driven into roughness, a matte streak (KeyShot treats darker as
-        # rougher). The Background (surrounding surface) stays light so the base
-        # finish and its gloss show through between scratches.
-        set_display(n, ["color"], (0.10, 0.10, 0.10), ptype=PT_COLOR)
-        set_display(n, ["background"], (0.85, 0.85, 0.85), ptype=PT_COLOR)
+        # Colours drive ROUGHNESS. KeyShot's convention (confirmed from the v2
+        # render, where a bright background flattened everything): brighter
+        # texture = ROUGHER. So the scratch line is light -> a matte streak that
+        # reads on gloss, and the Background is set to the base material's OWN
+        # roughness so the surrounding metal keeps its finish and its metallic
+        # sheen instead of going uniformly matte.
+        set_display(n, ["color"], (0.75, 0.75, 0.75), ptype=PT_COLOR)
+        bg = clamp01(base_roughness)
+        set_display(n, ["background"], (bg, bg, bg), ptype=PT_COLOR)
     return n
 
 
@@ -648,7 +660,11 @@ def add_color_gradient(graph, base_node, base_color):
         # dump, i.e. the "wild colour" bug. Leave the node unwired (harmless)
         # and keep the base colour intact.
         print("  [warn] Color Gradient stops aren't script-settable on this build -- "
-              "leaving it unwired so it can't drive a garbage (magenta) colour")
+              "removing it so it can't drive a garbage (magenta) colour or clutter the graph")
+        try:
+            graph.removeNode(n)
+        except Exception:
+            pass
         return False
     return wire_scalar_driver(graph, n, base_node,
                               ["color", "diffuse", "tint", "reflectance"], "color")
@@ -738,7 +754,7 @@ def build_material(opts):
     if features["add_fine_noise"]:
         bump_sources.append(add_fine_noise_bump(graph))
     if features["add_scratches"]:
-        scratches_node = add_scratches_bump(graph, wear_mult, damping)
+        scratches_node = add_scratches_bump(graph, wear_mult, base_roughness, damping)
         if mask_scratches:
             mask_bump_layer(graph, scratches_node, add_curvature_mask(graph), "scratches->edges")
         bump_sources.append(scratches_node)
