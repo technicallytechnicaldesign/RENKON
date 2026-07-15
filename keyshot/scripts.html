@@ -150,6 +150,13 @@
   .status.locked { color: var(--muted); border-style: dashed; }
   .status.unfiled { color: var(--c-accent); border-color: var(--c-accent); border-style: dashed; }
 
+  /* status + last-updated stack, right-aligned in the third column */
+  .status-col { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+  .updated {
+    font-size: 9.5px; letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--c-fluid); white-space: nowrap;
+  }
+
   /* supporting non-script item */
   .item {
     display: grid; grid-template-columns: 1fr auto; gap: 14px;
@@ -284,6 +291,30 @@
         'Scatter tech reference for the planned particle / assembly-scatter script &mdash; exists elsewhere.'],
     ];
 
+    /* Last-touched dates, from git (last commit that changed each file).
+       Regenerate from the repo root with:
+         for f in keyshot/scripts/*.py keyshot/scripts/archive/*.py; do \
+           echo "'$(basename "$f")': '$(git log -1 --format=%cs -- "$f")',"; done
+       Update whenever a script changes (or paste a fresh run of the above). */
+    var UPDATED = {
+      '0_VAL_STEP_PREFLIGHT_AA01.py': '2026-07-11',
+      '0_VAL_IMPORT_HEALTH_AA01.py': '2026-07-11',
+      '0_VAL_ORIENTATION_CHECK_AA01.py': '2026-07-11',
+      '1_HLP_MAT_PREFLIGHT_AA01.py': '2026-07-11',
+      '1_HLP_MAT_LOOKUP_AA01.py': '2026-07-11',
+      '1_HLP_MAT_GENERATOR_AA02.py': '2026-07-15',
+      '2a_BAT_STD_VIEW_AA01.py': '2026-07-11',
+      '2a_BAT_TURNTABLE_AA01.py': '2026-07-11',
+      '2b_ANI_HERO_REVEAL_AA01.py': '2026-07-11',
+      '2b_ANI_CUTAWAY_REVEAL_AA01.py': '2026-07-11',
+      '2b_ANI_ASSEMBLY_PROCEDURAL_AA01.py': '2026-07-11',
+      '3_PRC_CONTACT_SHEET_AA01.py': '2026-07-11',
+      '3_PRC_FADE_REEL_AA01.py': '2026-07-11',
+      '4_CHK_AUDIT_AA01.py': '2026-07-11',
+      'batch_turntable.py': '2026-07-11',
+      'batch_import_and_render_all_views.py': '2026-07-11'
+    };
+
     /* stage metadata for the "by stage" zones and the pipeline sub-headers */
     var STAGE_ORDER = ['0','1','2a','2b','3','4'];
     var STAGE = {
@@ -336,11 +367,14 @@
     function rowHTML(s, first) {
       var stage = s[0], area = s[1], status = s[2], file = s[3];
       var path = scriptPath(s), note = s[5];
+      var updated = UPDATED[file] || '';
       var nameHTML = path ? '<a href="' + path + '">' + file + '</a>' : file;
+      var updatedHTML = updated
+        ? '<div class="updated" title="Last touched (git commit date)">updated ' + updated + '</div>' : '';
       return '<div class="row' + (first ? ' first' : '') + '" data-stage="' + stage + '">' +
         '<div class="tag">' + stage.toUpperCase() + '<span class="area">' + area + '</span></div>' +
         '<div><div class="name">' + nameHTML + '</div><div class="note">' + note + '</div></div>' +
-        '<div class="status ' + status + '">' + statusLabel(status) + '</div>' +
+        '<div class="status-col"><div class="status ' + status + '">' + statusLabel(status) + '</div>' + updatedHTML + '</div>' +
       '</div>';
     }
     function zone(codeHTML, codeClass, title, blurb, countHTML, bodyHTML) {
