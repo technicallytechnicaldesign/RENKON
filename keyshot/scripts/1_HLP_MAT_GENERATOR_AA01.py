@@ -10,11 +10,23 @@
 # *authoring* member of the MAT family, alongside 1_HLP_MAT_PREFLIGHT
 # (coverage QC) and 1_HLP_MAT_LOOKUP (Creo -> KeyShot name mapping).
 #
+# !! KEYSHOT PYTHON CONSTRAINT -- READ BEFORE EDITING !!
+# KeyShot's embedded interpreter here predates f-strings (Python < 3.6) and its
+# console is ASCII-sensitive. Keep this file f-string-FREE (use "{0}".format())
+# and ASCII-ONLY (use -- not an em-dash). An f-string or a stray Unicode char
+# makes the whole script fail to load in the Scripting Console. Every sibling
+# script that loads cleanly obeys this; the ones that don't (this file's old
+# revision, the 2b_ANI_* set) are exactly the ones that wouldn't load.
+#
 # Confirmed layers (per KeyShot's scripting docs): Fine Noise, Scratches,
 # Rounded Edges, Spots, Fractal Noise, Occlusion. Experimental (getattr-
-# guarded — skip with a console [warn] if the lux constant is absent on this
-# build): Cellular, Colour Gradient. Full confirmed-vs-experimental notes and
-# the Thin-Film removal rationale are in the module docstring below.
+# guarded -- skip with a console [warn] if the lux constant is absent on this
+# build): Cellular, Colour Gradient. Masking (targeted wear) uses Curvature +
+# Occlusion + Color Composite (ids confirmed in the 11.0 lux ref); the exact
+# input-slot wiring is probe-and-confirm -- masking degrades to unmasked on any
+# wiring failure, so it can never break the base material. See MWR-9C4E21
+# (scripts/research/MASKED_WEAR_RESEARCH.md). Fingerprints (raster) are a
+# planned follow-on.
 
 """
 KeyShot Procedural Material Generator
@@ -36,12 +48,18 @@ Confirmed against KeyShot's own scripting docs (safe bets):
   Fine Noise, Scratches, Rounded Edges, Spots, Fractal Noise, Occlusion
 
 Experimental (constant name is a reasonable guess, not confirmed to exist
-in every KeyShot version) — these use getattr() and skip cleanly with a
+in every KeyShot version) -- these use getattr() and skip cleanly with a
 console warning if unavailable, rather than crashing:
   Cellular, Color Gradient, Thin Film
 
+Masking / targeted wear (opt-in, off by default):
+  Scratches-to-edges (Curvature mask) and Spots-to-cavities (Occlusion mask),
+  composited via Color Composite (alpha = mask). Node ids are confirmed; the
+  exact input-slot names are discovered at run time (DEBUG dumps them), and
+  any wiring failure falls back to the unmasked effect.
+
 If a toggle you enabled doesn't show up in the final material, check the
-console for a "[warn] ... not available in this KeyShot version" line —
+console for a "[warn] ... not available in this KeyShot version" line --
 that tells you definitively rather than leaving you guessing.
 """
 
@@ -73,7 +91,7 @@ WEAR_PRESETS = {"Pristine": 0.3, "Light Wear": 1.0, "Moderate Wear": 2.5, "Heavy
 WEAR_ORDER = list(WEAR_PRESETS.keys())
 WEAR_ABBR = {"Pristine": "PRI", "Light Wear": "LGT", "Moderate Wear": "MOD", "Heavy Wear": "HVY"}
 
-# Subtle base amplitudes at Light Wear (1.0x) — learned last round that
+# Subtle base amplitudes at Light Wear (1.0x) -- learned last round that
 # these read as much stronger visually than the raw [0,1] numbers suggest.
 BASE = {
     "fine_noise_scale":    0.15,
@@ -93,22 +111,22 @@ BASE = {
 }
 
 # "Loud" bump layers actually distort the surface and stack additively when
-# combined — verified against the confirmed research: KeyShot's own manual
+# combined -- verified against the confirmed research: KeyShot's own manual
 # describes Cellular as capable of "cracked surfaces, hammered metal", i.e.
 # a strong effect even alone. Rather than let any combination of these pile
 # up unbounded, LOUD_BUMP_FEATURES are capped (see randomize_feature_flags
 # and the damping factor in build_material) so total surface energy stays
 # roughly constant regardless of how many of them are active at once.
-# Fine noise is excluded from the cap — it's deliberately subtle by design.
+# Fine noise is excluded from the cap -- it's deliberately subtle by design.
 LOUD_BUMP_FEATURES = ["add_scratches", "add_rounded_edges", "add_spots", "add_cellular"]
 MAX_SIMULTANEOUS_LOUD_LAYERS = 2
 
 # Feature keys, dialog labels, and (for randomize mode) inclusion probability.
 # NOTE: Thin Film was removed. Research turned up that it's a full KeyShot
-# *material type* (its own iridescent BRDF, like Metal or Plastic) — not a
+# *material type* (its own iridescent BRDF, like Metal or Plastic) -- not a
 # texture with a bump/height output. Wiring it into a bump input slot, as
 # the previous version of this script did, is a category error with
-# undefined behavior — the leading suspect for "wild" results. Bringing
+# undefined behavior -- the leading suspect for "wild" results. Bringing
 # Thin Film back properly would mean offering it as an alternate base
 # material (MATERIAL_TYPES entry), not a layer toggle, which is a bigger
 # change than this fix.
@@ -133,6 +151,11 @@ FEATURE_PROBS = {  # used only when "Randomize features" is checked
     "add_occlusion_roughness": 0.25, "add_color_gradient": 0.12,
 }
 
+# Masking modifiers -- separate from FEATURE_KEYS so they never get swept into
+# the loud-layer cap or randomize logic. Opt-in, off by default; read straight
+# from opts in build_material.
+MASK_KEYS = ["mask_scratches_to_edges", "mask_spots_to_cavities"]
+
 DEFAULT_OPTIONS = {
     "name_prefix": "MAT",
     "material_type": "Aluminum (brushed metal)",
@@ -146,6 +169,8 @@ DEFAULT_OPTIONS = {
     "add_fractal_roughness": True,
     "add_occlusion_roughness": False,
     "add_color_gradient": False,
+    "mask_scratches_to_edges": False,
+    "mask_spots_to_cavities": False,
     "randomize_features": False,
     "random_seed": "",
     "name_filter": "",
@@ -178,11 +203,11 @@ def resolve_material_name(prefix, material_type, wear_level):
     base = (prefix or "MAT").strip().upper().replace(" ", "_") or "MAT"
     type_code = TYPE_ABBR.get(material_type, "GEN")
     wear_code = WEAR_ABBR.get(wear_level, "GEN")
-    return f"{base}-{type_code}-{wear_code}-{random_suffix()}"
+    return "{0}-{1}-{2}-{3}".format(base, type_code, wear_code, random_suffix())
 
 
 def randomize_feature_flags():
-    """Randomize, but cap how many 'loud' bump layers can stack at once —
+    """Randomize, but cap how many 'loud' bump layers can stack at once --
     independently rolling each one (the previous approach) could enable
     all four simultaneously, which compounds into chaotic surface noise
     even though each layer alone is tuned to be subtle."""
@@ -209,7 +234,7 @@ def randomize_feature_flags():
 
 def _apply_seed(opts):
     """Seed the feature/parameter RNG for reproducible variants. Blank = fully
-    random. Only meaningful with 'Randomize features' on — in manual mode the
+    random. Only meaningful with 'Randomize features' on -- in manual mode the
     look is fully determined by the checkboxes, so a seed has nothing to vary.
     Material *names* stay unique regardless (see _name_rng). Accepts an int or
     any hashable string."""
@@ -225,17 +250,17 @@ def _apply_seed(opts):
 
 
 # --------------------------------------------------------------------------
-# Options dialog (GUI only — auto-skipped in headless mode)
+# Options dialog (GUI only -- auto-skipped in headless mode)
 # --------------------------------------------------------------------------
 
 def get_options():
     if lux.isHeadless():
-        print("Headless session detected — skipping dialog, using DEFAULT_OPTIONS.")
+        print("Headless session detected -- skipping dialog, using DEFAULT_OPTIONS.")
         return dict(DEFAULT_OPTIONS)
 
     values = [
         ("name_prefix", lux.DIALOG_TEXT, "Name prefix (blank = 'MAT'):", DEFAULT_OPTIONS["name_prefix"]),
-        # DIALOG_ITEM default is an INDEX into the item list, not the label —
+        # DIALOG_ITEM default is an INDEX into the item list, not the label --
         # passing the label string here left KeyShot with no valid default and
         # (combined with the index-typed return value) silently defeated the
         # dropdown. See norm_item below for the matching return-side fix.
@@ -249,6 +274,13 @@ def get_options():
     ]
     for key in ["add_fine_noise", "add_scratches", "add_rounded_edges", "add_spots", "add_cellular"]:
         values.append((key, lux.DIALOG_CHECK, FEATURE_LABELS[key], DEFAULT_OPTIONS[key]))
+    values.append((lux.DIALOG_LABEL, "-- masking (targeted wear, opt-in) --"))
+    values.append(("mask_scratches_to_edges", lux.DIALOG_CHECK,
+                    "Scratches only on edges/corners (curvature mask)",
+                    DEFAULT_OPTIONS["mask_scratches_to_edges"]))
+    values.append(("mask_spots_to_cavities", lux.DIALOG_CHECK,
+                    "Spots / grime only in crevices (occlusion mask)",
+                    DEFAULT_OPTIONS["mask_spots_to_cavities"]))
     values.append((lux.DIALOG_LABEL, "-- roughness / color drivers (pick one of each pair) --"))
     for key in ["add_fractal_roughness", "add_occlusion_roughness", "add_color_gradient"]:
         values.append((key, lux.DIALOG_CHECK, FEATURE_LABELS[key], DEFAULT_OPTIONS[key]))
@@ -278,7 +310,7 @@ def get_options():
         # KeyShot's DIALOG_ITEM return type varies by build: usually the
         # selected index (int), sometimes the label (str), occasionally a
         # list. Normalise all three to a valid label and never return
-        # something that isn't a real option — the old code returned the raw
+        # something that isn't a real option -- the old code returned the raw
         # value, so an int index bypassed the selection entirely and always
         # fell through to the default material/wear.
         if isinstance(v, bool):
@@ -309,13 +341,13 @@ def dump_node(node, label=""):
         node_label = label or node.getType()
     except Exception:
         node_label = label or "?"
-    print(f"--- {node_label} ---")
+    print("--- {0} ---".format(node_label))
     try:
         for p in node.getParameters():
-            print(f"    name={p.getName()!r:25} display={p.getDisplayName()!r:25} "
-                  f"type={p.getType()} pure={p.isPure()}")
+            print("    name={0:<25} display={1:<25} type={2} pure={3}".format(
+                repr(p.getName()), repr(p.getDisplayName()), p.getType(), p.isPure()))
     except Exception as e:
-        print(f"    [warn] couldn't list parameters: {e}")
+        print("    [warn] couldn't list parameters: {0}".format(e))
 
 
 def new_node(graph, shader_type, label=""):
@@ -329,12 +361,12 @@ def try_new_node(graph, attr_name, label):
     """Resolve lux.<attr_name> safely; create the node if it exists."""
     shader_type = getattr(lux, attr_name, None)
     if shader_type is None:
-        print(f"  [warn] lux.{attr_name} not available in this KeyShot version — skipping {label}")
+        print("  [warn] lux.{0} not available in this KeyShot version -- skipping {1}".format(attr_name, label))
         return None
     try:
         return new_node(graph, shader_type, label)
     except Exception as e:
-        print(f"  [warn] couldn't create {label} ({attr_name}): {e} — skipping")
+        print("  [warn] couldn't create {0} ({1}): {2} -- skipping".format(label, attr_name, e))
         return None
 
 
@@ -358,16 +390,16 @@ def set_display(node, keywords, value, ptype=None):
     label = keywords if isinstance(keywords, str) else "/".join(keywords)
     p = find_param(node, keywords, ptype)
     if p is None:
-        print(f"  [warn] no parameter matching '{label}' on this node")
+        print("  [warn] no parameter matching '{0}' on this node".format(label))
         return False
     if p.isPure():
-        print(f"  [warn] '{label}' is a connection-only (pure) parameter")
+        print("  [warn] '{0}' is a connection-only (pure) parameter".format(label))
         return False
     try:
         p.setValue(value)
         return True
     except Exception as e:
-        print(f"  [warn] couldn't set '{label}'={value!r}: {e} (left at default)")
+        print("  [warn] couldn't set '{0}'={1}: {2} (left at default)".format(label, repr(value), e))
         return False
 
 
@@ -376,7 +408,7 @@ def safe_edge(graph, source, target, param, label=""):
         graph.newEdge(source=source, target=target, param=param)
         return True
     except Exception as e:
-        print(f"  [warn] couldn't wire {label or param}: {e}")
+        print("  [warn] couldn't wire {0}: {1}".format(label or param, e))
         return False
 
 
@@ -392,11 +424,11 @@ def combine_bump_sources(graph, sources):
     for nxt in sources[1:]:
         bump_add = try_new_node(graph, "SHADER_TYPE_BUMP_ADD", "Bump Add")
         if bump_add is None:
-            print("  [warn] stopping bump combination early — Bump Add unavailable")
+            print("  [warn] stopping bump combination early -- Bump Add unavailable")
             return current
         slots = connection_param_names(bump_add, lux.PARAMETER_TYPE_SHADERBUMP)
         if len(slots) < 2:
-            print(f"  [warn] Bump Add missing expected 2 inputs (found {slots}) — stopping chain")
+            print("  [warn] Bump Add missing expected 2 inputs (found {0}) -- stopping chain".format(slots))
             return current
         ok1 = safe_edge(graph, source=current, target=bump_add, param=slots[0], label="bump chain a")
         ok2 = safe_edge(graph, source=nxt, target=bump_add, param=slots[1], label="bump chain b")
@@ -407,17 +439,93 @@ def combine_bump_sources(graph, sources):
 def wire_scalar_driver(graph, texture_node, base_node, keywords, label):
     p = find_param(base_node, keywords)
     if p is None:
-        print(f"  [warn] no {label}-like parameter found on base material — skipping")
+        print("  [warn] no {0}-like parameter found on base material -- skipping".format(label))
         return False
     ok = safe_edge(graph, source=texture_node, target=base_node, param=p.getName(),
-                    label=f"-> base.{label}")
+                    label="-> base.{0}".format(label))
     if not ok:
-        print(f"  [info] {label} driver skipped — static default still applies")
+        print("  [info] {0} driver skipped -- static default still applies".format(label))
     return ok
 
 
 # --------------------------------------------------------------------------
-# Layer builders — each returns a node (bump-domain) or bool (scalar drivers)
+# Masking (targeted wear) -- Curvature/Occlusion mask x effect via Color
+# Composite. Node ids are confirmed (11.0 lux ref); input-slot names are
+# discovered at run time, and any wiring failure degrades to the unmasked
+# effect so masking can never break the base material. See MWR-9C4E21.
+# --------------------------------------------------------------------------
+
+def add_curvature_mask(graph, feather=True):
+    """Convex-edge mask: white on positive curvature (edges/corners), black on
+    the flats -- so an effect composited through it only lands on edges."""
+    n = try_new_node(graph, "SHADER_TYPE_CURVATURE", "Curvature (edge mask)")
+    if n is None:
+        return None
+    set_display(n, ["positive curvature"], (1.0, 1.0, 1.0), ptype=lux.PARAMETER_TYPE_COLOR)
+    # A mid-grey zero-curvature feathers the wear off the edge onto the faces;
+    # pure black gives a hard rim only on the corners.
+    zero = (0.35, 0.35, 0.35) if feather else (0.0, 0.0, 0.0)
+    set_display(n, ["zero curvature"], zero, ptype=lux.PARAMETER_TYPE_COLOR)
+    set_display(n, ["negative curvature"], (0.0, 0.0, 0.0), ptype=lux.PARAMETER_TYPE_COLOR)
+    return n
+
+
+def add_occlusion_mask(graph):
+    """Cavity mask: white in occluded crevices, black on exposed faces -- the
+    inverse of the edge mask, so grime composited through it collects in the
+    cavities. Occluded/unoccluded colour param names vary by build; best-effort
+    (masking degrades gracefully if they aren't found)."""
+    n = try_new_node(graph, "SHADER_TYPE_OCCLUSION", "Occlusion (cavity mask)")
+    if n is None:
+        return None
+    set_display(n, ["occluded"], (1.0, 1.0, 1.0), ptype=lux.PARAMETER_TYPE_COLOR)
+    set_display(n, ["unoccluded", "bright", "far", "exposed"], (0.0, 0.0, 0.0),
+                ptype=lux.PARAMETER_TYPE_COLOR)
+    return n
+
+
+def masked(graph, effect_node, mask_node, label="masked"):
+    """Gate effect_node by mask_node through a Color Composite (alpha = mask),
+    returning a node that can drop in wherever effect_node would have gone.
+    Defensive: if the composite or its wiring is unavailable, returns the raw
+    effect_node so a mask can never make an effect vanish entirely. The exact
+    slot names are build-dependent -- DEBUG dumps them on first run so they can
+    be pinned precisely later."""
+    if effect_node is None:
+        return None
+    if mask_node is None:
+        return effect_node
+    comp = try_new_node(graph, "SHADER_TYPE_COLOR_COMPOSITE", "Color Composite ({0})".format(label))
+    if comp is None:
+        print("  [warn] Color Composite unavailable -- {0} left unmasked".format(label))
+        return effect_node
+
+    color_slots = connection_param_names(comp, lux.PARAMETER_TYPE_SHADERCOLOR)
+    alpha_param = find_param(comp, ["alpha", "opacity", "mask", "blend amount"])
+
+    ok_effect = False
+    if color_slots:
+        ok_effect = safe_edge(graph, source=effect_node, target=comp,
+                              param=color_slots[0], label="{0}: effect->input".format(label))
+    ok_mask = False
+    if alpha_param is not None:
+        ok_mask = safe_edge(graph, source=mask_node, target=comp,
+                            param=alpha_param.getName(), label="{0}: mask->alpha".format(label))
+    elif len(color_slots) >= 2:
+        # No obvious alpha slot -- fall back to the second colour input so the
+        # mask still modulates the blend rather than being dropped silently.
+        ok_mask = safe_edge(graph, source=mask_node, target=comp,
+                            param=color_slots[1], label="{0}: mask->input2".format(label))
+
+    if ok_effect and ok_mask:
+        return comp
+    print("  [warn] {0}: mask wiring incomplete (effect={1}, mask={2}) -- using unmasked effect".format(
+        label, ok_effect, ok_mask))
+    return effect_node
+
+
+# --------------------------------------------------------------------------
+# Layer builders -- each returns a node (bump-domain) or bool (scalar drivers)
 # --------------------------------------------------------------------------
 
 def add_fine_noise_bump(graph):
@@ -458,7 +566,7 @@ def add_spots_bump(graph, wear_mult, damping=1.0):
 
 def add_cellular_bump(graph, wear_mult, damping=1.0):
     # KeyShot's own manual describes this as capable of "cracked surfaces,
-    # hammered metal" — a strong effect even alone, hence the extra 0.6x.
+    # hammered metal" -- a strong effect even alone, hence the extra 0.6x.
     n = try_new_node(graph, "SHADER_TYPE_CELLULAR", "Cellular (experimental)")
     if n:
         set_display(n, ["scale"], BASE["cellular_scale"])
@@ -488,7 +596,7 @@ def add_color_gradient(graph, base_node, base_color):
         return False
     # Nudge toward tasteful, near-neutral tones close to the base material
     # color rather than leaving KeyShot's own default gradient stops (unknown,
-    # possibly high-contrast) in place — this was the leading suspect for
+    # possibly high-contrast) in place -- this was the leading suspect for
     # "wild" output. Best-effort: this node's UI is a draggable color bar,
     # which may not expose simple named color parameters the way other
     # nodes do. If no match is found, that's reported rather than assumed.
@@ -497,7 +605,7 @@ def add_color_gradient(graph, base_node, base_color):
     ok1 = set_display(n, ["color 1", "start color", "color a"], light, ptype=lux.PARAMETER_TYPE_COLOR)
     ok2 = set_display(n, ["color 2", "end color", "color b"], dark, ptype=lux.PARAMETER_TYPE_COLOR)
     if not (ok1 or ok2):
-        print("  [warn] couldn't find Color Gradient's color-stop parameters — it will use "
+        print("  [warn] couldn't find Color Gradient's color-stop parameters -- it will use "
               "KeyShot's own default gradient colors, which may look more extreme than intended")
     return wire_scalar_driver(graph, n, base_node,
                               ["color", "diffuse", "tint", "reflectance"], "color")
@@ -514,11 +622,14 @@ def build_material(opts):
 
     seed = _apply_seed(opts)
     if seed is not None:
-        print(f"  Seeded feature RNG with {seed!r} (reproducible in randomize mode)")
+        print("  Seeded feature RNG with {0} (reproducible in randomize mode)".format(repr(seed)))
 
     features = {k: bool(opts.get(k, False)) for k in FEATURE_KEYS}
     if opts.get("randomize_features"):
         features = randomize_feature_flags()
+
+    mask_scratches = bool(opts.get("mask_scratches_to_edges"))
+    mask_spots = bool(opts.get("mask_spots_to_cavities"))
 
     shader_fn, base_color, base_roughness = MATERIAL_TYPES.get(
         material_type, MATERIAL_TYPES[DEFAULT_OPTIONS["material_type"]])
@@ -526,26 +637,31 @@ def build_material(opts):
 
     name = resolve_material_name(opts.get("name_prefix", ""), material_type, wear_level)
 
-    print(f"lux.isHeadless() = {lux.isHeadless()}")
-    print(f"Building '{name}' | type={material_type} | wear={wear_level} (x{wear_mult:.2f})")
+    print("lux.isHeadless() = {0}".format(lux.isHeadless()))
+    print("Building '{0}' | type={1} | wear={2} (x{3:.2f})".format(name, material_type, wear_level, wear_mult))
     active = [FEATURE_LABELS[k] for k, v in features.items() if v]
-    print(f"Features: {', '.join(active) if active else '(none)'}")
+    active_str = ", ".join(active) if active else "(none)"
+    print("Features: {0}".format(active_str))
+    masks_on = [m for m, on in [("scratches->edges", mask_scratches),
+                                ("spots->cavities", mask_spots)] if on]
+    if masks_on:
+        print("Masking: {0}".format(", ".join(masks_on)))
 
     # Damp each loud bump layer's amplitude by how many are stacked, so
     # total surface energy stays roughly bounded regardless of how many
-    # ended up active — this is what actually stops combinations from
+    # ended up active -- this is what actually stops combinations from
     # compounding into chaotic noise.
     active_loud_count = sum(1 for k in LOUD_BUMP_FEATURES if features.get(k))
     damping = 1.0 / math.sqrt(max(1, active_loud_count))
     if active_loud_count > 1:
-        print(f"  {active_loud_count} loud bump layers active — damping each by {damping:.2f}x")
+        print("  {0} loud bump layers active -- damping each by {1:.2f}x".format(active_loud_count, damping))
 
     for attempt in range(5):
         try:
             lux.createSceneMaterial(name)
             break
         except Exception as e:
-            print(f"  [warn] couldn't create material '{name}': {e} — trying a new random name")
+            print("  [warn] couldn't create material '{0}': {1} -- trying a new random name".format(name, e))
             name = resolve_material_name(opts.get("name_prefix", ""), material_type, wear_level)
     else:
         raise RuntimeError("Couldn't create a scene material after 5 attempts")
@@ -558,7 +674,7 @@ def build_material(opts):
     base_node = new_node(graph, shader_type, material_type)
     safe_edge(graph, source=base_node, target=root, param="surface", label="base -> root.surface")
     # "diffuse" is essential: KeyShot's Plastic material names its colour
-    # channel "Diffuse", not "Color" — without it, plastic bases silently kept
+    # channel "Diffuse", not "Color" -- without it, plastic bases silently kept
     # KeyShot's default colour instead of the one picked here. Metal uses
     # "Color"; both are covered by the keyword list.
     set_display(base_node, ["color", "diffuse", "tint", "reflectance", "base color"],
@@ -566,15 +682,24 @@ def build_material(opts):
     set_display(base_node, ["roughness"], base_roughness)
 
     # --- bump-domain layers, combined into one bump input -----------------
+    # Masking is applied per-layer here: a masked layer is wrapped through a
+    # Curvature/Occlusion + Color Composite before it joins the bump chain.
     bump_sources = []
     if features["add_fine_noise"]:
         bump_sources.append(add_fine_noise_bump(graph))
     if features["add_scratches"]:
-        bump_sources.append(add_scratches_bump(graph, wear_mult, damping))
+        scr = add_scratches_bump(graph, wear_mult, damping)
+        if mask_scratches:
+            scr = masked(graph, scr, add_curvature_mask(graph, feather=(wear_level != "Heavy Wear")),
+                         "scratches->edges")
+        bump_sources.append(scr)
     if features["add_rounded_edges"]:
         bump_sources.append(add_rounded_edges_bump(graph, wear_mult, damping))
     if features["add_spots"]:
-        bump_sources.append(add_spots_bump(graph, wear_mult, damping))
+        sp = add_spots_bump(graph, wear_mult, damping)
+        if mask_spots:
+            sp = masked(graph, sp, add_occlusion_mask(graph), "spots->cavities")
+        bump_sources.append(sp)
     if features["add_cellular"]:
         bump_sources.append(add_cellular_bump(graph, wear_mult, damping))
 
@@ -597,13 +722,13 @@ def build_material(opts):
     if features["add_color_gradient"]:
         add_color_gradient(graph, base_node, base_color)
 
-    print(f"Built material graph: {name}")
+    print("Built material graph: {0}".format(name))
     return graph, name
 
 
 def apply_material_to_parts(name, name_filter=None):
     """Apply `name` across the scene. Deliberately does NOT pre-filter to
-    isObject() — KeyShot's own docs confirm Group nodes accept setMaterial()
+    isObject() -- KeyShot's own docs confirm Group nodes accept setMaterial()
     and cascade it to their children, so excluding Groups (as an earlier
     version of this function did) silently skipped entire assemblies. Instead
     every node is tried; only genuine failures (cameras, lights, etc.) are
@@ -624,19 +749,19 @@ def apply_material_to_parts(name, name_filter=None):
         except Exception as e:
             ok = False
             if DEBUG:
-                print(f"  [warn] setMaterial failed (kind={kind}): {e}")
+                print("  [warn] setMaterial failed (kind={0}): {1}".format(kind, e))
         if ok:
             applied += 1
             if DEBUG:
                 kind_counts[kind] = kind_counts.get(kind, 0) + 1
         else:
             skipped += 1
-    suffix = f" matching {name_filter!r}" if name_filter else ""
-    print(f"Applied '{name}' to {applied} node(s){suffix}, skipped {skipped}")
+    suffix = " matching {0}".format(repr(name_filter)) if name_filter else ""
+    print("Applied '{0}' to {1} node(s){2}, skipped {3}".format(name, applied, suffix, skipped))
     if DEBUG and applied:
-        print(f"  applied to node kinds: {kind_counts}")
+        print("  applied to node kinds: {0}".format(kind_counts))
     if applied == 0 and DEBUG:
-        print("  [info] nothing matched — run with DEBUG=True and check the node "
+        print("  [info] nothing matched -- run with DEBUG=True and check the node "
               "kinds above, or confirm the scene actually has geometry loaded")
     return applied
 
@@ -644,7 +769,7 @@ def apply_material_to_parts(name, name_filter=None):
 if __name__ == "__main__":
     options = get_options()
     if options is None:
-        print("Cancelled — nothing built.")
+        print("Cancelled -- nothing built.")
     else:
         graph, material_name = build_material(options)
         apply_material_to_parts(material_name, name_filter=resolve_filter(options.get("name_filter")))
