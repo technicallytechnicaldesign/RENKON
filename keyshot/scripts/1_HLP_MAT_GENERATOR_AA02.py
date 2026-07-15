@@ -87,15 +87,31 @@ DEBUG = True  # prints real parameters for each node as it's created
 # Material type presets
 # --------------------------------------------------------------------------
 
-MATERIAL_TYPES = {
-    "Aluminum (brushed metal)": (lambda: lux.SHADER_TYPE_METAL, (0.72, 0.73, 0.75), 0.18),
-    "Steel (metal)":            (lambda: lux.SHADER_TYPE_METAL, (0.55, 0.56, 0.58), 0.25),
-    "Chrome (metal)":           (lambda: lux.SHADER_TYPE_METAL, (0.90, 0.90, 0.92), 0.05),
-    "ABS Plastic":              (lambda: lux.SHADER_TYPE_PLASTIC, (0.15, 0.15, 0.16), 0.35),
-}
-MATERIAL_TYPE_ORDER = list(MATERIAL_TYPES.keys())
-TYPE_ABBR = {"Aluminum (brushed metal)": "ALU", "Steel (metal)": "STL",
-             "Chrome (metal)": "CHR", "ABS Plastic": "ABS"}
+# Base materials -- THE PALETTE. Add a new one by adding a single row here:
+#   (display name, shader, colour RGB 0-1, roughness, 3-letter code)
+# The shader is a lux.SHADER_TYPE_* attribute *name*, resolved defensively at
+# build time (resolve_shader) so an unknown one (e.g. SHADER_TYPE_PAINT on a
+# build that lacks it) falls back to Plastic rather than crashing. Metals just
+# take a colour tint -- brass/copper/anodised are tinted metals; paints are a
+# Paint shader (Plastic fallback). Nothing else needs editing to add a colour.
+MATERIALS = [
+    # name,                      shader,                colour RGB,         rough, abbr
+    ("Aluminum (brushed metal)", "SHADER_TYPE_METAL",   (0.72, 0.73, 0.75), 0.18,  "ALU"),
+    ("Steel (metal)",            "SHADER_TYPE_METAL",   (0.55, 0.56, 0.58), 0.25,  "STL"),
+    ("Chrome (metal)",           "SHADER_TYPE_METAL",   (0.90, 0.90, 0.92), 0.05,  "CHR"),
+    ("Brass (metal)",            "SHADER_TYPE_METAL",   (0.85, 0.70, 0.38), 0.22,  "BRS"),
+    ("Copper (metal)",           "SHADER_TYPE_METAL",   (0.95, 0.64, 0.54), 0.20,  "COP"),
+    ("Anodised Black (metal)",   "SHADER_TYPE_METAL",   (0.05, 0.05, 0.06), 0.35,  "ANB"),
+    ("Anodised Blue (metal)",    "SHADER_TYPE_METAL",   (0.06, 0.15, 0.38), 0.30,  "ANU"),
+    ("Anodised Orange (metal)",  "SHADER_TYPE_METAL",   (0.75, 0.30, 0.06), 0.30,  "ANO"),
+    ("ABS Plastic",              "SHADER_TYPE_PLASTIC", (0.15, 0.15, 0.16), 0.35,  "ABS"),
+    ("Paint - Safety Orange",    "SHADER_TYPE_PAINT",   (0.88, 0.34, 0.05), 0.30,  "POR"),
+    ("Paint - Signal Blue",      "SHADER_TYPE_PAINT",   (0.03, 0.15, 0.40), 0.30,  "PBL"),
+    ("Paint - White",            "SHADER_TYPE_PAINT",   (0.90, 0.90, 0.88), 0.32,  "PWH"),
+]
+MATERIAL_TYPE_ORDER = [m[0] for m in MATERIALS]
+MATERIAL_BY_NAME = {m[0]: m for m in MATERIALS}
+TYPE_ABBR = {m[0]: m[4] for m in MATERIALS}
 
 WEAR_PRESETS = {"Pristine": 0.3, "Light Wear": 1.0, "Moderate Wear": 2.5, "Heavy Wear": 5.0}
 WEAR_ORDER = list(WEAR_PRESETS.keys())
@@ -138,7 +154,7 @@ MAX_SIMULTANEOUS_LOUD_LAYERS = 2
 # the previous version of this script did, is a category error with
 # undefined behavior -- the leading suspect for "wild" results. Bringing
 # Thin Film back properly would mean offering it as an alternate base
-# material (MATERIAL_TYPES entry), not a layer toggle, which is a bigger
+# material (a MATERIALS row), not a layer toggle, which is a bigger
 # change than this fix.
 FEATURE_KEYS = [
     "add_fine_noise", "add_scratches", "add_rounded_edges", "add_spots",
@@ -381,6 +397,19 @@ def try_new_node(graph, attr_name, label):
     except Exception as e:
         print("  [warn] couldn't create {0} ({1}): {2} -- skipping".format(label, attr_name, e))
         return None
+
+
+def resolve_shader(shader_attr):
+    """Resolve a base-material shader by attribute name, falling back to Plastic
+    then Metal so an unknown constant (e.g. SHADER_TYPE_PAINT on a build that
+    lacks it) degrades to a working material instead of crashing the build."""
+    for attr in (shader_attr, "SHADER_TYPE_PLASTIC", "SHADER_TYPE_METAL"):
+        st = getattr(lux, attr, None)
+        if st is not None:
+            if attr != shader_attr:
+                print("  [warn] {0} unavailable on this build -- using {1} instead".format(shader_attr, attr))
+            return st
+    return None
 
 
 def find_param(node, keywords, ptype=None):
@@ -638,9 +667,11 @@ def build_material(opts):
     mask_scratches = bool(opts.get("mask_scratches_to_edges"))
     mask_spots = bool(opts.get("mask_spots_to_cavities"))
 
-    shader_fn, base_color, base_roughness = MATERIAL_TYPES.get(
-        material_type, MATERIAL_TYPES[DEFAULT_OPTIONS["material_type"]])
-    shader_type = shader_fn()
+    mat = MATERIAL_BY_NAME.get(material_type, MATERIAL_BY_NAME[DEFAULT_OPTIONS["material_type"]])
+    _, shader_attr, base_color, base_roughness, _ = mat
+    shader_type = resolve_shader(shader_attr)
+    if shader_type is None:
+        raise RuntimeError("No usable base shader for '{0}'".format(material_type))
 
     name = resolve_material_name(opts.get("name_prefix", ""), material_type, wear_level)
 
