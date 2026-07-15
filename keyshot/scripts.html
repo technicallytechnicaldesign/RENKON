@@ -41,7 +41,7 @@
     header { padding: 12px 16px; }
   }
 
-  main { flex: 1; padding: 32px 28px 56px; max-width: 980px; margin: 0 auto; width: 100%; }
+  main { flex: 1; padding: 32px 28px 56px; max-width: 1000px; margin: 0 auto; width: 100%; }
 
   .up-link {
     display: inline-flex; align-items: center; gap: 6px;
@@ -50,7 +50,7 @@
   }
   .up-link:hover { text-decoration: underline; }
 
-  .page-head { margin-bottom: 28px; }
+  .page-head { margin-bottom: 24px; }
   .page-head h1 {
     font-size: 17px; letter-spacing: 0.08em; text-transform: uppercase;
     color: var(--text); margin: 0 0 8px 0; font-weight: 500;
@@ -60,81 +60,112 @@
   section { margin-bottom: 36px; }
   section > h2 {
     font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
-    color: var(--muted); margin: 0 0 12px; font-weight: 500;
+    color: var(--muted); margin: 0 0 14px; font-weight: 500;
     display: flex; align-items: center; gap: 10px;
   }
   section > h2 .rule { flex: 1; height: 1px; background: var(--line); }
 
-  /* ---- filter pills ---- */
-  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-  .pill {
+  /* ---- view switch (segmented) ---- */
+  .switch-bar {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 14px;
+    margin-bottom: 22px;
+  }
+  .switch {
+    display: inline-flex; border: 1px solid var(--line); background: var(--panel-bg);
+  }
+  .switch button {
     -webkit-appearance: none; appearance: none; cursor: pointer;
-    background: var(--panel-bg); color: var(--muted); border: 1px solid var(--line);
-    font-family: inherit; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
-    padding: 6px 12px; transition: color 0.12s ease, border-color 0.12s ease;
+    background: transparent; color: var(--muted); border: none;
+    font-family: inherit; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 9px 16px; transition: color 0.12s ease, background 0.12s ease;
+    border-left: 1px solid var(--line);
   }
-  .pill:hover { color: var(--text); border-color: var(--muted); }
-  .pill.active { color: var(--c-accent); border-color: var(--c-accent); }
+  .switch button:first-child { border-left: none; }
+  .switch button:hover { color: var(--text); }
+  .switch button.active { color: var(--c-accent); background: var(--panel-bg-raised); }
+  .switch-hint { font-size: 10px; color: var(--muted); letter-spacing: 0.04em; }
+  .switch-hint b { color: var(--c-fluid); font-weight: 500; }
 
-  /* ---- script inventory ---- */
-  .stage-group { border: 1px solid var(--line); background: var(--panel-bg); margin-bottom: 1px; }
-  .stage-group + .stage-group { border-top: none; }
+  .view[hidden] { display: none; }
 
-  .stage-row {
-    display: grid;
-    grid-template-columns: 76px 1fr auto;
-    gap: 14px;
-    padding: 14px 18px;
-    border-top: 1px solid var(--line);
-    align-items: start;
+  /* ---- zone (a titled group of scripts) ---- */
+  .zone {
+    border: 1px solid var(--line); background: var(--panel-bg); margin-bottom: 18px;
   }
-  .stage-row:first-child { border-top: none; }
-  .stage-row:hover { background: var(--panel-bg-raised); }
+  .zone-head {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap; row-gap: 4px;
+    padding: 13px 18px; border-bottom: 1px solid var(--line);
+    background: var(--panel-bg-raised);
+  }
+  .zone-code {
+    font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--c-accent); border: 1px solid var(--c-accent);
+    padding: 3px 9px; white-space: nowrap; flex: none;
+  }
+  .zone-code.support { color: var(--c-fluid); border-color: var(--c-fluid); }
+  .zone-code.muted { color: var(--muted); border-color: var(--line); }
+  .zone-title { font-size: 12px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text); flex: none; }
+  .zone-blurb { font-size: 11px; color: var(--muted); line-height: 1.5; flex: 1 1 220px; min-width: 160px; }
+  .zone-count {
+    font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--c-fluid); white-space: nowrap; flex: none;
+  }
+  .zone-body > .empty-note {
+    padding: 14px 18px; font-size: 11px; color: var(--muted); font-style: italic;
+  }
 
-  .stage-tag {
+  /* stage sub-label inside the main-pipeline zone (by-type view) */
+  .substage {
+    padding: 9px 18px 5px; font-size: 9.5px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted); border-top: 1px solid var(--line);
+  }
+  .substage:first-child { border-top: none; }
+
+  /* ---- script row ---- */
+  .row {
+    display: grid; grid-template-columns: 66px 1fr auto; gap: 14px;
+    padding: 13px 18px; border-top: 1px solid var(--line); align-items: start;
+  }
+  .row.first { border-top: none; }
+  .row:hover { background: var(--panel-bg-raised); }
+
+  .row .tag {
     font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
     color: var(--c-fluid); white-space: nowrap; padding-top: 2px;
   }
-  .stage-tag .area { display: block; color: var(--muted); margin-top: 2px; }
+  .row .tag .area { display: block; color: var(--muted); margin-top: 2px; }
 
-  .stage-body .name {
-    font-size: 12.5px; color: var(--text);
-  }
-  .stage-body .name a { color: var(--c-accent); }
-  .stage-body .name a:hover { text-decoration: underline; }
-  .stage-body .note { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.6; max-width: 58ch; }
+  .row .name { font-size: 12.5px; color: var(--text); word-break: break-word; }
+  .row .name a { color: var(--c-accent); }
+  .row .name a:hover { text-decoration: underline; }
+  .row .note { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.6; max-width: 62ch; }
+  .row .note code { color: var(--c-fluid); }
 
   .status {
-    font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase;
+    font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
     padding: 3px 8px; border: 1px solid var(--line); white-space: nowrap; height: fit-content;
   }
   .status.current { color: var(--c-fluid); border-color: var(--c-fluid); }
-  .status.pending { color: var(--c-accent); border-color: var(--c-accent); }
   .status.archive { color: var(--muted); text-decoration: line-through; }
   .status.locked { color: var(--muted); border-style: dashed; }
+  .status.unfiled { color: var(--c-accent); border-color: var(--c-accent); border-style: dashed; }
 
-  .empty-note {
-    padding: 14px 18px; font-size: 11px; color: var(--muted); font-style: italic;
-    border-top: 1px solid var(--line); display: none;
+  /* supporting non-script item */
+  .item {
+    display: grid; grid-template-columns: 1fr auto; gap: 14px;
+    padding: 12px 18px; border-top: 1px solid var(--line); align-items: start;
   }
-
-  /* ---- expandable secondary inventory ---- */
-  .more {
-    border: 1px solid var(--line); background: var(--panel-bg);
+  .item.first { border-top: none; }
+  .item:hover { background: var(--panel-bg-raised); }
+  .item .name { font-size: 12.5px; color: var(--text); }
+  .item .name a { color: var(--c-accent); }
+  .item .name a:hover { text-decoration: underline; }
+  .item .note { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.6; max-width: 64ch; }
+  .item .note code { color: var(--c-fluid); }
+  .item .kind {
+    font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--muted); border: 1px solid var(--line); padding: 3px 8px; white-space: nowrap; height: fit-content;
   }
-  .more > summary {
-    list-style: none; cursor: pointer; padding: 12px 18px;
-    display: flex; align-items: center; gap: 10px;
-    font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
-  }
-  .more > summary::-webkit-details-marker { display: none; }
-  .more > summary:hover { color: var(--text); }
-  .more > summary .chev {
-    display: inline-block; color: var(--c-accent); transition: transform 0.15s ease;
-  }
-  .more[open] > summary .chev { transform: rotate(90deg); }
-  .more-body { border-top: 1px solid var(--line); padding: 16px 18px 18px; }
-  .more-body .toggle-group { margin-bottom: 14px; }
 
   /* ---- backlog ---- */
   .backlog { border: 1px solid var(--line); background: var(--panel-bg); }
@@ -147,6 +178,7 @@
   .backlog .pri { color: var(--c-accent); font-size: 10px; letter-spacing: 0.04em; padding-top: 1px; }
   .backlog .idea { color: var(--text); }
   .backlog .idea .stage { color: var(--muted); }
+  .backlog .idea em { color: var(--c-fluid); font-style: normal; }
   .backlog ul { margin: 0; padding: 0; }
 
   .notes {
@@ -194,280 +226,231 @@
     <section>
       <h2>Inventory<span class="rule"></span></h2>
 
-      <div class="pill-row" role="group" aria-label="Filter by pipeline stage">
-        <button type="button" class="pill active" data-stage="all">All</button>
-        <button type="button" class="pill" data-stage="0">0</button>
-        <button type="button" class="pill" data-stage="1">1</button>
-        <button type="button" class="pill" data-stage="2a">2a</button>
-        <button type="button" class="pill" data-stage="2b">2b</button>
-        <button type="button" class="pill" data-stage="3">3</button>
-        <button type="button" class="pill" data-stage="4">4</button>
+      <div class="switch-bar">
+        <div class="switch" role="group" aria-label="Group scripts by">
+          <button type="button" data-view="stage" class="active">By stage 0&ndash;4</button>
+          <button type="button" data-view="type">By pipeline &amp; support</button>
+        </div>
+        <span class="switch-hint" id="switch-hint"></span>
       </div>
 
-      <div class="stage-group" data-status="current">
-        <div class="stage-row" data-stage="0">
-          <div class="stage-tag">0<span class="area">VAL</span></div>
-          <div class="stage-body">
-            <div class="name"><a href="scripts/0_VAL_STEP_PREFLIGHT_AA01.py">0_VAL_STEP_PREFLIGHT_AA01.py</a></div>
-            <div class="note">STEP-file preflight &mdash; not a <code style="color:var(--c-fluid)">lux</code>
-              script, runs on plain STEP text before KeyShot ever opens the file. Checks the
-              declared unit/scale (the #1 reported KeyShot import complaint), filename hygiene,
-              duplicate base names, and best-effort material-name hints cross-referenced against a
-              <code style="color:var(--c-fluid)">1_HLP_MAT_LOOKUP_AA01.py</code>-format mapping
-              file. Forum-grounded: see <code style="color:var(--c-fluid)">RESEARCH_CREO_KEYSHOT.md</code>.</div>
-          </div>
-          <div class="status current">Current</div>
-        </div>
-        <div class="stage-row" data-stage="0">
-          <div class="stage-tag">0<span class="area">VAL</span></div>
-          <div class="stage-body">
-            <div class="name"><a href="scripts/0_VAL_IMPORT_HEALTH_AA01.py">0_VAL_IMPORT_HEALTH_AA01.py</a></div>
-            <div class="note">Trial-import geometry/appearance health check &mdash; a fast, no-render
-              gate before committing a folder to the full batch pass. Flags import failures,
-              bounding-box anomalies, assembly-named files that imported as a single object
-              (missing components), and parts with no Studios or cameras. Uses the now-confirmed
-              <code style="color:var(--c-fluid)">getBoundingBox()</code> call.</div>
-          </div>
-          <div class="status current">Current</div>
-        </div>
-        <div class="stage-row" data-stage="0">
-          <div class="stage-tag">0<span class="area">VAL</span></div>
-          <div class="stage-body">
-            <div class="name"><a href="scripts/0_VAL_ORIENTATION_CHECK_AA01.py">0_VAL_ORIENTATION_CHECK_AA01.py</a></div>
-            <div class="note">Orientation / up-axis sanity check &mdash; computes a footprint ratio
-              per part from its bounding box and flags statistical outliers relative to the rest
-              of the batch. Explicitly a review-flagging heuristic, not a fixer or a ground-truth
-              checker &mdash; a flagged part might be legitimately different, and an entire batch
-              sharing the same bad orientation setting wouldn't be caught at all.</div>
-          </div>
-          <div class="status current">Current</div>
-        </div>
-        <div class="stage-row" data-stage="2a">
-          <div class="stage-tag">2A<span class="area">BAT</span></div>
-          <div class="stage-body">
-            <div class="name"><a href="scripts/2a_BAT_STD_VIEW_AA01.py">2a_BAT_STD_VIEW_AA01.py</a></div>
-            <div class="note">Studios-first multi-view batch render. Imports every model of a chosen
-              extension from a folder, applies an optional material template, then renders every
-              Studio (camera + environment pairing) defined per part &mdash; falls back to raw
-              cameras only when a part has no Studios. Logs a CSV manifest.</div>
-          </div>
-          <div class="status current">Current</div>
-        </div>
-        <div class="stage-row" data-stage="2a">
-          <div class="stage-tag">2A<span class="area">BAT</span></div>
-          <div class="stage-body">
-            <div class="name"><a href="scripts/2a_BAT_TURNTABLE_AA01.py">2a_BAT_TURNTABLE_AA01.py</a></div>
-            <div class="note">Studios-first 360&deg; turntable batch. Same Studio-aware camera/lighting
-              selection as the std-view script; spins each imported part and encodes a small mp4
-              per part. Kept as a continuous spin on purpose &mdash; the "fade between angles" idea
-              is planned as a separate <code style="color:var(--c-fluid)">3_</code> post-process
-              script instead of a change here.</div>
-          </div>
-          <div class="status current">Current</div>
-        </div>
-        <div class="stage-row" data-stage="2b">
-          <div class="stage-tag">2B<span class="area">ANI</span></div>
-          <div class="stage-body">
-            <div class="name"><a href="scripts/2b_ANI_HERO_REVEAL_AA01.py">2b_ANI_HERO_REVEAL_AA01.py</a></div>
-            <div class="note">Automated hero-reveal shot: single monotonic zoom (in or out) into a
-              camera/Studio's own framing, with optional vertical crane, HDRI rotation, brightness
-              ramp, and synced Model Set animation playback. Orbit/arc was deliberately removed
-              (Rodrigues' formula degenerates when the rotation axis aligns with the camera-to-object
-              direction); ground-setter method name and <code style="color:var(--c-fluid)">getAnimationInfo()</code>'s
-              return shape are unconfirmed on your build &mdash; the script probes and reports which
-              worked. See in-file docstring for full design notes.</div>
-          </div>
-          <div class="status current">Current</div>
-        </div>
-        <div class="stage-row" data-stage="1">
-          <div class="stage-tag">1<span class="area">HLP</span></div>
-          <div class="stage-body">
-            <div class="name"><a href="scripts/1_HLP_MAT_PREFLIGHT_AA01.py">1_HLP_MAT_PREFLIGHT_AA01.py</a></div>
-            <div class="note">Material-template coverage QC, ahead of a full batch render. Imports
-              every part in a folder, applies a material template, and reports which objects'
-              materials did not change &mdash; a strong signal the template has no entry for that
-              object's native material name. Does no rendering, so it runs in seconds.</div>
-          </div>
-          <div class="status current">Current</div>
-        </div>
-        <div class="stage-row" data-stage="3">
-          <div class="stage-tag">3<span class="area">PRC</span></div>
-          <div class="stage-body">
-            <div class="name"><a href="scripts/3_PRC_CONTACT_SHEET_AA01.py">3_PRC_CONTACT_SHEET_AA01.py</a></div>
-            <div class="note">Standalone HTML contact sheet from a batch's rendered output (not a
-              <code style="color:var(--c-fluid)">lux</code> script &mdash; run with a regular Python 3
-              interpreter). Scans an output folder for stills and turntable videos, groups them by
-              part, writes one <code style="color:var(--c-fluid)">contact_sheet.html</code>.</div>
-          </div>
-          <div class="status current">Current</div>
-        </div>
-        <div class="stage-row" data-stage="1">
-          <div class="stage-tag">1<span class="area">HLP</span></div>
-          <div class="stage-body">
-            <div class="name"><a href="scripts/1_HLP_MAT_LOOKUP_AA01.py">1_HLP_MAT_LOOKUP_AA01.py</a></div>
-            <div class="note">Creo &rarr; KeyShot material-name lookup table. Loads a CSV/JSON
-              mapping of native material/appearance names to KeyShot material templates, then
-              applies the matching template per object (not scene-wide) across a batch import.
-              Prevention, complementing what <code style="color:var(--c-fluid)">1_HLP_MAT_PREFLIGHT_AA01.py</code>
-              catches after the fact. Per-object template assignment is an unconfirmed API on this
-              build &mdash; probes a short list of candidate setters and reports which worked.</div>
-          </div>
-          <div class="status current">Current</div>
-        </div>
-        <div class="stage-row" data-stage="2b">
-          <div class="stage-tag">2B<span class="area">ANI</span></div>
-          <div class="stage-body">
-            <div class="name"><a href="scripts/2b_ANI_CUTAWAY_REVEAL_AA01.py">2b_ANI_CUTAWAY_REVEAL_AA01.py</a></div>
-            <div class="note">Cutaway / cross-section reveal. Sweeps a clip plane through an
-              assembly's bounding box over a frame sequence with the camera held static &mdash;
-              contrast to the hero-reveal script's camera dolly. Reuses the same Studios-vs-Cameras
-              selection, manifest logging, and headless-dialog pattern as
-              <code style="color:var(--c-fluid)">2b_ANI_HERO_REVEAL_AA01.py</code>. Clipping-plane
-              and bounding-box APIs are unconfirmed on this build &mdash; probes several candidate
-              method names and degrades to unclipped rendering with a warning if none resolve.</div>
-          </div>
-          <div class="status current">Current</div>
-        </div>
-        <div class="stage-row" data-stage="2b">
-          <div class="stage-tag">2B<span class="area">ANI</span></div>
-          <div class="stage-body">
-            <div class="name"><a href="scripts/2b_ANI_ASSEMBLY_PROCEDURAL_AA01.py">2b_ANI_ASSEMBLY_PROCEDURAL_AA01.py</a></div>
-            <div class="note">Assembly reveal, procedural modes. Parts converge into their authored
-              final positions while the camera holds static &mdash; four selectable modes:
-              <code style="color:var(--c-fluid)">scatter_settle</code>,
-              <code style="color:var(--c-fluid)">staggered_build</code>,
-              <code style="color:var(--c-fluid)">spiral_converge</code>, and
-              <code style="color:var(--c-fluid)">ghost_fade</code>. Motion is built from relative
-              per-frame transform deltas that always sum to zero by the final frame &mdash; the
-              only confirmed per-node mutator in this pipeline. Per-node transform composition,
-              bounding-box sizing, and opacity control are all unconfirmed on this build; each is
-              probed defensively and degrades gracefully. Sub-assembly build (grouped convergence)
-              is a follow-on, not implemented here.</div>
-          </div>
-          <div class="status current">Current</div>
-        </div>
-        <div class="stage-row" data-stage="3">
-          <div class="stage-tag">3<span class="area">PRC</span></div>
-          <div class="stage-body">
-            <div class="name"><a href="scripts/3_PRC_FADE_REEL_AA01.py">3_PRC_FADE_REEL_AA01.py</a></div>
-            <div class="note">Multi-angle fade reel &mdash; a "turntable fade" built from fixed
-              stills instead of a continuous 360&deg; spin. Standalone (not a
-              <code style="color:var(--c-fluid)">lux</code> script); scans a batch's rendered
-              stills, groups by part, and writes one self-contained HTML file per part that
-              crossfades between its views on a pure-CSS <code style="color:var(--c-fluid)">@keyframes</code>
-              loop &mdash; no ffmpeg, no external dependencies.</div>
-          </div>
-          <div class="status current">Current</div>
-        </div>
-        <div class="stage-row" data-stage="4">
-          <div class="stage-tag">4<span class="area">CHK</span></div>
-          <div class="stage-body">
-            <div class="name"><a href="scripts/4_CHK_AUDIT_AA01.py">4_CHK_AUDIT_AA01.py</a></div>
-            <div class="note">Naming-compliance + render-completeness audit &mdash; the first script
-              in stage 4. Validates every <code style="color:var(--c-fluid)">.py</code> filename in
-              a folder against the <code style="color:var(--c-fluid)">{PREFIX}_{AREA}_{NAME}_{REV}.py</code>
-              convention (skipping <code style="color:var(--c-fluid)">archive/</code>), and
-              cross-checks every <code style="color:var(--c-fluid)">*_manifest.csv</code> row's
-              output path against what's actually on disk, flagging missing files and
-              failed/skipped statuses separately.</div>
-          </div>
-          <div class="status current">Current</div>
-        </div>
-        <div class="empty-note">No current scripts at this stage.</div>
-      </div>
-
-      <details class="more">
-        <summary><span class="chev" aria-hidden="true">&rsaquo;</span> Show more scripts (pending, archive, locked)</summary>
-        <div class="more-body">
-          <div class="pill-row toggle-group" role="group" aria-label="Show pending, archive, or locked scripts">
-            <button type="button" class="pill active" data-status="pending">Pending</button>
-            <button type="button" class="pill" data-status="archive">Archive</button>
-            <button type="button" class="pill" data-status="locked">Locked</button>
-          </div>
-
-          <div class="stage-group" data-status="pending">
-            <div class="empty-note">Nothing pending rename right now &mdash; the last two, material
-              preflight and contact sheet, landed and moved up to Current.</div>
-          </div>
-
-          <div class="stage-group" data-status="archive" hidden>
-            <div class="stage-row" data-stage="2a">
-              <div class="stage-tag">2A<span class="area">BAT</span></div>
-              <div class="stage-body">
-                <div class="name"><a href="scripts/archive/batch_turntable.py">batch_turntable.py</a></div>
-                <div class="note">Raw-camera-only predecessor of <code style="color:var(--c-fluid)">2a_BAT_TURNTABLE</code>.</div>
-              </div>
-              <div class="status archive">Archive</div>
-            </div>
-            <div class="stage-row" data-stage="2a">
-              <div class="stage-tag">2A<span class="area">BAT</span></div>
-              <div class="stage-body">
-                <div class="name"><a href="scripts/archive/batch_import_and_render_all_views.py">batch_import_and_render_all_views.py</a></div>
-                <div class="note">Raw-camera-only predecessor of <code style="color:var(--c-fluid)">2a_BAT_STD_VIEW</code>.</div>
-              </div>
-              <div class="status archive">Archive</div>
-            </div>
-            <div class="empty-note">No archived scripts at this stage.</div>
-          </div>
-
-          <div class="stage-group" data-status="locked" hidden>
-            <div class="stage-row" data-stage="0">
-              <div class="stage-tag">0<span class="area">NGS</span></div>
-              <div class="stage-body">
-                <div class="name">0_NGS_MAT_STEEL.py</div>
-                <div class="note">Not in this project's files &mdash; exists elsewhere.</div>
-              </div>
-              <div class="status locked">Locked</div>
-            </div>
-            <div class="stage-row" data-stage="0">
-              <div class="stage-tag">0<span class="area">NGS</span></div>
-              <div class="stage-body">
-                <div class="name">0_NGS_PROC_MATS.py</div>
-                <div class="note">Not in this project's files &mdash; exists elsewhere.</div>
-              </div>
-              <div class="status locked">Locked</div>
-            </div>
-            <div class="stage-row" data-stage="2b">
-              <div class="stage-tag">2B<span class="area">ANI</span></div>
-              <div class="stage-body">
-                <div class="name">2ANI_SCATTERANIMATION_AQ.py</div>
-                <div class="note">Scatter tech reference for the planned particle/assembly-scatter script &mdash; exists elsewhere.</div>
-              </div>
-              <div class="status locked">Locked</div>
-            </div>
-            <div class="stage-row" data-stage="3">
-              <div class="stage-tag">4*<span class="area">CHK</span></div>
-              <div class="stage-body">
-                <div class="name">3_NGS_CHECK_REPORT.py</div>
-                <div class="note">Exists elsewhere; reads like a post-check under the new scheme &mdash;
-                  recommend re-prefixing <code style="color:var(--c-fluid)">3_</code> &rarr;
-                  <code style="color:var(--c-fluid)">4_</code> next time it's in a session.</div>
-              </div>
-              <div class="status locked">Locked</div>
-            </div>
-            <div class="empty-note">No locked scripts at this stage.</div>
-          </div>
-        </div>
-      </details>
+      <div class="view" id="view-stage"></div>
+      <div class="view" id="view-type" hidden></div>
     </section>
+
+    <script>
+    /* ------------------------------------------------------------------ *
+     * Single source of truth. Both groupings (by stage, by pipeline/type)
+     * render from these arrays — edit here, never in two places.
+     * script: [stage, area, status, file, hasLink, noteHTML]
+     *   status: current | archive | locked | unfiled
+     * ------------------------------------------------------------------ */
+    var SCRIPTS = [
+      ['0','VAL','current','0_VAL_STEP_PREFLIGHT_AA01.py',true,
+        'STEP-file preflight &mdash; runs on plain STEP text before KeyShot ever opens the file. Checks the declared unit/scale (the #1 reported import complaint), filename hygiene, duplicate base names, and best-effort material-name hints cross-referenced against a <code>1_HLP_MAT_LOOKUP</code>-format map. Forum-grounded &mdash; see <code>RESEARCH_CREO_KEYSHOT.md</code>.'],
+      ['0','VAL','current','0_VAL_IMPORT_HEALTH_AA01.py',true,
+        'Trial-import geometry/appearance health check &mdash; a fast, no-render gate before committing a folder to the full batch. Flags import failures, bounding-box anomalies, assembly-named files that imported as a single object (missing components), and parts with no Studios or cameras. Uses the confirmed <code>getBoundingBox()</code>.'],
+      ['0','VAL','current','0_VAL_ORIENTATION_CHECK_AA01.py',true,
+        'Orientation / up-axis sanity check &mdash; footprint ratio per part from its bounding box, flags statistical outliers across the batch. A review-flagging heuristic, not a fixer &mdash; a flagged part may be legitimately different, and a whole batch sharing one bad orientation wouldn\'t be caught.'],
+      ['1','HLP','current','1_HLP_MAT_PREFLIGHT_AA01.py',true,
+        'Material-template coverage QC, ahead of a full batch render. Imports every part, applies a material template, and reports which objects\' materials did not change &mdash; a strong signal the template has no entry for that native material name. No rendering, so it runs in seconds.'],
+      ['1','HLP','current','1_HLP_MAT_LOOKUP_AA01.py',true,
+        'Creo &rarr; KeyShot material-name lookup table. Loads a CSV/JSON map of native appearance names to KeyShot templates, then applies the match per object across a batch import. Prevention, complementing what preflight catches after the fact. Per-object apply is unconfirmed on this build &mdash; probes candidate setters, reports which worked.'],
+      ['1','HLP','current','1_HLP_MAT_GENERATOR_AA01.py',true,
+        'Procedural material <em>variant</em> generator &mdash; the authoring member of the MAT family. A dialog of independently toggleable feature layers (fine noise, scratches, spots, cellular, rounded edges, fractal/occlusion roughness, colour gradient) combined onto a metal/plastic base at a chosen wear level, each build auto-named <code>MAT-&lt;TYPE&gt;-&lt;WEAR&gt;-&lt;hex&gt;</code>. Loud bump layers are capped and <code>1/&radic;n</code> amplitude-damped so stacks don\'t compound into chaos. Cellular + Colour Gradient are getattr-guarded experimental layers.'],
+      ['2a','BAT','current','2a_BAT_STD_VIEW_AA01.py',true,
+        'Studios-first multi-view batch render. Imports every model of a chosen extension from a folder, applies an optional material template, then renders every Studio (camera + environment) defined per part &mdash; falls back to raw cameras only when a part has none. Logs a CSV manifest.'],
+      ['2a','BAT','current','2a_BAT_TURNTABLE_AA01.py',true,
+        'Studios-first 360&deg; turntable batch. Same Studio-aware camera/lighting selection; spins each part and encodes a small mp4 per part. Kept as a continuous spin on purpose &mdash; the "fade between angles" idea ships as a separate <code>3_</code> post-process script instead.'],
+      ['2b','ANI','current','2b_ANI_HERO_REVEAL_AA01.py',true,
+        'Hero-reveal shot: single monotonic zoom into a camera/Studio\'s own framing, with optional vertical crane, HDRI rotation, brightness ramp, and synced Model Set playback. Orbit/arc was removed (Rodrigues degenerates when the axis aligns with the camera-to-object direction). Ground-setter and <code>getAnimationInfo()</code> shape are probed on this build.'],
+      ['2b','ANI','current','2b_ANI_CUTAWAY_REVEAL_AA01.py',true,
+        'Cutaway / cross-section reveal. Sweeps a clip plane through an assembly\'s bounding box over a frame sequence, camera static &mdash; contrast to hero-reveal\'s dolly. Reuses the same Studios-vs-Cameras selection and manifest logging. Clip-plane &amp; bbox APIs unconfirmed &mdash; probes candidates, degrades to unclipped with a warning.'],
+      ['2b','ANI','current','2b_ANI_ASSEMBLY_PROCEDURAL_AA01.py',true,
+        'Assembly reveal, procedural modes. Parts converge into authored final positions with the camera static &mdash; four modes: <code>scatter_settle</code>, <code>staggered_build</code>, <code>spiral_converge</code>, <code>ghost_fade</code>. Motion is relative per-frame transform deltas that sum to zero by the final frame (the only confirmed per-node mutator). Composition, sizing, and opacity are all probed defensively. Sub-assembly build is a follow-on.'],
+      ['3','PRC','current','3_PRC_CONTACT_SHEET_AA01.py',true,
+        'Standalone HTML contact sheet from a batch\'s rendered output (plain Python 3, not a <code>lux</code> script). Scans an output folder for stills and turntable videos, groups them by part, writes one <code>contact_sheet.html</code>.'],
+      ['3','PRC','current','3_PRC_FADE_REEL_AA01.py',true,
+        'Multi-angle fade reel &mdash; a "turntable fade" built from fixed stills instead of a continuous 360&deg; spin. Standalone; groups a batch\'s stills by part and writes one self-contained HTML per part that crossfades on a pure-CSS <code>@keyframes</code> loop &mdash; no ffmpeg, no dependencies.'],
+      ['4','CHK','current','4_CHK_AUDIT_AA01.py',true,
+        'Naming-compliance + render-completeness audit. Validates every <code>.py</code> filename against <code>{PREFIX}_{AREA}_{NAME}_{REV}.py</code> (skipping <code>archive/</code>), and cross-checks every <code>*_manifest.csv</code> output path against disk &mdash; flagging missing files and failed/skipped statuses separately.'],
+
+      ['2a','BAT','archive','batch_turntable.py',true,
+        'Raw-camera-only predecessor of <code>2a_BAT_TURNTABLE</code>.'],
+      ['2a','BAT','archive','batch_import_and_render_all_views.py',true,
+        'Raw-camera-only predecessor of <code>2a_BAT_STD_VIEW</code>.'],
+
+      ['0','NGS','locked','0_NGS_MAT_STEEL.py',false,
+        'Not in this project\'s files &mdash; exists elsewhere.'],
+      ['0','NGS','locked','0_NGS_PROC_MATS.py',false,
+        'Not in this project\'s files &mdash; exists elsewhere.'],
+      ['2b','ANI','locked','2ANI_SCATTERANIMATION_AQ.py',false,
+        'Scatter tech reference for the planned particle / assembly-scatter script &mdash; exists elsewhere.'],
+      ['4','CHK','locked','3_NGS_CHECK_REPORT.py',false,
+        'Exists elsewhere; reads like a post-check under the new scheme &mdash; recommend re-prefixing <code>3_</code> &rarr; <code>4_</code> next time it\'s in a session.'],
+    ];
+
+    /* stage metadata for the "by stage" zones and the pipeline sub-headers */
+    var STAGE_ORDER = ['0','1','2a','2b','3','4'];
+    var STAGE = {
+      '0':  { title: 'Pre-check',    blurb: 'Validate geometry, units &amp; orientation before anything hits KeyShot.' },
+      '1':  { title: 'Helper',       blurb: 'Material and scene prep ahead of a full render pass.' },
+      '2a': { title: 'Batch render', blurb: 'Studios-first stills across a whole folder of parts.' },
+      '2b': { title: 'Animation',    blurb: 'Camera moves and assembly-reveal motion.' },
+      '3':  { title: 'Post-process', blurb: 'Turn rendered output into deliverables.' },
+      '4':  { title: 'Post-check',   blurb: 'Audit a finished batch for completeness and naming.' }
+    };
+
+    /* supporting layer — backs the pipeline rather than running in it */
+    var SUPPORT = [
+      { code: 'DOC', title: 'Docs', blurb: 'The planning layer &mdash; inventory, backlog, and the reasoning behind it.', items: [
+        ['SCRIPT_STOCK.md', true, 'At-a-glance inventory + prioritized backlog. Source of truth for script status &mdash; update it, don\'t replace it.'],
+        ['RESEARCH_CREO_KEYSHOT.md', true, 'The research and reasoning behind the backlog: bridge choice (STEP vs live plugin), stage gaps, forum-grounded import pain points, and (2026-07-15) the synthesised AUTO/PRO launcher layer.'],
+        ['scripts/research/RENDER_PIPELINE_ARCHITECTURE.md', true, 'Source doc RPA-7B2E4D &mdash; the AUTO/PRO/EXPERT launcher architecture: one stage spine, two front doors, full filesystem + lifecycle layout.'],
+        ['scripts/research/RENDER_PIPELINE_RESEARCH.md', true, 'Source doc RPR-3F9C1A &mdash; launcher design research: preset modes, the hard QC gate, and the 5-tier bbox scale classification (2 mm &rarr; 70 m).']
+      ]},
+      { code: 'WEB', title: 'Pages', blurb: 'The discovery layer for humans &mdash; not consumed by any script.', items: [
+        ['index.html', true, 'KeyShot hub &mdash; tile grid of areas, Scripts is the first live one.'],
+        ['scripts.html', false, 'This page &mdash; the filterable script inventory, backlog, and conventions.']
+      ]},
+      { code: 'ARC', title: 'Archive', blurb: 'Superseded scripts kept for reference, explicitly out of the active pipeline.', items: [
+        ['scripts/archive/batch_turntable.py', true, 'Raw-camera predecessor of <code>2a_BAT_TURNTABLE</code>.'],
+        ['scripts/archive/batch_import_and_render_all_views.py', true, 'Raw-camera predecessor of <code>2a_BAT_STD_VIEW</code>.']
+      ]},
+      { code: 'REF', title: 'Referenced elsewhere', blurb: 'Scripts named in the inventory that live outside this repo &mdash; tracked so they\'re not lost.', items: [
+        ['0_NGS_MAT_STEEL.py', false, 'Steel material script &mdash; exists elsewhere.'],
+        ['0_NGS_PROC_MATS.py', false, 'Procedural materials script &mdash; exists elsewhere.'],
+        ['2ANI_SCATTERANIMATION_AQ.py', false, 'Scatter tech reference for the planned particle script.'],
+        ['3_NGS_CHECK_REPORT.py', false, 'Reads like a post-check &mdash; re-prefix <code>3_</code>&rarr;<code>4_</code> next session.']
+      ]},
+      { code: 'DISC', title: 'Discipline', blurb: 'Cross-cutting conventions the whole pipeline follows &mdash; see the full conventions panel below.', items: [
+        ['{PREFIX}_{AREA}_{NAME}_{REV}.py', false, 'The filename convention every script obeys &mdash; stage prefix, 3-letter area, short name, revision.'],
+        ['Confirmed vs. experimental', false, 'Every script\'s header states what\'s verified against KeyShot\'s scripting reference vs. probed defensively on this build.']
+      ]}
+    ];
+
+    /* ---- render helpers ---- */
+    function scriptPath(s) {
+      var status = s[2], file = s[3], hasLink = s[4];
+      if (!hasLink) return null;
+      if (status === 'archive') return 'scripts/archive/' + file;
+      if (status === 'unfiled') return 'tobeprocessed/' + file;
+      return 'scripts/' + file;
+    }
+    function statusLabel(st) {
+      return st === 'current' ? 'Current' : st === 'archive' ? 'Archive'
+        : st === 'locked' ? 'Elsewhere' : 'Unfiled';
+    }
+    function rowHTML(s, first) {
+      var stage = s[0], area = s[1], status = s[2], file = s[3];
+      var path = scriptPath(s), note = s[5];
+      var nameHTML = path ? '<a href="' + path + '">' + file + '</a>' : file;
+      return '<div class="row' + (first ? ' first' : '') + '" data-stage="' + stage + '">' +
+        '<div class="tag">' + stage.toUpperCase() + '<span class="area">' + area + '</span></div>' +
+        '<div><div class="name">' + nameHTML + '</div><div class="note">' + note + '</div></div>' +
+        '<div class="status ' + status + '">' + statusLabel(status) + '</div>' +
+      '</div>';
+    }
+    function zone(codeHTML, codeClass, title, blurb, countHTML, bodyHTML) {
+      return '<div class="zone card">' +
+        '<div class="zone-head">' +
+          '<span class="zone-code ' + codeClass + '">' + codeHTML + '</span>' +
+          '<span class="zone-title">' + title + '</span>' +
+          '<span class="zone-blurb">' + blurb + '</span>' +
+          (countHTML ? '<span class="zone-count">' + countHTML + '</span>' : '') +
+        '</div><div class="zone-body">' + bodyHTML + '</div></div>';
+    }
+
+    /* ---- VIEW A: by pipeline stage (current + unfiled shown; ref/archive live in the type view) ---- */
+    (function renderStage() {
+      var host = document.getElementById('view-stage');
+      var html = '';
+      STAGE_ORDER.forEach(function (st) {
+        var rows = SCRIPTS.filter(function (s) {
+          return s[0] === st && (s[2] === 'current' || s[2] === 'unfiled');
+        });
+        var meta = STAGE[st];
+        var body = rows.length
+          ? rows.map(function (s, i) { return rowHTML(s, i === 0); }).join('')
+          : '<div class="empty-note">No scripts at this stage yet.</div>';
+        var count = rows.length ? rows.length + ' script' + (rows.length > 1 ? 's' : '') : '';
+        html += zone('Stage ' + st, '', meta.title, meta.blurb, count, body);
+      });
+      host.innerHTML = html;
+    })();
+
+    /* ---- VIEW B: main pipeline (stage-ordered) vs. supporting ---- */
+    (function renderType() {
+      var host = document.getElementById('view-type');
+      var html = '';
+
+      // Main pipeline zone — current scripts, sub-grouped by stage.
+      var pipeBody = '', total = 0;
+      STAGE_ORDER.forEach(function (st) {
+        var rows = SCRIPTS.filter(function (s) { return s[0] === st && s[2] === 'current'; });
+        if (!rows.length) return;
+        total += rows.length;
+        pipeBody += '<div class="substage">Stage ' + st + ' &middot; ' + STAGE[st].title + '</div>';
+        pipeBody += rows.map(function (s) { return rowHTML(s, false); }).join('');
+      });
+      html += zone('Main pipeline', '', 'Runs against real parts', 'Stage-ordered <code>0</code>&rarr;<code>4</code>; every script slots into exactly one stage. This is what actually runs against a batch.', total + ' scripts', pipeBody);
+
+      // Supporting groups.
+      SUPPORT.forEach(function (g) {
+        var body = g.items.map(function (it, i) {
+          // linkify real file paths (it[1] === true); leave convention tokens as text
+          var name = it[1] ? '<a href="' + it[0] + '">' + it[0] + '</a>' : it[0];
+          return '<div class="item' + (i === 0 ? ' first' : '') + '">' +
+            '<div><div class="name">' + name + '</div><div class="note">' + it[2] + '</div></div>' +
+            '<div class="kind">' + g.code + '</div></div>';
+        }).join('');
+        html += zone(g.code, 'support', g.title, g.blurb, '', body);
+      });
+
+      host.innerHTML = html;
+    })();
+
+    /* ---- view switch ---- */
+    (function () {
+      var btns = document.querySelectorAll('.switch button');
+      var views = { stage: document.getElementById('view-stage'), type: document.getElementById('view-type') };
+      var hint = document.getElementById('switch-hint');
+      var HINTS = {
+        stage: 'Six zones, one per pipeline phase &mdash; the order a batch runs in.',
+        type:  'The runnable <b>pipeline</b> vs. the <b>docs, pages, archive &amp; discipline</b> that back it.'
+      };
+      function set(view) {
+        btns.forEach(function (b) { b.classList.toggle('active', b.dataset.view === view); });
+        views.stage.hidden = view !== 'stage';
+        views.type.hidden = view !== 'type';
+        hint.innerHTML = HINTS[view];
+      }
+      btns.forEach(function (b) { b.addEventListener('click', function () { set(b.dataset.view); }); });
+      set('stage');
+    })();
+    </script>
 
     <section>
       <h2>Backlog<span class="rule"></span></h2>
       <ul class="backlog">
         <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Hand-staged one-off reveal (particles, rain) &mdash; design stage</span></li>
         <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Assembly reveal, Creo-driven &mdash; animate an authored explode state; depends on verifying explode data survives the plugin import</span></li>
-        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Assembly reveal, procedural modes &mdash; scatter/settle, staggered build, spiral converge, ghost fade-in <em style="color:var(--c-fluid); font-style:normal;">&mdash; done, see Current</em> (sub-assembly build remains a follow-on)</span></li>
-        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Cutaway / cross-section reveal <em style="color:var(--c-fluid); font-style:normal;">&mdash; done, see Current</em></span></li>
-        <li><span class="pri">P1</span><span class="idea"><span class="stage">1 &middot;</span> Material-name lookup table (Creo &rarr; KeyShot) <em style="color:var(--c-fluid); font-style:normal;">&mdash; done, see Current</em></span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">3 &middot;</span> Multi-angle fade reel &mdash; crossfade between Studios/cameras; consumes stills from the turntable/std-view batches <em style="color:var(--c-fluid); font-style:normal;">&mdash; done, see Current</em></span></li>
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Assembly reveal, procedural modes &mdash; scatter/settle, staggered build, spiral converge, ghost fade-in <em>&mdash; done, see pipeline</em> (sub-assembly build remains a follow-on)</span></li>
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Cutaway / cross-section reveal <em>&mdash; done, see pipeline</em></span></li>
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">1 &middot;</span> Material-name lookup table (Creo &rarr; KeyShot) <em>&mdash; done, see pipeline</em></span></li>
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">&mdash; &middot;</span> Shared module (L3) &mdash; de-duplicate Studio resolution, manifest, framing/padding &amp; classify out of the ~4 scripts that copy it; the unblocker for the launcher &amp; scale classifier</span></li>
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">&mdash; &middot;</span> <code>RUN_ALL.py</code> launcher &mdash; one spine, two doors (AUTO headless / PRO dialog): import &rarr; classify tier &rarr; preflight hard-gate &rarr; stage router &rarr; contact sheet</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">&mdash; &middot;</span> <code>watch.py</code> orchestrator (out-of-KeyShot) &mdash; hot-folder watch, resolve mode from subfolder, move-on-success lifecycle</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> 5-tier bbox-diagonal scale classification (2 mm &rarr; 70 m, ~35,000:1) &mdash; per-tier overrides; needs a calibration pass over real parts</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">3 &middot;</span> Multi-angle fade reel &mdash; crossfade between Studios/cameras; consumes stills from the turntable/std-view batches <em>&mdash; done, see pipeline</em></span></li>
         <li><span class="pri">P2</span><span class="idea"><span class="stage">3 &middot;</span> BOM-driven manifest (opt-in) &mdash; BOM access method still TBD</span></li>
         <li><span class="pri">P2</span><span class="idea"><span class="stage">2b &middot;</span> Dynamic BOM callouts on assembly renders &mdash; depends on the BOM manifest above</span></li>
         <li><span class="pri">P2</span><span class="idea"><span class="stage">1 &middot;</span> Studio/camera-rig template library</span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> STEP-file preflight (units, filename hygiene, material hints) <em style="color:var(--c-fluid); font-style:normal;">&mdash; done, see Current</em></span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> Trial-import geometry/appearance health check <em style="color:var(--c-fluid); font-style:normal;">&mdash; done, see Current</em> (the original "pre-import validator" item, split into 3)</span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> Orientation / up-axis sanity check <em style="color:var(--c-fluid); font-style:normal;">&mdash; done, see Current</em></span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">4 &middot;</span> Naming-compliance + render-completeness audit <em style="color:var(--c-fluid); font-style:normal;">&mdash; done, see Current</em></span></li>
-        <li><span class="pri">P3</span><span class="idea"><span class="stage">&mdash; &middot;</span> Archive superseded batch scripts <em style="color:var(--c-fluid); font-style:normal;">&mdash; done</em></span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> STEP-file preflight (units, filename hygiene, material hints) <em>&mdash; done, see pipeline</em></span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> Trial-import geometry/appearance health check <em>&mdash; done, see pipeline</em> (the original "pre-import validator", split into 3)</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> Orientation / up-axis sanity check <em>&mdash; done, see pipeline</em></span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">4 &middot;</span> Naming-compliance + render-completeness audit <em>&mdash; done, see pipeline</em></span></li>
+        <li><span class="pri">P3</span><span class="idea"><span class="stage">&mdash; &middot;</span> Archive superseded batch scripts <em>&mdash; done</em></span></li>
       </ul>
     </section>
 
@@ -479,7 +462,7 @@
           <code>2a_</code> batch render &middot; <code>2b_</code> animation &middot;
           <code>3_</code> post-process &middot; <code>4_</code> post-check</li>
         <li>AREA: 3-letter code &mdash; <code>BAT</code>, <code>ANI</code>, <code>HLP</code>,
-          <code>PRC</code>, <code>NGS</code>, <code>CHK</code>&hellip;</li>
+          <code>PRC</code>, <code>VAL</code>, <code>CHK</code>, <code>NGS</code>&hellip;</li>
         <li>REV: <code>XX01</code> &mdash; letter steps for a breaking change, number steps for a routine one</li>
         <li>Python 3.10+, <code>lux</code> / <code>luxmath</code> modules</li>
         <li>Headless CLI runs anything marked <code>HEADLESS COMPLIANT</code>; still needs a machine with a licensed KeyShot install</li>
@@ -492,52 +475,6 @@
   <footer>
     RENKON &middot; <a href="https://github.com/technicallytechnicaldesign/RENKON">github.com/technicallytechnicaldesign/RENKON</a>
   </footer>
-  <script>
-  (function () {
-    var stagePills = document.querySelectorAll('.pill[data-stage]');
-    var statusPills = document.querySelectorAll('.pill[data-status]');
-    var groups = document.querySelectorAll('.stage-group');
-    var currentStage = 'all';
-    var currentStatus = 'pending';
-
-    function apply() {
-      groups.forEach(function (group) {
-        var status = group.dataset.status;
-        var groupVisible = status === 'current' || status === currentStatus;
-        group.hidden = !groupVisible;
-        if (!groupVisible) return;
-        var anyRow = false;
-        group.querySelectorAll('.stage-row').forEach(function (row) {
-          var show = currentStage === 'all' || row.dataset.stage === currentStage;
-          row.hidden = !show;
-          if (show) anyRow = true;
-        });
-        var note = group.querySelector('.empty-note');
-        if (note) note.style.display = anyRow ? 'none' : '';
-      });
-    }
-
-    stagePills.forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        stagePills.forEach(function (b) { b.classList.remove('active'); });
-        btn.classList.add('active');
-        currentStage = btn.dataset.stage;
-        apply();
-      });
-    });
-
-    statusPills.forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        statusPills.forEach(function (b) { b.classList.remove('active'); });
-        btn.classList.add('active');
-        currentStatus = btn.dataset.status;
-        apply();
-      });
-    });
-
-    apply();
-  })();
-  </script>
   <script src="../assets/menu.js"></script>
 </body>
 </html>

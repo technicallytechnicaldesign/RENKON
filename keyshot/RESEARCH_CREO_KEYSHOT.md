@@ -186,3 +186,96 @@ confirmed `setTransform()`, which validates the relative-delta-only approach
 setter was found for a scene node or material graph in the reference pulled
 here — that part of `2b_ANI_ASSEMBLY_PROCEDURAL_AA01.py`'s `ghost_fade` mode
 stays experimental.
+
+## Synthesis (2026-07-15): stage-1 material generator + the launcher layer
+
+Folded in from a research bundle dropped into `scripts/research/`
+(`keyshot_pipeline_research_STAGE1.zip`, now unpacked to
+`RENDER_PIPELINE_ARCHITECTURE.md` (UID RPA-7B2E4D Rev 3) +
+`RENDER_PIPELINE_RESEARCH.md` (UID RPR-3F9C1A Rev 2), zip recycled). Those two
+files are the **source of record** — read them for the full mermaid flow,
+filesystem layout, and tier tables; this section is the distilled decisions
+plus a name-mapping note so nothing re-litigates against stale filenames.
+
+**Name-mapping caveat.** Both research docs predate this repo's
+`{PREFIX}_{AREA}_{NAME}_{REV}` cleanup and refer to the *old* filenames. Read
+them through this map:
+
+| In the research docs | Current script |
+|---|---|
+| `1_BATCH_MAT_PREFLIGHT.py` | `1_HLP_MAT_PREFLIGHT_AA01.py` |
+| `2_BATCH_STD_VIEW_AQ.py` | `2a_BAT_STD_VIEW_AA01.py` |
+| `2_BATCH_TURNTABLE_AQ.py` | `2a_BAT_TURNTABLE_AA01.py` |
+| `2ANI_REVEALANIMATION_AQ.py` | `2b_ANI_HERO_REVEAL_AA01.py` |
+| `2ANI_SCATTERANIMATION_AQ.py` | scatter reference — still "exists elsewhere" |
+| `contact_sheet.py` | `3_PRC_CONTACT_SHEET_AA01.py` |
+| `3_report` (report script) | `4_CHK_AUDIT_AA01.py` (nearest current equivalent) |
+
+### 1. Procedural material generator → now `1_HLP_MAT_GENERATOR_AA01.py`
+The dropped generator is the material-*authoring* member of the `1_HLP_MAT_*`
+family (preflight = coverage QC, lookup = Creo→KeyShot mapping, **generator =
+build a material from toggleable feature layers**). It's `lux`/headless-
+compliant already (dialog in GUI, `DEFAULT_OPTIONS` headless). Design points
+worth keeping in mind when we extend it:
+- **Confirmed vs. experimental layers** are the same confidence discipline as
+  the rest of the pipeline. Confirmed: Fine Noise, Scratches, Rounded Edges,
+  Spots, Fractal Noise, Occlusion. Experimental (getattr-guarded): Cellular,
+  Colour Gradient.
+- **Thin Film was removed on purpose** — it's a full KeyShot material *type*
+  (its own iridescent BRDF), not a bump/height texture; wiring it into a bump
+  slot was a category error and the leading suspect for "wild" output. Bringing
+  it back = a new `MATERIAL_TYPES` base entry, not a layer toggle.
+- **Loud bump layers are capped + amplitude-damped** (`1/sqrt(n)`) so stacked
+  layers keep total surface energy roughly constant instead of compounding
+  into chaos.
+
+### 2. The launcher / preset layer (designed, not yet built)
+The big idea in the bundle: **one stage library, multiple front doors** —
+don't build parallel pipelines, build entrances onto the same spine
+(import → classify tier → **preflight hard-gate** → stage router → contact
+sheet). The seam already exists in every script: `lux.isHeadless()`.
+- **AUTO** (hands-off) — drop a `.stp` into a mode-named hot-folder; an
+  *out-of-KeyShot* watcher (`watch.py`, plain Python) resolves mode from the
+  subfolder, runs stages headless, and moves the file through a
+  `01_FOR_PROCESSING → 02_IN_REVIEW → 03_APPROVED / 99_FAILED` lifecycle
+  (move-on-success-only; guard partial copies).
+- **PRO** (hands-on) — same stages via each script's GUI dialog; home for art
+  direction (tuned reveals, scatter, hand-staged one-offs, tier overrides).
+- **EXPERT** (low-pri) — a `enforce=False` flag on the spine, not a fork:
+  guards become no-ops, banner it loudly. Opt-in from PRO only.
+- **`RUN_ALL.py`** is the shared L1 launcher (headless reads a `job.json`/env,
+  dialog exposes the full option surface). **No file moves live in KeyShot** —
+  those are the watcher's job.
+
+### 3. Scale is a real problem here (2 mm parts → 70 m assemblies, ~35,000:1)
+A binary "small part" flag doesn't cover the range — replaced with a **5-tier
+bbox-diagonal classification** (Micro/Small/Standard/Large/Extra-large), each
+tier an overrides dict merged onto base options (same pattern as presets, not a
+new code path). Confirmed API footing:
+- `lux.getSceneInfo()` returns unit/meter scale — cheap to log every import; a
+  scale off by ~25.4 (mm/inch) or ~1000 (mm/m) is a unit mixup caught directly.
+- `lux.setSceneUnit(unit, keep=True)` for a manual fix; import `geometry_units`
+  is the override for formats without unit metadata.
+- **Mismatch risk is format-dependent**: STEP/IGES embed units (reliable
+  auto-detect); STL/OBJ carry none (raw numbers) — that's where silent mixups
+  hide. BSP callouts in a filename are a naming convention, *not* evidence of
+  inch geometry — secondary signal only.
+- Large/XL adds non-framing concerns: force `adjust_environment`, sanity-check
+  ground-plane placement, and budget more samples/render time.
+
+### 4. Shared-module refactor is the unblocker
+Studio resolution, manifest logging, `centerAndFit` + padding, and units/bbox
+classify are currently **duplicated near-verbatim across ~4 scripts**. Both the
+launcher and the tier classifier want to *import* this, not copy it a fifth
+time. Extract an L3 `shared/` module first — it's low-risk and unblocks
+everything else.
+
+### Open questions carried over (for TJ, before building the launcher)
+1. **Input file formats** — STEP/IGES vs STL/OBJ? Sets how much the bbox sanity
+   check must carry vs. how much auto-detect can be trusted.
+2. **Real bbox tier breakpoints** — calibrate against the actual size
+   distribution of the part library, not the placeholder round numbers.
+3. Is scene-native unit consistently mm, or are there known exceptions needing
+   an explicit `geometry_units` override?
+4. Final preset list/names.
+5. Orthographic-for-Micro: tier default or experimental opt-in?

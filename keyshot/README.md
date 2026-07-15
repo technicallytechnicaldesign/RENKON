@@ -31,6 +31,7 @@ don't replace it, as scripts move through the pipeline.
 | [`0_VAL_ORIENTATION_CHECK_AA01.py`](scripts/0_VAL_ORIENTATION_CHECK_AA01.py) | 0 &middot; VAL | Orientation/up-axis sanity check — flags statistical footprint-ratio outliers |
 | [`1_HLP_MAT_PREFLIGHT_AA01.py`](scripts/1_HLP_MAT_PREFLIGHT_AA01.py) | 1 &middot; HLP | Material-template coverage QC, ahead of a full batch render |
 | [`1_HLP_MAT_LOOKUP_AA01.py`](scripts/1_HLP_MAT_LOOKUP_AA01.py) | 1 &middot; HLP | Creo &rarr; KeyShot material-name lookup table, applies templates per object |
+| [`1_HLP_MAT_GENERATOR_AA01.py`](scripts/1_HLP_MAT_GENERATOR_AA01.py) | 1 &middot; HLP | Procedural material variant generator &mdash; toggleable feature layers onto a metal/plastic base at a wear level |
 | [`2a_BAT_STD_VIEW_AA01.py`](scripts/2a_BAT_STD_VIEW_AA01.py) | 2a &middot; BAT | Studios-first multi-view batch render |
 | [`2a_BAT_TURNTABLE_AA01.py`](scripts/2a_BAT_TURNTABLE_AA01.py) | 2a &middot; BAT | Studios-first 360&deg; turntable batch |
 | [`2b_ANI_HERO_REVEAL_AA01.py`](scripts/2b_ANI_HERO_REVEAL_AA01.py) | 2b &middot; ANI | Zoom+crane hero reveal, synced to Model Set animation |

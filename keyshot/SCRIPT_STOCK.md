@@ -1,7 +1,7 @@
 # Script Stock
 
 Project ID: `ksrp-efbe4961`
-Last updated: 2026-07-11 (naming cleanup + 8 backlog items delivered; stage 0 now populated)
+Last updated: 2026-07-15 (filed the procedural material generator into stage 1; synthesised the AUTO/PRO launcher research into RESEARCH_CREO_KEYSHOT.md + new backlog items)
 
 Running at-a-glance inventory + priority backlog. Update this file, don't
 replace it, as scripts move status.
@@ -15,6 +15,7 @@ replace it, as scripts move status.
 | 0 | VAL | `0_VAL_ORIENTATION_CHECK_AA01.py` | ✅ current | Orientation/up-axis sanity check — flags statistical footprint-ratio outliers across a batch. Explicitly a review-flagging heuristic, not a fixer |
 | 1 | HLP | `1_HLP_MAT_PREFLIGHT_AA01.py` | ✅ current | Material-template coverage QC — renamed from `batch_material_preflight.py` |
 | 1 | HLP | `1_HLP_MAT_LOOKUP_AA01.py` | ✅ current | Creo → KeyShot material-name lookup table; applies templates per object. Per-object apply method is unconfirmed on your build — probes candidates, reports which worked |
+| 1 | HLP | `1_HLP_MAT_GENERATOR_AA01.py` | ✅ current | Procedural material *variant* generator — toggleable feature layers (noise/scratches/spots/cellular/edges/roughness/colour) onto a metal/plastic base at a wear level, auto-named `MAT-<TYPE>-<WEAR>-<hex>`. Loud bump layers capped + `1/√n` damped. Filed 2026-07-15 from `tobeprocessed/`; Cellular + Colour Gradient are getattr-guarded experimental layers |
 | 2a | BAT | `2a_BAT_STD_VIEW_AA01.py` | ✅ current | Studios-first multi-view batch |
 | 2a | BAT | `2a_BAT_TURNTABLE_AA01.py` | ✅ current | Studios-first turntable batch — kept as-is; "fade between angles" request built as a separate `3_` script instead (see backlog) |
 | 2b | ANI | `2b_ANI_HERO_REVEAL_AA01.py` | ✅ current | Zoom+crane reveal; ground-setter & `getAnimationInfo()` shape still unconfirmed on your build |
@@ -49,5 +50,11 @@ replace it, as scripts move status.
 | P2 | 4 | Naming-compliance + render-completeness audit | ✅ done — `4_CHK_AUDIT_AA01.py` | — |
 | P3 | — | Archive superseded batch scripts | ✅ done — moved to `scripts/archive/` | — |
 | P2 | 2b | Assembly reveal — sub-assembly build (grouped convergence) | Not started | Extension of `2b_ANI_ASSEMBLY_PROCEDURAL_AA01.py`; extension point noted in that script's `get_parts()`/`schedule_staggered_windows()` |
+| P1 | — | Shared module (L3) — de-duplicate Studio resolution, manifest logging, `centerAndFit`+padding, units/bbox classify out of the ~4 scripts that copy it | Design | The unblocker for both the launcher and the scale classifier; extract before writing either (see synthesis §4) |
+| P1 | — | `RUN_ALL.py` launcher (L1) — one spine, two doors (AUTO headless / PRO dialog): import → classify tier → preflight hard-gate → stage router → contact sheet | Design | Shared module (above). AUTO/PRO/EXPERT design in `RENDER_PIPELINE_ARCHITECTURE.md` |
+| P2 | — | `watch.py` orchestrator (L0, out-of-KeyShot) — hot-folder watch on `01_FOR_PROCESSING/*`, resolve mode from subfolder, move-on-success lifecycle | Design | `RUN_ALL.py` first |
+| P2 | 0 | 5-tier bbox-diagonal scale classification (Micro→Extra-large, ~35,000:1 range) — per-tier overrides dict merged onto base options | Design | Needs a calibration pass over real parts for breakpoints; `getSceneInfo()` unit-scale + `getBoundingBox(world=True)` both confirmed |
 
-See `RESEARCH_CREO_KEYSHOT.md` for the thinking behind the backlog.
+See `RESEARCH_CREO_KEYSHOT.md` for the thinking behind the backlog — its
+2026-07-15 synthesis section covers the launcher layer, and the two source
+docs in `scripts/research/` (RPA-7B2E4D, RPR-3F9C1A) have the full detail.
