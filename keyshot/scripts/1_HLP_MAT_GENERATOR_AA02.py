@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # AUTHOR claude-subagent
-# REV AA01
+# REV AA02
 # HEADLESS COMPLIANT
 # Procedural material *variant* generator: a dialog of independently
 # toggleable feature layers (fine noise, scratches, spots, cellular, rounded
