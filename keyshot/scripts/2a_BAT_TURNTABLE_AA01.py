@@ -14,6 +14,8 @@
 import os, re, sys
 import os.path
 import csv
+import time
+import json
 from datetime import datetime
 
 MANIFEST_FIELDS = ["timestamp", "part_file", "base_name", "view", "template", "output_path", "status"]
@@ -26,53 +28,81 @@ def logManifestRow(manifestPath, row):
             writer.writeheader()
         writer.writerow(row)
 
-def genericInput(msg, default=None, check=lambda x: len(x) > 0):
-    if default is not None:
-        msg += " [{}] ".format(default)
-    if not msg.endswith(" "):
-        msg += " "
-    while True:
-        try:
-            value = input(msg)
-            if check(value):
-                return value
-            elif len(value) == 0 and default is not None:
-                return default
-        except EOFError:
-            sys.stdout.write("\n")
-            continue
-        except KeyboardInterrupt:
-            sys.exit()
+# --------------------------------------------------------------------------
+# Reliability helpers (Phase-1, RAR-6E1F3B sec 6). ASCII-only, f-string-free.
+# --------------------------------------------------------------------------
 
-def inputFolder(msg):
-    return genericInput(msg, check=lambda x: os.path.isdir(x))
-
-def inputOptionalFolder(msg, fallback):
-    val = genericInput(msg, default="", check=lambda x: len(x) == 0 or os.path.isdir(x))
-    return val if len(val) > 0 else fallback
-
-def inputText(msg, default):
-    return genericInput(msg, default=default)
-
-def intInRange(value, valueRange=None):
+def verify_output(path, started_at):
+    """Confirm a render actually wrote: exists, non-trivial size, mtime >= start.
+    renderImage's return value is undocumented, so the file on disk is the truth."""
     try:
-        n = int(value)
-        if valueRange is not None:
-            return n >= valueRange[0] and n <= valueRange[1]
-        else:
-            return True
-    except ValueError:
+        if not os.path.exists(path):
+            return False
+        st = os.stat(path)
+        if st.st_size < 512:
+            return False
+        return st.st_mtime >= (started_at - 2.0)
+    except Exception:
         return False
 
-def inputInt(msg, default, valueRange=None):
-    return int(genericInput(msg, default=default, check=lambda x: intInRange(x, valueRange)))
 
-def inputItem(msg, defaultIndex, items):
-    pre = ""
-    for i in range(len(items)):
-        pre += "[{}] {}\n".format(i + 1, items[i])
-    idx = inputInt(pre + msg, defaultIndex + 1, (1, len(items))) - 1
-    return (idx, items[idx])
+def verify_frame_sequence(folder, filenames):
+    missing = []
+    for fn in filenames:
+        p = os.path.join(folder, fn)
+        try:
+            if (not os.path.exists(p)) or os.stat(p).st_size < 512:
+                missing.append(fn)
+        except Exception:
+            missing.append(fn)
+    return (len(missing) == 0, missing)
+
+
+_SANITIZE_RE = re.compile(r'[\\/:*?"<>|\s]+')
+
+
+def sanitize_name(name):
+    """Replace path-hostile characters (/ \\ : * ? " < > |) and whitespace runs
+    with '_' so a studio/camera/base name can't produce an invalid output path."""
+    cleaned = _SANITIZE_RE.sub("_", str(name)).strip("_")
+    return cleaned if cleaned else "unnamed"
+
+
+def load_job_json(folder):
+    """Headless AUTO sidecar (RPA-7B2E4D sec 3): if a job.json sits in `folder`,
+    load it and return its dict so its keys can override DEFAULT_OPTIONS. Never
+    fatal -- a missing or malformed job.json yields {}."""
+    if not folder:
+        return {}
+    jp = os.path.join(folder, "job.json")
+    try:
+        if not os.path.isfile(jp):
+            return {}
+        fh = open(jp)
+        try:
+            data = json.load(fh)
+        finally:
+            fh.close()
+        if isinstance(data, dict):
+            print("Loaded job.json from {0}".format(jp))
+            return data
+        print("[warn] job.json at {0} is not a JSON object -- ignoring".format(jp))
+    except Exception as e:
+        print("[warn] couldn't read job.json at {0}: {1}".format(jp, e))
+    return {}
+
+
+# Headless defaults mirror the PRO dialog's keys/defaults. A job.json (CWD or
+# import folder) overrides these; the interactive input() path is gone (a closed
+# stdin under keyshot_headless -script made it spin forever -- RAR-6E1F3B 1.2-W6).
+# template is an index into the runtime template list (0 = "-- None --").
+DEFAULT_OPTIONS = {
+    "folder": "",
+    "outFolder": "",
+    "iext": "bip",
+    "baseCamera": "Iso",
+    "template": 0,
+}
 
 def cleanExt(ext):
     while ext.startswith("."):
@@ -112,12 +142,27 @@ def main():
                                   values = values,
                                   id = "renderturntables.py.luxion")
     else:
-        opts = {}
-        opts["folder"] = inputFolder("Folder to import from:")
-        opts["outFolder"] = inputOptionalFolder("Folder to save turntables to (blank = same as import folder):", opts["folder"])
-        opts["iext"] = inputText("Input file format to read:", "bip")
-        opts["baseCamera"] = inputText("Studio or camera to base the turntable on:", "Iso")
-        opts["template"] = inputItem("Apply material template on each import (optional):", 0, tmpls)
+        # Headless: no interactive prompts (a closed stdin would hang). Start
+        # from DEFAULT_OPTIONS, overlay a job.json from the CWD, then one from
+        # the import folder that job.json may have named (RPA-7B2E4D sec 3).
+        opts = dict(DEFAULT_OPTIONS)
+        try:
+            cwd = os.getcwd()
+        except Exception:
+            cwd = ""
+        opts.update(load_job_json(cwd))
+        jobFld = opts.get("folder", "") or ""
+        if jobFld and (not cwd or os.path.abspath(jobFld) != os.path.abspath(cwd)):
+            opts.update(load_job_json(jobFld))
+        # Normalise the template index into the (index, label) shape the code
+        # below expects (mirrors the old inputItem return / the dialog result).
+        try:
+            ti = int(opts.get("template", 0))
+        except (ValueError, TypeError):
+            ti = 0
+        if ti < 0 or ti >= len(tmpls):
+            ti = 0
+        opts["template"] = (ti, tmpls[ti])
     if not opts: return
 
     fld = opts["folder"]
@@ -144,12 +189,27 @@ def main():
     # immediately, one after another, so the folder is complete and ready
     # for encodeVideo() by the time we get to it.
 
-    for f in [f for f in os.listdir(fld) if f.lower().endswith(iext)]:
+    for f in sorted([f for f in os.listdir(fld) if f.lower().endswith(iext)]):
         path = fld + os.path.sep + f
         lux.newScene()
 
         print("Importing {}".format(path))
-        lux.importFile(path)
+        # Wrap the import so one corrupt file yields one FAILED row + continue
+        # instead of killing the whole batch (1.1-W2 / 1.2 inherited).
+        try:
+            lux.importFile(path)
+        except Exception as e:
+            print("  [warn] couldn't import {0}: {1} -- skipping".format(path, e))
+            logManifestRow(manifestPath, {
+                "timestamp": datetime.now().isoformat(timespec="seconds"),
+                "part_file": f,
+                "base_name": stripExt(f, iext),
+                "view": "",
+                "template": template or "",
+                "output_path": "",
+                "status": "FAILED (import)",
+            })
+            continue
 
         if template:
             print("  Setting material template {}".format(template))
@@ -169,16 +229,24 @@ def main():
         except Exception as e:
             print("  [warn] couldn't list studios: {}".format(e))
 
+        # getStudio is 2024.1+ ONLY; getattr-guard it so a KS11 build stays
+        # version-safe (RAR-6E1F3B headline #2 / 1.2-W1).
+        _gs = getattr(lux, "getStudio", None)
+
         studioName = None
         if baseCameraName in studios:
             studioName = baseCameraName
-        elif studios:
+        elif studios and _gs is not None:
             # No direct name match -- if a studio happens to be built on the
             # requested camera name, prefer that studio so lighting stays
-            # paired correctly rather than silently falling back to raw.
+            # paired correctly rather than silently falling back to raw. This
+            # inspection needs getStudio; when it's absent we simply can't do
+            # it -- a studio named exactly baseCameraName is still handled
+            # above (then activated version-safely below), and anything else
+            # degrades to the raw-camera path (current behaviour).
             for s in studios:
                 try:
-                    if lux.getStudio(s).getCamera() == baseCameraName:
+                    if _gs(s).getCamera() == baseCameraName:
                         studioName = s
                         break
                 except Exception:
@@ -186,16 +254,31 @@ def main():
 
         cam = None
         if studioName:
+            # Activation FIRST and unconditionally -- setActiveStudio exists in
+            # every build and pairs camera + environment. It must NOT be gated on
+            # getStudio, or a KS11 build silently drops to raw-camera lighting.
             try:
-                studioObj = lux.getStudio(studioName)
                 lux.setActiveStudio(studioName)
-                cam = studioObj.getCamera()
-                if cam:
-                    lux.setCamera(cam)
-                print("  Using studio '{}' (camera '{}') for lighting + camera.".format(studioName, cam))
             except Exception as e:
                 print("  [warn] couldn't activate studio '{}': {} -- falling back to raw camera.".format(studioName, e))
                 studioName = None
+            if studioName:
+                # getStudio (guarded) only to LEARN the paired camera name;
+                # its absence must not drop us to raw lighting.
+                if _gs is not None:
+                    try:
+                        cam = _gs(studioName).getCamera()
+                        if cam:
+                            lux.setCamera(cam)
+                    except Exception as e:
+                        print("  [warn] getStudio('{}') unusable ({}) -- using active camera".format(studioName, e))
+                        cam = None
+                if not cam:
+                    try:
+                        cam = lux.getCamera()
+                    except Exception:
+                        cam = None
+                print("  Using studio '{}' (camera '{}') for lighting + camera.".format(studioName, cam))
 
         if not studioName:
             cameras = lux.getCameras()
@@ -227,28 +310,66 @@ def main():
 
         azimuth, incl, twist = lux.getSphericalCamera()
 
-        frameFolder = os.path.join(outFld, baseName + "_turntable_frames")
+        safeBase = sanitize_name(baseName)
+        frameFolder = os.path.join(outFld, safeBase + "_turntable_frames")
         if not os.path.isdir(frameFolder):
             os.makedirs(frameFolder)
 
         print("  Rendering {} turntable frames for {}...".format(FRAME_COUNT, baseName))
+        frameNames = []
         for i in range(1, FRAME_COUNT + 1):
             az = (azimuth + (i - 1) * (360.0 / FRAME_COUNT)) % 360.0
             if az > 180.0:
                 az -= 360.0
             lux.setSphericalCamera(az, incl, twist)
-            framePath = os.path.join(frameFolder, "frame.{}.jpg".format(i))
+            frameName = "frame.{}.jpg".format(i)
+            framePath = os.path.join(frameFolder, frameName)
             lux.renderImage(path=framePath, width=TURNTABLE_WIDTH, height=TURNTABLE_HEIGHT, opts=turnOpts)
+            frameNames.append(frameName)
 
-        videoPath = os.path.join(outFld, baseName + "_turntable.mp4")
+        videoPath = os.path.join(outFld, safeBase + "_turntable.mp4")
+
+        # Never encode an incomplete sequence: verify every expected frame
+        # exists + is non-trivial first (1.2-W3 / sec 3.2 #4). On a gap, skip
+        # the encode, log FAILED with the missing list, and keep the frames.
+        seqOk, missing = verify_frame_sequence(frameFolder, frameNames)
+        if not seqOk:
+            print("  [warn] {} of {} frames missing -- NOT encoding {}: {}".format(
+                len(missing), FRAME_COUNT, baseName, ", ".join(missing)))
+            logManifestRow(manifestPath, {
+                "timestamp": datetime.now().isoformat(timespec="seconds"),
+                "part_file": f,
+                "base_name": baseName,
+                "view": "turntable",
+                "template": template or "",
+                "output_path": videoPath,
+                "status": "FAILED (missing frames: {})".format(", ".join(missing)),
+            })
+            continue
+
         print("  Encoding {}".format(videoPath))
-        lux.encodeVideo(folder=frameFolder,
-                         frameFiles="frame.%d.jpg",
-                         videoName=videoPath,
-                         fps=FPS,
-                         firstFrame=1,
-                         lastFrame=FRAME_COUNT,
-                         keepFrames=False)
+        # Wrap encodeVideo: an encode failure logs a FAILED row and continues to
+        # the next part instead of killing the whole batch (1.2-W2).
+        try:
+            lux.encodeVideo(folder=frameFolder,
+                             frameFiles="frame.%d.jpg",
+                             videoName=videoPath,
+                             fps=FPS,
+                             firstFrame=1,
+                             lastFrame=FRAME_COUNT,
+                             keepFrames=False)
+        except Exception as e:
+            print("  [warn] encodeVideo failed for {}: {} -- continuing".format(videoPath, e))
+            logManifestRow(manifestPath, {
+                "timestamp": datetime.now().isoformat(timespec="seconds"),
+                "part_file": f,
+                "base_name": baseName,
+                "view": "turntable",
+                "template": template or "",
+                "output_path": videoPath,
+                "status": "FAILED (encode)",
+            })
+            continue
         viewLabel = "turntable ({} / studio {})".format(cam, studioName) if studioName else "turntable ({})".format(cam)
         logManifestRow(manifestPath, {
             "timestamp": datetime.now().isoformat(timespec="seconds"),

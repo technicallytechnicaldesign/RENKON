@@ -2,7 +2,7 @@
 # REV AA01
 # HEADLESS COMPLIANT
 """
-KeyShot Assembly Reveal — Procedural Modes
+KeyShot Assembly Reveal -- Procedural Modes
 ================================================
 
 Animates an assembly's OWN PARTS converging into their authored final
@@ -335,11 +335,10 @@ def load_scene_template(path):
         return True
     try:
         lux.openFile(path, dontAsk=True)
-        print(f"Loaded scene template: {path}")
+        print('Loaded scene template: {0}'.format(path))
         return True
     except Exception as e:
-        print(f"[warn] couldn't load scene template '{path}': {e} — "
-              f"continuing with whatever scene is currently open")
+        print("[warn] couldn't load scene template '{0}': {1} -- continuing with whatever scene is currently open".format(path, e))
         return False
 
 
@@ -348,7 +347,7 @@ def import_into_model_set(file_path, model_set_name):
     (so the parts list below has a stable target to work from). Confirmed:
     lux.getModelSets(), lux.setModelSets(), lux.getImportOptions(),
     lux.importFile(path, opts={'model_set_import_to': 1, ...}) (1 = Active).
-    Does NOT create the Model Set if missing — warns and falls back to a
+    Does NOT create the Model Set if missing -- warns and falls back to a
     plain import instead of silently doing the wrong thing."""
     if not file_path:
         return True
@@ -356,40 +355,39 @@ def import_into_model_set(file_path, model_set_name):
     try:
         existing = lux.getModelSets()
     except Exception as e:
-        print(f"[warn] couldn't list model sets: {e}")
+        print("[warn] couldn't list model sets: {0}".format(e))
         existing = []
 
     if not model_set_name or model_set_name not in existing:
         if model_set_name:
-            print(f"[warn] model set '{model_set_name}' not found in the loaded scene "
-                  f"(found: {existing}) — importing without a specific model set target.")
+            print("[warn] model set '{0}' not found in the loaded scene (found: {1}) -- importing without a specific model set target.".format(model_set_name, existing))
         try:
             lux.importFile(file_path)
             return True
         except Exception as e:
-            print(f"[error] couldn't import '{file_path}': {e}")
+            print("[error] couldn't import '{0}': {1}".format(file_path, e))
             return False
 
     try:
         ok = lux.setModelSets([model_set_name])
         if not ok:
-            print(f"[warn] couldn't cleanly activate model set '{model_set_name}' — continuing anyway")
+            print("[warn] couldn't cleanly activate model set '{0}' -- continuing anyway".format(model_set_name))
     except Exception as e:
-        print(f"[warn] couldn't activate model set '{model_set_name}': {e}")
+        print("[warn] couldn't activate model set '{0}': {1}".format(model_set_name, e))
 
     try:
         import_opts = lux.getImportOptions()
     except Exception as e:
-        print(f"[warn] couldn't get import options, using defaults: {e}")
+        print("[warn] couldn't get import options, using defaults: {0}".format(e))
         import_opts = {}
     import_opts["model_set_import_to"] = 1  # 1 = Active model set
 
     try:
         lux.importFile(file_path, opts=import_opts)
-        print(f"Imported '{file_path}' into model set '{model_set_name}'")
+        print("Imported '{0}' into model set '{1}'".format(file_path, model_set_name))
         return True
     except Exception as e:
-        print(f"[error] couldn't import '{file_path}' into '{model_set_name}': {e}")
+        print("[error] couldn't import '{0}' into '{1}': {2}".format(file_path, model_set_name, e))
         return False
 
 
@@ -404,13 +402,13 @@ def get_target_node(model_set_name):
             if matches:
                 return matches[0]
         except Exception as e:
-            print(f"  [warn] couldn't find model set '{model_set_name}': {e}")
+            print("  [warn] couldn't find model set '{0}': {1}".format(model_set_name, e))
     return root
 
 
 def set_ground_rendering(env, enabled):
     """Toggle the environment's ground shadow/reflection catcher. Copied
-    from the sibling scripts — getters are confirmed, setter names are
+    from the sibling scripts -- getters are confirmed, setter names are
     inferred by naming-convention analogy and tried defensively."""
     if env is None:
         return False
@@ -433,11 +431,11 @@ def set_ground_rendering(env, enabled):
     used_reflect = try_setters(reflection_setters)
     if not used_shadow and not used_reflect:
         print("  [warn] couldn't find a working ground shadow/reflection toggle on this KeyShot "
-              "version — 'render ground' setting was not applied. Run help(env) in the Scripting "
+              "version -- 'render ground' setting was not applied. Run help(env) in the Scripting "
               "Console to find the exact method name on your build.")
         return False
     if DEBUG:
-        print(f"  Ground rendering set to {enabled} (via {used_shadow or '-'} / {used_reflect or '-'})")
+        print('  Ground rendering set to {0} (via {1} / {2})'.format(enabled, used_shadow or '-', used_reflect or '-'))
     return True
 
 
@@ -459,20 +457,25 @@ def resolve_camera_list(raw_value):
         try:
             studios = list(lux.getStudios())
         except Exception as e:
-            print(f"[warn] couldn't list studios: {e}")
+            print("[warn] couldn't list studios: {0}".format(e))
             studios = []
         covered = set()
-        for s in studios:
-            try:
-                c = lux.getStudio(s).getCamera()
-                if c:
-                    covered.add(c)
-            except Exception:
-                continue
+        # getStudio is 2024.1+ only; getattr-guard it so listing stays
+        # version-safe on 11.0 builds (covered simply stays empty there,
+        # exactly as the old try/except-continue already degraded).
+        get_studio = getattr(lux, "getStudio", None)
+        if get_studio is not None:
+            for s in studios:
+                try:
+                    c = get_studio(s).getCamera()
+                    if c:
+                        covered.add(c)
+                except Exception:
+                    continue
         try:
             cameras = lux.getCameras()
         except Exception as e:
-            print(f"[warn] couldn't list cameras: {e}")
+            print("[warn] couldn't list cameras: {0}".format(e))
             cameras = []
         extras = [c for c in cameras if c not in covered]
         return studios + extras
@@ -490,14 +493,28 @@ def activate_camera_or_studio(name):
 
     if name in studios:
         try:
-            studio = lux.getStudio(name)
+            # setActiveStudio is documented in every KeyShot version; getStudio
+            # (returning a Studio object) is 2024.1+ only, so activate FIRST and
+            # only THEN reach for getStudio purely to learn the camera name,
+            # falling back to lux.getCamera() on builds that lack getStudio.
             lux.setActiveStudio(name)
-            cam = studio.getCamera()
+            cam = None
+            get_studio = getattr(lux, "getStudio", None)
+            if get_studio is not None:
+                try:
+                    cam = get_studio(name).getCamera()
+                except Exception:
+                    cam = None
+            if not cam:
+                try:
+                    cam = lux.getCamera()
+                except Exception:
+                    cam = None
             if cam:
                 lux.setCamera(cam)
             return cam or name
         except Exception as e:
-            print(f"  [warn] couldn't activate studio '{name}': {e}")
+            print("  [warn] couldn't activate studio '{0}': {1}".format(name, e))
             return None
 
     try:
@@ -509,10 +526,10 @@ def activate_camera_or_studio(name):
             lux.setCamera(name)
             return name
         except Exception as e:
-            print(f"  [warn] couldn't set camera '{name}': {e}")
+            print("  [warn] couldn't set camera '{0}': {1}".format(name, e))
             return None
 
-    print(f"  [warn] '{name}' not found as a studio or camera — skipping")
+    print("  [warn] '{0}' not found as a studio or camera -- skipping".format(name))
     return None
 
 
@@ -529,7 +546,7 @@ def vec_xyz(v):
         return (v.x, v.y, v.z)
     except Exception:
         pass
-    raise TypeError(f"Couldn't extract xyz from {v!r}")
+    raise TypeError("Couldn't extract xyz from {0!r}".format(v))
 
 
 def vadd(a, b): return (a[0] + b[0], a[1] + b[1], a[2] + b[2])
@@ -557,7 +574,7 @@ def resolve_filter(value, sentinel="ALL"):
 
 
 # --------------------------------------------------------------------------
-# EXPERIMENTAL: bounding-box probe — copied from
+# EXPERIMENTAL: bounding-box probe -- copied from
 # 2b_ANI_CUTAWAY_REVEAL_AA01.py's resolve_bounding_box()/_parse_bbox_result()
 # --------------------------------------------------------------------------
 
@@ -583,7 +600,7 @@ def _parse_bbox_result(result):
 
 
 def resolve_bounding_box(node):
-    """getBoundingBox() is confirmed to exist — see the PART EXTENT header
+    """getBoundingBox() is confirmed to exist -- see the PART EXTENT header
     note. Probes a short list of plausible getter names/kwargs via
     getattr(...) for version tolerance; exact return shape isn't
     documented. Returns (min_xyz, max_xyz, api_name) or
@@ -620,7 +637,7 @@ _extent_fallback_warned = False
 def resolve_part_extent(node, fallback_mult):
     """Best-effort characteristic size for one part, used to scale its
     scatter/spiral offsets. Prefers a real bounding-box half-diagonal
-    (EXPERIMENTAL — see resolve_bounding_box()); falls back to the part's
+    (EXPERIMENTAL -- see resolve_bounding_box()); falls back to the part's
     own center-to-scene-origin distance (a much cruder proxy) if no
     bounding-box call resolves, warning once rather than per-part."""
     global _extent_fallback_warned
@@ -632,7 +649,7 @@ def resolve_part_extent(node, fallback_mult):
 
     if not _extent_fallback_warned:
         print("  [warn] no bounding-box getter resolved on this KeyShot version (tried "
-              "getBoundingBox/getWorldBoundingBox/getBounds) — falling back to each part's "
+              "getBoundingBox/getWorldBoundingBox/getBounds) -- falling back to each part's "
               "center-to-origin distance as a much cruder size proxy. Run help(node) in the "
               "Scripting Console to find the exact call on your build.")
         _extent_fallback_warned = True
@@ -648,16 +665,16 @@ def resolve_part_extent(node, fallback_mult):
 
 
 # --------------------------------------------------------------------------
-# EXPERIMENTAL: relative transform delta builder — see TRANSFORM MECHANICS
+# EXPERIMENTAL: relative transform delta builder -- see TRANSFORM MECHANICS
 # --------------------------------------------------------------------------
 
 def build_delta_matrix(translation_delta, rotation_deg_delta, axis_vec):
     """Build the Matrix for ONE frame's incremental relative transform.
-    EXPERIMENTAL end to end — see TRANSFORM MECHANICS in the module
+    EXPERIMENTAL end to end -- see TRANSFORM MECHANICS in the module
     docstring. .rotate() is already used experimentally elsewhere in this
     pipeline (the hero reveal script's turntable); .translate() has NEVER
     been called anywhere in this codebase before and is a pure naming-
-    convention guess. Returns (matrix, translate_ok, rotate_ok) — either
+    convention guess. Returns (matrix, translate_ok, rotate_ok) -- either
     flag can be False if that channel isn't available on this build, and
     the matrix still reflects whatever DID apply."""
     m = luxmath.Matrix().makeIdentity()
@@ -689,7 +706,7 @@ def apply_part_delta(node, translation_delta, rotation_deg_delta, axis_vec, stat
     """Apply one frame's delta to `node` and update its bookkeeping in
     `state` (running totals used for the end-of-shot corrective step, plus
     per-channel availability flags so a failed channel isn't retried every
-    frame — same degrade-once pattern as the sibling scripts' env-rotation
+    frame -- same degrade-once pattern as the sibling scripts' env-rotation
     and turntable-rotation handling)."""
     if not state.get("translate_available", True):
         translation_delta = (0.0, 0.0, 0.0)
@@ -704,18 +721,15 @@ def apply_part_delta(node, translation_delta, rotation_deg_delta, axis_vec, stat
     except Exception as e:
         state["translate_available"] = False
         state["rotate_available"] = False
-        print(f"  [warn] applyTransform failed for '{state.get('name', '?')}' ({e}) — "
-              f"disabling further motion for this part")
+        print("  [warn] applyTransform failed for '{0}' ({1}) -- disabling further motion for this part".format(state.get('name', '?'), e))
         return
 
     if vlen(translation_delta) > 1e-9 and not translate_ok and state.get("translate_available", True):
         state["translate_available"] = False
-        print(f"  [warn] luxmath.Matrix().translate() not available on this KeyShot version — "
-              f"'{state.get('name', '?')}' will not translate (rotation, if any, still applies)")
+        print("  [warn] luxmath.Matrix().translate() not available on this KeyShot version -- '{0}' will not translate (rotation, if any, still applies)".format(state.get('name', '?')))
     if abs(rotation_deg_delta) > 1e-9 and not rotate_ok and state.get("rotate_available", True):
         state["rotate_available"] = False
-        print(f"  [warn] luxmath.Matrix().rotate() not available on this KeyShot version — "
-              f"'{state.get('name', '?')}' will not rotate (translation, if any, still applies)")
+        print("  [warn] luxmath.Matrix().rotate() not available on this KeyShot version -- '{0}' will not rotate (translation, if any, still applies)".format(state.get('name', '?')))
 
     state["applied_translation"] = vadd(state.get("applied_translation", (0.0, 0.0, 0.0)),
                                          translation_delta if translate_ok else (0.0, 0.0, 0.0))
@@ -728,8 +742,8 @@ def apply_final_correction(node, state):
     final transform: applies one more delta equal to the negative of this
     script's own running total of everything it told KeyShot to apply.
     This guards against float drift in the same SPIRIT as the hero reveal
-    script's "restore exact hero state" step, but — unlike that step, which
-    reads the hero pose right back off the camera — there is no confirmed
+    script's "restore exact hero state" step, but -- unlike that step, which
+    reads the hero pose right back off the camera -- there is no confirmed
     readback API for a node's position/rotation, so this corrects against
     our own bookkeeping rather than a verified live value."""
     residual_translation = vscale(state.get("applied_translation", (0.0, 0.0, 0.0)), -1.0)
@@ -741,7 +755,7 @@ def apply_final_correction(node, state):
 
 
 # --------------------------------------------------------------------------
-# EXPERIMENTAL: opacity/transparency probe — see GHOST FADE header note
+# EXPERIMENTAL: opacity/transparency probe -- see GHOST FADE header note
 # --------------------------------------------------------------------------
 
 NODE_OPACITY_SETTERS = ["setOpacity", "setTransparency", "setAlpha"]
@@ -752,7 +766,7 @@ _opacity_warned = False
 
 
 def resolve_opacity_control(node):
-    """EXPERIMENTAL — see GHOST FADE header note. Probes node-level opacity
+    """EXPERIMENTAL -- see GHOST FADE header note. Probes node-level opacity
     setters first, then a material-OBJECT accessor (deliberately NOT
     node.getMaterial(), which is confirmed elsewhere in this pipeline to
     return a name string rather than a settable object) plus its own
@@ -763,8 +777,8 @@ def resolve_opacity_control(node):
         if fn is None:
             continue
         try:
-            fn(1.0)  # probe call — full opacity is a safe no-visual-change value to test with
-            return fn, f"node.{name}"
+            fn(1.0)  # probe call -- full opacity is a safe no-visual-change value to test with
+            return fn, 'node.{0}'.format(name)
         except Exception:
             continue
 
@@ -777,14 +791,14 @@ def resolve_opacity_control(node):
         except Exception:
             continue
         if material_obj is None or isinstance(material_obj, str):
-            continue  # a name string isn't a settable object — same trap node.getMaterial() would be
+            continue  # a name string isn't a settable object -- same trap node.getMaterial() would be
         for setter in MATERIAL_OPACITY_SETTERS:
             fn = getattr(material_obj, setter, None)
             if fn is None:
                 continue
             try:
                 fn(1.0)
-                return fn, f"{accessor}().{setter}"
+                return fn, '{0}().{1}'.format(accessor, setter)
             except Exception:
                 continue
 
@@ -794,12 +808,7 @@ def resolve_opacity_control(node):
 def warn_opacity_once():
     global _opacity_warned
     if not _opacity_warned:
-        print("  [warn] no working opacity/transparency API resolved on this KeyShot version — "
-              "tried node-level setOpacity/setTransparency/setAlpha and material-object accessors "
-              f"{MATERIAL_OBJECT_ACCESSORS} with the same setters. Falling back to a hard cut: parts "
-              "will be visible for the whole shot instead of fading in. Run help(node) / "
-              "help(node.getMaterialNode()) (or whichever accessor exists) in the Scripting Console "
-              "to find the real API and add it to the candidate lists at the top of this file.")
+        print('  [warn] no working opacity/transparency API resolved on this KeyShot version -- tried node-level setOpacity/setTransparency/setAlpha and material-object accessors {0} with the same setters. Falling back to a hard cut: parts will be visible for the whole shot instead of fading in. Run help(node) / help(node.getMaterialNode()) (or whichever accessor exists) in the Scripting Console to find the real API and add it to the candidate lists at the top of this file.'.format(MATERIAL_OBJECT_ACCESSORS))
         _opacity_warned = True
 
 
@@ -814,7 +823,7 @@ def ease_smooth(t):
 
 def build_convergence_profile(num_frames, hold_start, hold_end):
     """List of length num_frames, values in [0,1]: 0 = fully scattered /
-    unopened, 1 = fully converged / final. Monotonic — a single clean ease,
+    unopened, 1 = fully converged / final. Monotonic -- a single clean ease,
     no overshoot, no reversal. Used by scatter_settle, spiral_converge, and
     ghost_fade; staggered_build uses its own per-part windows instead (see
     schedule_staggered_windows())."""
@@ -838,14 +847,14 @@ def schedule_staggered_windows(num_parts, num_frames, hold_start, hold_end, over
     whatever order the caller already sorted the parts into. Windows are
     spaced evenly across the travel range and may overlap by
     `overlap_frac` of a window's own length (0 = hard cutover between
-    parts, >0 = a little overlap so arrivals feel less mechanical) — this
+    parts, >0 = a little overlap so arrivals feel less mechanical) -- this
     spacing/overlap scheme is this script's own design choice (the brief
     left it open), not something drawn from a confirmed API.
 
     Extension point for the (out-of-scope) sub-assembly build mode: group
     parts by parent node before calling this, then call it once per group
     with that group's own sub-range of frames, nesting group windows inside
-    an outer group-convergence pass — see SUB-ASSEMBLY BUILD in the module
+    an outer group-convergence pass -- see SUB-ASSEMBLY BUILD in the module
     docstring."""
     hold_start = min(hold_start, max(0, num_frames // 3))
     hold_end = min(hold_end, max(0, num_frames // 2))
@@ -883,7 +892,7 @@ def get_parts(target_node, name_filter=None, order="Scene Order"):
     the hero reveal script already relies on) by default; 'Name' sorts by
     node.getName() (confirmed elsewhere in this pipeline) for a
     deterministic, human-predictable arrival order instead. Extension
-    point for sub-assembly grouping — see SUB-ASSEMBLY BUILD above."""
+    point for sub-assembly grouping -- see SUB-ASSEMBLY BUILD above."""
     candidates = target_node.find(name=name_filter) if name_filter else target_node.find("")
     parts = []
     for node in candidates:
@@ -906,7 +915,7 @@ def get_parts(target_node, name_filter=None, order="Scene Order"):
 
 def random_unit_vector():
     """Uniform-ish random direction on the unit sphere (simple rejection-
-    free spherical parameterization — fine for a visual scatter, not a
+    free spherical parameterization -- fine for a visual scatter, not a
     statistically rigorous sampler)."""
     z = random.uniform(-1.0, 1.0)
     theta = random.uniform(0.0, 2.0 * math.pi)
@@ -997,7 +1006,7 @@ def build_part_states(parts, opts, mode):
             if fn is None:
                 warn_opacity_once()
             elif DEBUG:
-                print(f"  Opacity control for '{name}' resolved via {api_name}")
+                print("  Opacity control for '{0}' resolved via {1}".format(name, api_name))
 
         states.append(state)
 
@@ -1006,7 +1015,7 @@ def build_part_states(parts, opts, mode):
 
 def compute_spiral_offset(t, state):
     """Perpendicular spiral component added on top of the straight-line
-    path for spiral_converge — zero at t=1, mirroring
+    path for spiral_converge -- zero at t=1, mirroring
     compute_vertical_offset()'s zero-at-t=1 discipline in the hero reveal
     script, so the curved path still lands exactly on the authored final
     position."""
@@ -1024,7 +1033,7 @@ def compute_translation_at(t, state, mode):
     base = vscale(state["translate_vector"], 1.0 - t)
     if mode == "spiral_converge":
         return vadd(base, compute_spiral_offset(t, state))
-    return base  # scatter_settle, staggered_build — straight line
+    return base  # scatter_settle, staggered_build -- straight line
 
 
 def compute_rotation_at(t, state, mode):
@@ -1041,8 +1050,8 @@ def shoot_one_assembly(opts, target, render_opts, output_folder, queueing, part_
                         staggered_windows):
     label = target if target else "current"
     safe_name = sanitize_name(label)
-    video_name = f"{opts.get('video_name_prefix') or 'ASSEMBLY'}_{safe_name}.mp4"
-    frame_folder = os.path.join(output_folder, f"{safe_name}_assembly_frames")
+    video_name = '{0}_{1}.mp4'.format(opts.get('video_name_prefix') or 'ASSEMBLY', safe_name)
+    frame_folder = os.path.join(output_folder, '{0}_assembly_frames'.format(safe_name))
 
     result = {"target": label, "video_name": video_name, "frame_folder": frame_folder,
               "frame_count": 0, "ok": False, "status": "FAILED", "output_path": ""}
@@ -1050,9 +1059,9 @@ def shoot_one_assembly(opts, target, render_opts, output_folder, queueing, part_
     if target is not None:
         resolved_cam = activate_camera_or_studio(target)
         if resolved_cam is None:
-            result["status"] = f"FAILED (couldn't activate '{target}')"
+            result["status"] = "FAILED (couldn't activate '{0}')".format(target)
             return result
-        print(f"--- Shooting '{target}' (camera '{resolved_cam}') ---")
+        print("--- Shooting '{0}' (camera '{1}') ---".format(target, resolved_cam))
     else:
         print("--- Shooting current viewport camera ---")
 
@@ -1062,21 +1071,21 @@ def shoot_one_assembly(opts, target, render_opts, output_folder, queueing, part_
     try:
         env = lux.getActiveEnvironment()
     except Exception as e:
-        print(f"  [warn] couldn't get active environment: {e}")
+        print("  [warn] couldn't get active environment: {0}".format(e))
     if env is not None:
         try:
             start_rotation = env.getRotation()
         except Exception as e:
-            print(f"  [warn] couldn't read environment rotation: {e}")
+            print("  [warn] couldn't read environment rotation: {0}".format(e))
         try:
             start_brightness = env.getBrightness()
         except Exception as e:
-            print(f"  [warn] couldn't read environment brightness: {e}")
+            print("  [warn] couldn't read environment brightness: {0}".format(e))
     if env is not None and opts.get("backplate_image"):
         try:
             env.setBackplateImage(opts["backplate_image"])
         except Exception as e:
-            print(f"  [warn] couldn't set backplate image: {e}")
+            print("  [warn] couldn't set backplate image: {0}".format(e))
     if env is not None:
         set_ground_rendering(env, bool(opts.get("render_ground", True)))
 
@@ -1084,8 +1093,8 @@ def shoot_one_assembly(opts, target, render_opts, output_folder, queueing, part_
         try:
             os.makedirs(frame_folder)
         except Exception as e:
-            print(f"  [error] couldn't create frame folder '{frame_folder}': {e}")
-            result["status"] = f"FAILED (frame folder: {e})"
+            print("  [error] couldn't create frame folder '{0}': {1}".format(frame_folder, e))
+            result["status"] = 'FAILED (frame folder: {0})'.format(e)
             return result
 
     # reset per-part running state fresh for this target, in case the same
@@ -1126,8 +1135,7 @@ def shoot_one_assembly(opts, target, render_opts, output_folder, queueing, part_
                     state["opacity_setter"](opacity_now)
                 except Exception as e:
                     state["opacity_available"] = False
-                    print(f"  [warn] opacity call stopped working mid-shot for '{state['name']}' "
-                          f"({e}) — leaving it at its last opacity")
+                    print("  [warn] opacity call stopped working mid-shot for '{0}' ({1}) -- leaving it at its last opacity".format(state['name'], e))
 
             state["prev_t"] = t_part
 
@@ -1135,11 +1143,13 @@ def shoot_one_assembly(opts, target, render_opts, output_folder, queueing, part_
         if env is not None and env_rotate_available and opts.get("rotate_environment") and start_rotation is not None:
             try:
                 sweep = opts["environment_rotation_degrees"] * (f / max(1, opts["num_frames"] - 1))
-                env.setRotation(start_rotation + sweep)
+                # setRotation's documented domain is [0, 360); wrap so a sweep
+                # that carries start_rotation past 360 doesn't throw and disable
+                # env rotation mid-shot.
+                env.setRotation((start_rotation + sweep) % 360.0)
             except Exception as e:
                 env_rotate_available = False
-                print(f"  [warn] environment rotation not available in this KeyShot version "
-                      f"({e}) — continuing without it")
+                print('  [warn] environment rotation not available in this KeyShot version ({0}) -- continuing without it'.format(e))
 
         # --- brightness ramp, synced to convergence progress ---
         if env is not None and opts.get("brightness_ramp") and start_brightness is not None:
@@ -1148,7 +1158,7 @@ def shoot_one_assembly(opts, target, render_opts, output_folder, queueing, part_
                 low = start_brightness * start_mult
                 env.setBrightness(low + (start_brightness - low) * t_global)
             except Exception as e:
-                print(f"  [warn] couldn't ramp brightness on frame {f}: {e}")
+                print("  [warn] couldn't ramp brightness on frame {0}: {1}".format(f, e))
 
         frame_file = FRAME_PATTERN % f
         frame_path = os.path.join(frame_folder, frame_file)
@@ -1158,10 +1168,10 @@ def shoot_one_assembly(opts, target, render_opts, output_folder, queueing, part_
             else:
                 lux.renderImage(frame_path, width=opts["width"], height=opts["height"])
         except Exception as e:
-            print(f"  [warn] couldn't render frame {f}: {e}")
+            print("  [warn] couldn't render frame {0}: {1}".format(f, e))
 
         if f % 10 == 0 or f == opts["num_frames"] - 1:
-            print(f"    frame {f + 1}/{opts['num_frames']} (t={t_global:.2f})")
+            print('    frame {0}/{1} (t={2:.2f})'.format(f + 1, opts['num_frames'], t_global))
 
     # --- corrective step: re-assert each part's exact authored final state --
     if mode != "ghost_fade":
@@ -1179,7 +1189,7 @@ def shoot_one_assembly(opts, target, render_opts, output_folder, queueing, part_
     if env is not None:
         if start_rotation is not None:
             try:
-                env.setRotation(start_rotation)
+                env.setRotation(start_rotation % 360.0)
             except Exception:
                 pass
         if start_brightness is not None:
@@ -1198,13 +1208,39 @@ def shoot_one_assembly(opts, target, render_opts, output_folder, queueing, part_
     return encode_one_assembly(result, opts, output_folder)
 
 
+def verify_frame_sequence(folder, filenames):
+    missing = []
+    for fn in filenames:
+        p = os.path.join(folder, fn)
+        try:
+            if (not os.path.exists(p)) or os.stat(p).st_size < 512:
+                missing.append(fn)
+        except Exception:
+            missing.append(fn)
+    return (len(missing) == 0, missing)
+
+
 def encode_one_assembly(result, opts, output_folder):
     """Encode a single target's already-rendered frames into a video.
     Only safe to call once every frame in result['frame_folder'] actually
-    exists on disk — see the QUEUEING note in the module docstring."""
+    exists on disk -- see the QUEUEING note in the module docstring."""
     if not result.get("ok"):
         return result
     video_path = os.path.join(output_folder, result["video_name"])
+
+    # Never encode an incomplete sequence: confirm every expected frame exists
+    # and is non-trivial first. On any gap, skip the encode, warn with the list,
+    # keep the frames on disk, and record the shot FAILED.
+    expected = [FRAME_PATTERN % f for f in range(result.get("frame_count", 0))]
+    frames_ok, missing = verify_frame_sequence(result["frame_folder"], expected)
+    if not frames_ok:
+        result["status"] = "FAILED (missing frames: {0})".format(", ".join(missing))
+        print("  [warn] not encoding '{0}' -- {1} of {2} expected frame(s) missing or "
+              "truncated: {3} -- frames kept at {4}".format(
+                  result["target"], len(missing), result.get("frame_count", 0),
+                  ", ".join(missing), result["frame_folder"]))
+        return result
+
     try:
         lux.encodeVideo(
             folder=result["frame_folder"],
@@ -1215,23 +1251,22 @@ def encode_one_assembly(result, opts, output_folder):
             lastFrame=result["frame_count"] - 1,
             keepFrames=opts.get("keep_frames", False),
         )
-        print(f"  Video encoded: {os.path.abspath(video_path)}")
+        print('  Video encoded: {0}'.format(os.path.abspath(video_path)))
         result["status"] = "encoded"
         result["output_path"] = video_path
     except Exception as e:
-        result["status"] = f"FAILED (encode: {e})"
-        print(f"  [warn] video encoding failed for '{result['target']}': {e} — "
-              f"frames are still on disk at {result['frame_folder']}")
+        result["status"] = 'FAILED (encode: {0})'.format(e)
+        print("  [warn] video encoding failed for '{0}': {1} -- frames are still on disk at {2}".format(result['target'], e, result['frame_folder']))
     return result
 
 
 # --------------------------------------------------------------------------
-# Options dialog (GUI only — auto-skipped in headless mode)
+# Options dialog (GUI only -- auto-skipped in headless mode)
 # --------------------------------------------------------------------------
 
 def get_options():
     if lux.isHeadless():
-        print("Headless session detected — skipping dialog, using DEFAULT_OPTIONS.")
+        print("Headless session detected -- skipping dialog, using DEFAULT_OPTIONS.")
         return dict(DEFAULT_OPTIONS)
 
     values = [
@@ -1246,7 +1281,7 @@ def get_options():
         ("part_name_filter", lux.DIALOG_TEXT, "Part name filter (ALL = every part found):",
          DEFAULT_OPTIONS["part_name_filter"]),
         ("camera_selection", lux.DIALOG_TEXT,
-         "Camera(s)/Studio(s) to shoot — blank = current viewport camera, 'ALL' = every one found, "
+         "Camera(s)/Studio(s) to shoot -- blank = current viewport camera, 'ALL' = every one found, "
          "or a comma-separated list of names:", DEFAULT_OPTIONS["camera_selection"]),
         (lux.DIALOG_LABEL, "-- mode --"),
         ("mode", lux.DIALOG_ITEM,
@@ -1324,10 +1359,10 @@ def get_options():
     ]
 
     opts = lux.getInputDialog(
-        title="Assembly Reveal — Procedural Modes",
+        title="Assembly Reveal -- Procedural Modes",
         desc="Parts converge into (or fade into) their authored final positions while the camera "
              "holds static. Per-node relative-transform composition and opacity control are "
-             "EXPERIMENTAL on this KeyShot build — see the script header for what's confirmed vs. "
+             "EXPERIMENTAL on this KeyShot build -- see the script header for what's confirmed vs. "
              "probed.",
         values=values,
         id="assembly_procedural_dialog",
@@ -1355,17 +1390,17 @@ def get_options():
 # --------------------------------------------------------------------------
 
 def run_assembly(opts):
-    print(f"lux.isHeadless() = {lux.isHeadless()}")
+    print('lux.isHeadless() = {0}'.format(lux.isHeadless()))
 
     mode = opts.get("mode") or "scatter_settle"
     if mode not in MODE_OPTIONS:
-        print(f"[warn] unrecognized mode '{mode}' — falling back to 'scatter_settle'")
+        print("[warn] unrecognized mode '{0}' -- falling back to 'scatter_settle'".format(mode))
         mode = "scatter_settle"
 
     seed = opts.get("random_seed", 0)
     if seed:
         random.seed(seed)
-        print(f"Random seed set to {seed} — scatter/spiral offsets are reproducible across runs")
+        print('Random seed set to {0} -- scatter/spiral offsets are reproducible across runs'.format(seed))
 
     output_folder = opts.get("output_folder") or "."
     abs_folder = os.path.abspath(output_folder)
@@ -1389,9 +1424,9 @@ def run_assembly(opts):
     parts = get_parts(target_node, resolve_filter(opts.get("part_name_filter")),
                        opts.get("staggered_order", "Scene Order"))
     if not parts:
-        print("[error] no object parts resolved under the target — nothing to animate.")
+        print("[error] no object parts resolved under the target -- nothing to animate.")
         return []
-    print(f"Mode: {mode} — {len(parts)} part(s) found")
+    print('Mode: {0} -- {1} part(s) found'.format(mode, len(parts)))
 
     part_states = build_part_states(parts, opts, mode)
 
@@ -1405,9 +1440,9 @@ def run_assembly(opts):
     camera_list = resolve_camera_list(opts.get("camera_selection"))
     targets = [None] if camera_list is None else camera_list
     if not targets:
-        print("[error] no cameras/studios resolved from camera_selection — nothing to render.")
+        print("[error] no cameras/studios resolved from camera_selection -- nothing to render.")
         return []
-    print(f"Shooting {len(targets)} target(s): {', '.join(t or 'current' for t in targets)}")
+    print('Shooting {0} target(s): {1}'.format(len(targets), ', '.join(t or 'current' for t in targets)))
 
     render_opts = None
     try:
@@ -1416,18 +1451,18 @@ def run_assembly(opts):
             try:
                 render_opts.setMaxTimeRendering(2)
             except Exception as e:
-                print(f"[warn] couldn't set preview render mode: {e}")
+                print("[warn] couldn't set preview render mode: {0}".format(e))
         if opts.get("add_to_queue"):
             try:
                 render_opts.setAddToQueue(True)
             except Exception as e:
-                print(f"[warn] couldn't enable queueing: {e}")
+                print("[warn] couldn't enable queueing: {0}".format(e))
     except Exception as e:
-        print(f"[warn] couldn't get render options, using KeyShot defaults: {e}")
+        print("[warn] couldn't get render options, using KeyShot defaults: {0}".format(e))
 
     queueing = bool(opts.get("add_to_queue"))
     if queueing:
-        print("Queueing enabled — frames go to KeyShot's render queue instead of rendering immediately.")
+        print("Queueing enabled -- frames go to KeyShot's render queue instead of rendering immediately.")
 
     pending = []
     outcomes = []
@@ -1442,29 +1477,26 @@ def run_assembly(opts):
 
     if queueing and pending:
         if opts.get("process_queue_after"):
-            print(f"Processing render queue ({len(pending)} shot(s) pending)...")
+            print('Processing render queue ({0} shot(s) pending)...'.format(len(pending)))
             queue_ok = True
             try:
                 lux.processQueue()
             except Exception as e:
                 queue_ok = False
-                print(f"[warn] couldn't process render queue: {e} — skipping video encoding; "
-                      f"frames may still be sitting in KeyShot's queue")
+                print("[warn] couldn't process render queue: {0} -- skipping video encoding; frames may still be sitting in KeyShot's queue".format(e))
             if queue_ok:
                 for result in pending:
                     log(encode_one_assembly(result, opts, output_folder))
         else:
-            print(f"[info] {len(pending)} shot(s) queued but not rendered yet. Process the queue in "
-                  f"KeyShot (Render Queue window), then encode each frame folder into video manually — "
-                  f"or re-run with 'process queue after' enabled.")
+            print("[info] {0} shot(s) queued but not rendered yet. Process the queue in KeyShot (Render Queue window), then encode each frame folder into video manually -- or re-run with 'process queue after' enabled.".format(len(pending)))
 
-    print(f"Manifest written to {manifest_path}")
+    print('Manifest written to {0}'.format(manifest_path))
     return [o.get("video_name") for o in outcomes]
 
 
 if __name__ == "__main__":
     options = get_options()
     if options is None:
-        print("Cancelled — nothing rendered.")
+        print("Cancelled -- nothing rendered.")
     else:
         run_assembly(options)

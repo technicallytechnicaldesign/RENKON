@@ -235,6 +235,18 @@ def logManifestRow(manifestPath, row):
         writer.writerow(row)
 
 
+def verify_frame_sequence(folder, filenames):
+    missing = []
+    for fn in filenames:
+        p = os.path.join(folder, fn)
+        try:
+            if (not os.path.exists(p)) or os.stat(p).st_size < 512:
+                missing.append(fn)
+        except Exception:
+            missing.append(fn)
+    return (len(missing) == 0, missing)
+
+
 def load_scene_template(path):
     """Load a saved KeyShot scene as the starting point for the shot.
     Confirmed: lux.openFile(). Non-fatal."""
@@ -242,11 +254,11 @@ def load_scene_template(path):
         return True
     try:
         lux.openFile(path, dontAsk=True)
-        print(f"Loaded scene template: {path}")
+        print("Loaded scene template: {0}".format(path))
         return True
     except Exception as e:
-        print(f"[warn] couldn't load scene template '{path}': {e} — "
-              f"continuing with whatever scene is currently open")
+        print("[warn] couldn't load scene template '{0}': {1} -- "
+              "continuing with whatever scene is currently open".format(path, e))
         return False
 
 
@@ -255,7 +267,7 @@ def import_into_model_set(file_path, model_set_name):
     (so the sweep has a stable target to compute a bounding box against).
     Confirmed: lux.getModelSets(), lux.setModelSets(), lux.getImportOptions(),
     lux.importFile(path, opts={'model_set_import_to': 1, ...}) (1 = Active).
-    Does NOT create the Model Set if missing — warns and falls back to a
+    Does NOT create the Model Set if missing -- warns and falls back to a
     plain import instead of silently doing the wrong thing."""
     if not file_path:
         return True
@@ -263,40 +275,40 @@ def import_into_model_set(file_path, model_set_name):
     try:
         existing = lux.getModelSets()
     except Exception as e:
-        print(f"[warn] couldn't list model sets: {e}")
+        print("[warn] couldn't list model sets: {0}".format(e))
         existing = []
 
     if not model_set_name or model_set_name not in existing:
         if model_set_name:
-            print(f"[warn] model set '{model_set_name}' not found in the loaded scene "
-                  f"(found: {existing}) — importing without a specific model set target.")
+            print("[warn] model set '{0}' not found in the loaded scene "
+                  "(found: {1}) -- importing without a specific model set target.".format(model_set_name, existing))
         try:
             lux.importFile(file_path)
             return True
         except Exception as e:
-            print(f"[error] couldn't import '{file_path}': {e}")
+            print("[error] couldn't import '{0}': {1}".format(file_path, e))
             return False
 
     try:
         ok = lux.setModelSets([model_set_name])
         if not ok:
-            print(f"[warn] couldn't cleanly activate model set '{model_set_name}' — continuing anyway")
+            print("[warn] couldn't cleanly activate model set '{0}' -- continuing anyway".format(model_set_name))
     except Exception as e:
-        print(f"[warn] couldn't activate model set '{model_set_name}': {e}")
+        print("[warn] couldn't activate model set '{0}': {1}".format(model_set_name, e))
 
     try:
         import_opts = lux.getImportOptions()
     except Exception as e:
-        print(f"[warn] couldn't get import options, using defaults: {e}")
+        print("[warn] couldn't get import options, using defaults: {0}".format(e))
         import_opts = {}
     import_opts["model_set_import_to"] = 1  # 1 = Active model set
 
     try:
         lux.importFile(file_path, opts=import_opts)
-        print(f"Imported '{file_path}' into model set '{model_set_name}'")
+        print("Imported '{0}' into model set '{1}'".format(file_path, model_set_name))
         return True
     except Exception as e:
-        print(f"[error] couldn't import '{file_path}' into '{model_set_name}': {e}")
+        print("[error] couldn't import '{0}' into '{1}': {2}".format(file_path, model_set_name, e))
         return False
 
 
@@ -311,13 +323,13 @@ def get_target_node(model_set_name):
             if matches:
                 return matches[0]
         except Exception as e:
-            print(f"  [warn] couldn't find model set '{model_set_name}' for sweep framing: {e}")
+            print("  [warn] couldn't find model set '{0}' for sweep framing: {1}".format(model_set_name, e))
     return root
 
 
 def set_ground_rendering(env, enabled):
     """Toggle the environment's ground shadow/reflection catcher. Copied
-    from the hero reveal script — getters are confirmed, setter names are
+    from the hero reveal script -- getters are confirmed, setter names are
     inferred by naming-convention analogy and tried defensively."""
     if env is None:
         return False
@@ -340,11 +352,11 @@ def set_ground_rendering(env, enabled):
     used_reflect = try_setters(reflection_setters)
     if not used_shadow and not used_reflect:
         print("  [warn] couldn't find a working ground shadow/reflection toggle on this KeyShot "
-              "version — 'render ground' setting was not applied. Run help(env) in the Scripting "
+              "version -- 'render ground' setting was not applied. Run help(env) in the Scripting "
               "Console to find the exact method name on your build.")
         return False
     if DEBUG:
-        print(f"  Ground rendering set to {enabled} (via {used_shadow or '-'} / {used_reflect or '-'})")
+        print("  Ground rendering set to {0} (via {1} / {2})".format(enabled, used_shadow or '-', used_reflect or '-'))
     return True
 
 
@@ -366,7 +378,7 @@ def resolve_camera_list(raw_value):
         try:
             studios = list(lux.getStudios())
         except Exception as e:
-            print(f"[warn] couldn't list studios: {e}")
+            print("[warn] couldn't list studios: {0}".format(e))
             studios = []
         covered = set()
         for s in studios:
@@ -379,7 +391,7 @@ def resolve_camera_list(raw_value):
         try:
             cameras = lux.getCameras()
         except Exception as e:
-            print(f"[warn] couldn't list cameras: {e}")
+            print("[warn] couldn't list cameras: {0}".format(e))
             cameras = []
         extras = [c for c in cameras if c not in covered]
         return studios + extras
@@ -389,7 +401,12 @@ def resolve_camera_list(raw_value):
 def activate_camera_or_studio(name):
     """Activate `name` as a Studio if one matches (pairs camera + lighting),
     else as a raw camera. Returns the camera name actually made active, or
-    None on failure. Copied verbatim from the hero reveal script."""
+    None on failure. Copied from the hero reveal script.
+
+    Version-safe activation: setActiveStudio(name) (documented in every KeyShot
+    version) is called FIRST, then getStudio -- which is 2024.1+ only and raises
+    on KS11 -- is getattr-guarded and used purely to learn the studio's camera
+    name, falling back to lux.getCamera() once the studio is active."""
     try:
         studios = lux.getStudios()
     except Exception:
@@ -397,15 +414,28 @@ def activate_camera_or_studio(name):
 
     if name in studios:
         try:
-            studio = lux.getStudio(name)
             lux.setActiveStudio(name)
-            cam = studio.getCamera()
-            if cam:
-                lux.setCamera(cam)
-            return cam or name
         except Exception as e:
-            print(f"  [warn] couldn't activate studio '{name}': {e}")
+            print("  [warn] couldn't activate studio '{0}': {1}".format(name, e))
             return None
+        cam = None
+        get_studio = getattr(lux, "getStudio", None)
+        if get_studio is not None:
+            try:
+                cam = get_studio(name).getCamera()
+            except Exception:
+                cam = None
+        if not cam:
+            try:
+                cam = lux.getCamera()
+            except Exception:
+                cam = None
+        if cam:
+            try:
+                lux.setCamera(cam)
+            except Exception as e:
+                print("  [warn] couldn't set camera '{0}' for studio '{1}': {2}".format(cam, name, e))
+        return cam or name
 
     try:
         cameras = lux.getCameras()
@@ -416,10 +446,10 @@ def activate_camera_or_studio(name):
             lux.setCamera(name)
             return name
         except Exception as e:
-            print(f"  [warn] couldn't set camera '{name}': {e}")
+            print("  [warn] couldn't set camera '{0}': {1}".format(name, e))
             return None
 
-    print(f"  [warn] '{name}' not found as a studio or camera — skipping")
+    print("  [warn] '{0}' not found as a studio or camera -- skipping".format(name))
     return None
 
 
@@ -436,7 +466,7 @@ def vec_xyz(v):
         return (v.x, v.y, v.z)
     except Exception:
         pass
-    raise TypeError(f"Couldn't extract xyz from {v!r}")
+    raise TypeError("Couldn't extract xyz from {0!r}".format(v))
 
 
 def vadd(a, b): return (a[0] + b[0], a[1] + b[1], a[2] + b[2])
@@ -445,7 +475,7 @@ def vscale(a, s): return (a[0] * s, a[1] * s, a[2] * s)
 
 
 # --------------------------------------------------------------------------
-# getBoundingBox() is confirmed to exist (2026-07-11) — see SWEEP GEOMETRY
+# getBoundingBox() is confirmed to exist (2026-07-11) -- see SWEEP GEOMETRY
 # header note. Exact return-value shape still probed defensively below.
 # --------------------------------------------------------------------------
 
@@ -472,7 +502,7 @@ def _parse_bbox_result(result):
 
 
 def resolve_bounding_box(node):
-    """getBoundingBox() is confirmed to exist — see SWEEP GEOMETRY header
+    """getBoundingBox() is confirmed to exist -- see SWEEP GEOMETRY header
     note. Probes a short list of plausible getter names/kwargs via
     getattr(...) for version tolerance; exact return shape isn't
     confirmed anywhere in this pipeline. Returns (min_xyz, max_xyz, api_name)
@@ -499,10 +529,10 @@ def resolve_bounding_box(node):
         parsed = _parse_bbox_result(result)
         if parsed:
             lo, hi = parsed
-            print(f"  Bounding box resolved via {name}({kwargs}) — min={lo} max={hi}")
+            print("  Bounding box resolved via {0}({1}) -- min={2} max={3}".format(name, kwargs, lo, hi))
             return lo, hi, name
     print("  [warn] couldn't resolve a bounding box on this KeyShot version via any of "
-          "getBoundingBox/getWorldBoundingBox/getBounds — the sweep will fall back to "
+          "getBoundingBox/getWorldBoundingBox/getBounds -- the sweep will fall back to "
           "manual clip_start_override/clip_end_override values (or an untuned default "
           "range if those are also blank). Run help(node) in the Scripting Console to "
           "find the exact call on your build.")
@@ -510,7 +540,7 @@ def resolve_bounding_box(node):
 
 
 # --------------------------------------------------------------------------
-# EXPERIMENTAL: clipping-plane probe — see CLIPPING PLANE header note
+# EXPERIMENTAL: clipping-plane probe -- see CLIPPING PLANE header note
 # --------------------------------------------------------------------------
 
 CLIP_GET_CANDIDATES = ["getClippingPlane", "getSection", "getCuttingPlane", "getClipPlane"]
@@ -522,7 +552,7 @@ CLIP_COMBINED_CANDIDATES = ["setPlane"]  # tried as setPlane(point, normal)
 
 
 def resolve_clipping_plane():
-    """EXPERIMENTAL — see the CLIPPING PLANE / SECTION SWEEP header note.
+    """EXPERIMENTAL -- see the CLIPPING PLANE / SECTION SWEEP header note.
     Tries to get a handle to an existing clipping plane, then falls back to
     creating one. Returns (handle, working_api_dict) or (None, {}) if the
     whole feature isn't available on this KeyShot build."""
@@ -557,11 +587,11 @@ def resolve_clipping_plane():
                 break
 
     if handle is None:
-        print("  [warn] no clipping-plane API resolved on this KeyShot build — tried "
-              f"getters {CLIP_GET_CANDIDATES} and creators {CLIP_ADD_CANDIDATES}, none "
+        print("  [warn] no clipping-plane API resolved on this KeyShot build -- tried "
+              "getters {0} and creators {1}, none "
               "worked. The cutaway sweep will be SKIPPED; frames will render un-clipped. "
               "Run `dir(lux)` in the Scripting Console to find the real name and add it "
-              "to the candidate lists at the top of this file.")
+              "to the candidate lists at the top of this file.".format(CLIP_GET_CANDIDATES, CLIP_ADD_CANDIDATES))
         return None, {}
 
     def find_working(obj, names, test_args):
@@ -582,14 +612,14 @@ def resolve_clipping_plane():
         "add": used_add,
         "enable": used_enable,
         # position/normal/combined are validated per-frame instead of here,
-        # since a no-op test call at t=0 wouldn't tell us much — the first
+        # since a no-op test call at t=0 wouldn't tell us much -- the first
         # real frame call in the render loop determines what sticks.
         "position": None,
         "normal": None,
         "combined": None,
     }
-    print(f"  Clipping plane control resolved via: get={used_get} add={used_add} "
-          f"enable={used_enable} (position/normal resolved on first frame)")
+    print("  Clipping plane control resolved via: get={0} add={1} "
+          "enable={2} (position/normal resolved on first frame)".format(used_get, used_add, used_enable))
     return handle, api
 
 
@@ -616,7 +646,7 @@ def apply_clip_plane(handle, api, point, normal):
             except Exception:
                 continue
         if not applied and api.get("combined") is None:
-            api["combined"] = False  # tried once, didn't work — don't retry every frame
+            api["combined"] = False  # tried once, didn't work -- don't retry every frame
 
     if not applied:
         pos_names = CLIP_POSITION_CANDIDATES if api.get("position") is None else [api["position"]]
@@ -653,12 +683,12 @@ def apply_clip_plane(handle, api, point, normal):
 
 
 # --------------------------------------------------------------------------
-# Options dialog (GUI only — auto-skipped in headless mode)
+# Options dialog (GUI only -- auto-skipped in headless mode)
 # --------------------------------------------------------------------------
 
 def get_options():
     if lux.isHeadless():
-        print("Headless session detected — skipping dialog, using DEFAULT_OPTIONS.")
+        print("Headless session detected -- skipping dialog, using DEFAULT_OPTIONS.")
         return dict(DEFAULT_OPTIONS)
 
     values = [
@@ -671,7 +701,7 @@ def get_options():
         ("target_model_set_name", lux.DIALOG_TEXT,
          "Model set to frame the sweep around (blank = whole scene):", ""),
         ("camera_selection", lux.DIALOG_TEXT,
-         "Camera(s)/Studio(s) to shoot — blank = current viewport camera, 'ALL' = every one found, "
+         "Camera(s)/Studio(s) to shoot -- blank = current viewport camera, 'ALL' = every one found, "
          "or a comma-separated list of names:", DEFAULT_OPTIONS["camera_selection"]),
         ("num_frames", lux.DIALOG_INTEGER, "Total frames:", DEFAULT_OPTIONS["num_frames"], (10, 600)),
         ("fps", lux.DIALOG_INTEGER, "Frames per second:", DEFAULT_OPTIONS["fps"], (1, 60)),
@@ -727,7 +757,7 @@ def get_options():
         title="Cutaway / Cross-Section Reveal",
         desc="Sweeps a clipping plane through the assembly's bounding box, camera held static, "
              "one video per selected camera/Studio. Clipping-plane API is EXPERIMENTAL on this "
-             "KeyShot build — see the script header for what's confirmed vs. probed.",
+             "KeyShot build -- see the script header for what's confirmed vs. probed.",
         values=values,
         id="cutaway_reveal_dialog",
     )
@@ -750,12 +780,12 @@ def get_options():
 
 # --------------------------------------------------------------------------
 # Frame profile (same easing approach as build_reveal_profile() in the
-# hero reveal script — monotonic ease, no overshoot, no reversal)
+# hero reveal script -- monotonic ease, no overshoot, no reversal)
 # --------------------------------------------------------------------------
 
 def build_sweep_profile(num_frames, hold_start, hold_end):
     """List of length num_frames, values in [0,1]: 0 = sweep start,
-    1 = sweep end. Monotonic — a single clean ease."""
+    1 = sweep end. Monotonic -- a single clean ease."""
     hold_start = min(hold_start, max(0, num_frames // 3))
     hold_end = min(hold_end, max(0, num_frames // 2))
     travel = max(2, num_frames - hold_start - hold_end)
@@ -790,10 +820,10 @@ def resolve_sweep_range(target_node, axis, margin_mult, start_override, end_over
         return lo_a - margin, hi_a + margin
 
     if start_override is not None and end_override is not None:
-        print(f"  Using manual sweep overrides: start={start_override} end={end_override}")
+        print("  Using manual sweep overrides: start={0} end={1}".format(start_override, end_override))
         return float(start_override), float(end_override)
 
-    print("  [warn] no bounding box and no manual overrides — falling back to an untuned "
+    print("  [warn] no bounding box and no manual overrides -- falling back to an untuned "
           "default range of -100..100 along the sweep axis. Set clip_start_override / "
           "clip_end_override in the dialog for a real result.")
     return -100.0, 100.0
@@ -807,8 +837,8 @@ def shoot_one_cutaway(opts, target, render_opts, output_folder, queueing, target
                        clip_handle, clip_api, axis_vec, start_offset, end_offset):
     label = target if target else "current"
     safe_name = sanitize_name(label)
-    video_name = f"{opts.get('video_name_prefix') or 'CUTAWAY'}_{safe_name}.mp4"
-    frame_folder = os.path.join(output_folder, f"{safe_name}_cutaway_frames")
+    video_name = "{0}_{1}.mp4".format(opts.get('video_name_prefix') or 'CUTAWAY', safe_name)
+    frame_folder = os.path.join(output_folder, "{0}_cutaway_frames".format(safe_name))
 
     result = {"target": label, "video_name": video_name, "frame_folder": frame_folder,
               "frame_count": 0, "ok": False, "status": "FAILED", "output_path": ""}
@@ -816,16 +846,16 @@ def shoot_one_cutaway(opts, target, render_opts, output_folder, queueing, target
     if target is not None:
         resolved_cam = activate_camera_or_studio(target)
         if resolved_cam is None:
-            result["status"] = f"FAILED (couldn't activate '{target}')"
+            result["status"] = "FAILED (couldn't activate '{0}')".format(target)
             return result
-        print(f"--- Shooting '{target}' (camera '{resolved_cam}') ---")
+        print("--- Shooting '{0}' (camera '{1}') ---".format(target, resolved_cam))
     else:
         print("--- Shooting current viewport camera ---")
 
     try:
         center = vec_xyz(target_node.getCenter(world=True))
     except Exception as e:
-        print(f"  [warn] couldn't read target center, using world origin: {e}")
+        print("  [warn] couldn't read target center, using world origin: {0}".format(e))
         center = (0.0, 0.0, 0.0)
 
     # --- environment, captured fresh per target (a Studio may swap it) ------
@@ -834,21 +864,21 @@ def shoot_one_cutaway(opts, target, render_opts, output_folder, queueing, target
     try:
         env = lux.getActiveEnvironment()
     except Exception as e:
-        print(f"  [warn] couldn't get active environment: {e}")
+        print("  [warn] couldn't get active environment: {0}".format(e))
     if env is not None:
         try:
             start_rotation = env.getRotation()
         except Exception as e:
-            print(f"  [warn] couldn't read environment rotation: {e}")
+            print("  [warn] couldn't read environment rotation: {0}".format(e))
         try:
             start_brightness = env.getBrightness()
         except Exception as e:
-            print(f"  [warn] couldn't read environment brightness: {e}")
+            print("  [warn] couldn't read environment brightness: {0}".format(e))
     if env is not None and opts.get("backplate_image"):
         try:
             env.setBackplateImage(opts["backplate_image"])
         except Exception as e:
-            print(f"  [warn] couldn't set backplate image: {e}")
+            print("  [warn] couldn't set backplate image: {0}".format(e))
     if env is not None:
         set_ground_rendering(env, bool(opts.get("render_ground", True)))
 
@@ -856,8 +886,8 @@ def shoot_one_cutaway(opts, target, render_opts, output_folder, queueing, target
         try:
             os.makedirs(frame_folder)
         except Exception as e:
-            print(f"  [error] couldn't create frame folder '{frame_folder}': {e}")
-            result["status"] = f"FAILED (frame folder: {e})"
+            print("  [error] couldn't create frame folder '{0}': {1}".format(frame_folder, e))
+            result["status"] = "FAILED (frame folder: {0})".format(e)
             return result
 
     profile = build_sweep_profile(opts["num_frames"], opts["hold_start"], opts["hold_end"])
@@ -877,18 +907,21 @@ def shoot_one_cutaway(opts, target, render_opts, output_folder, queueing, target
             ok = apply_clip_plane(clip_handle, clip_api, point, axis_vec)
             if not ok and f == 0:
                 clip_available = False
-                print("  [warn] clip plane position/normal calls didn't work on frame 0 — "
+                print("  [warn] clip plane position/normal calls didn't work on frame 0 -- "
                       "disabling the sweep for this target, frames will render un-clipped")
 
         # --- environment rotation (continuous across the whole clip) ---
         if env is not None and env_rotate_available and opts.get("rotate_environment") and start_rotation is not None:
             try:
                 sweep = opts["environment_rotation_degrees"] * (f / max(1, len(profile) - 1))
-                env.setRotation(start_rotation + sweep)
+                # setRotation's documented domain is [0, 360); an unwrapped
+                # start + sweep can exceed it and throw on a strict build, which
+                # would disable env rotation mid-shot. Wrap into range.
+                env.setRotation((start_rotation + sweep) % 360.0)
             except Exception as e:
                 env_rotate_available = False
-                print(f"  [warn] environment rotation not available in this KeyShot version "
-                      f"({e}) — continuing without it")
+                print("  [warn] environment rotation not available in this KeyShot version "
+                      "({0}) -- continuing without it".format(e))
 
         # --- brightness ramp, synced to the sweep ---
         if env is not None and opts.get("brightness_ramp") and start_brightness is not None:
@@ -897,7 +930,7 @@ def shoot_one_cutaway(opts, target, render_opts, output_folder, queueing, target
                 low = start_brightness * start_mult
                 env.setBrightness(low + (start_brightness - low) * t)
             except Exception as e:
-                print(f"  [warn] couldn't ramp brightness on frame {f}: {e}")
+                print("  [warn] couldn't ramp brightness on frame {0}: {1}".format(f, e))
 
         frame_file = FRAME_PATTERN % f
         frame_path = os.path.join(frame_folder, frame_file)
@@ -907,10 +940,10 @@ def shoot_one_cutaway(opts, target, render_opts, output_folder, queueing, target
             else:
                 lux.renderImage(frame_path, width=opts["width"], height=opts["height"])
         except Exception as e:
-            print(f"  [warn] couldn't render frame {f}: {e}")
+            print("  [warn] couldn't render frame {0}: {1}".format(f, e))
 
         if f % 10 == 0 or f == len(profile) - 1:
-            print(f"    frame {f + 1}/{len(profile)} (t={t:.2f})")
+            print("    frame {0}/{1} (t={2:.2f})".format(f + 1, len(profile), t))
 
     # --- restore environment state (guards against any drift) --------------
     if env is not None:
@@ -938,9 +971,27 @@ def shoot_one_cutaway(opts, target, render_opts, output_folder, queueing, target
 def encode_one_cutaway(result, opts, output_folder):
     """Encode a single target's already-rendered frames into a video.
     Only safe to call once every frame in result['frame_folder'] actually
-    exists on disk — see the QUEUEING note in the module docstring."""
+    exists on disk -- see the QUEUEING note in the module docstring."""
     if not result.get("ok"):
         return result
+
+    # Verify the full frame sequence exists (and is non-trivial in size) before
+    # encoding. Encoding a short or gap-toothed sequence silently produces a
+    # broken/truncated video; instead, refuse to encode, keep the frames on
+    # disk, and record a FAILED row naming the missing frames.
+    frame_count = result.get("frame_count", 0)
+    expected_frames = [FRAME_PATTERN % i for i in range(frame_count)]
+    all_present, missing = verify_frame_sequence(result["frame_folder"], expected_frames)
+    if not all_present:
+        shown = ", ".join(missing[:20])
+        if len(missing) > 20:
+            shown = "{0}, ... (+{1} more)".format(shown, len(missing) - 20)
+        result["status"] = "FAILED (missing frames: {0})".format(shown)
+        print("  [warn] not encoding '{0}': {1} of {2} frame(s) missing or too small -- "
+              "keeping frames at {3}; missing: {4}".format(
+                  result["target"], len(missing), frame_count, result["frame_folder"], shown))
+        return result
+
     video_path = os.path.join(output_folder, result["video_name"])
     try:
         lux.encodeVideo(
@@ -952,13 +1003,14 @@ def encode_one_cutaway(result, opts, output_folder):
             lastFrame=result["frame_count"] - 1,
             keepFrames=opts.get("keep_frames", False),
         )
-        print(f"  Video encoded: {os.path.abspath(video_path)}")
+        print("  Video encoded: {0}".format(os.path.abspath(video_path)))
         result["status"] = "encoded"
         result["output_path"] = video_path
     except Exception as e:
-        result["status"] = f"FAILED (encode: {e})"
-        print(f"  [warn] video encoding failed for '{result['target']}': {e} — "
-              f"frames are still on disk at {result['frame_folder']}")
+        result["status"] = "FAILED (encode: {0})".format(e)
+        print("  [warn] video encoding failed for '{0}': {1} -- "
+              "frames are still on disk at {2}".format(
+                  result["target"], e, result["frame_folder"]))
     return result
 
 
@@ -967,7 +1019,7 @@ def encode_one_cutaway(result, opts, output_folder):
 # --------------------------------------------------------------------------
 
 def run_cutaway(opts):
-    print(f"lux.isHeadless() = {lux.isHeadless()}")
+    print("lux.isHeadless() = {0}".format(lux.isHeadless()))
 
     output_folder = opts.get("output_folder") or "."
     abs_folder = os.path.abspath(output_folder)
@@ -992,24 +1044,24 @@ def run_cutaway(opts):
     axis = opts.get("clip_axis", "X")
     axis_vec = AXIS_VECTORS.get(axis, AXIS_VECTORS["X"])
 
-    print("Resolving clipping-plane control (experimental — see script header)...")
+    print("Resolving clipping-plane control (experimental -- see script header)...")
     clip_handle, clip_api = resolve_clipping_plane()
 
-    print("Resolving sweep range from bounding box (experimental — see script header)...")
+    print("Resolving sweep range from bounding box (experimental -- see script header)...")
     start_offset, end_offset = resolve_sweep_range(
         target_node, axis,
         opts.get("clip_margin_mult", 1.15),
         opts.get("clip_start_override"),
         opts.get("clip_end_override"),
     )
-    print(f"  Sweep axis={axis} start={start_offset:.3f} end={end_offset:.3f}")
+    print("  Sweep axis={0} start={1:.3f} end={2:.3f}".format(axis, start_offset, end_offset))
 
     camera_list = resolve_camera_list(opts.get("camera_selection"))
     targets = [None] if camera_list is None else camera_list
     if not targets:
-        print("[error] no cameras/studios resolved from camera_selection — nothing to render.")
+        print("[error] no cameras/studios resolved from camera_selection -- nothing to render.")
         return []
-    print(f"Shooting {len(targets)} target(s): {', '.join(t or 'current' for t in targets)}")
+    print("Shooting {0} target(s): {1}".format(len(targets), ', '.join(t or 'current' for t in targets)))
 
     render_opts = None
     try:
@@ -1018,18 +1070,18 @@ def run_cutaway(opts):
             try:
                 render_opts.setMaxTimeRendering(2)
             except Exception as e:
-                print(f"[warn] couldn't set preview render mode: {e}")
+                print("[warn] couldn't set preview render mode: {0}".format(e))
         if opts.get("add_to_queue"):
             try:
                 render_opts.setAddToQueue(True)
             except Exception as e:
-                print(f"[warn] couldn't enable queueing: {e}")
+                print("[warn] couldn't enable queueing: {0}".format(e))
     except Exception as e:
-        print(f"[warn] couldn't get render options, using KeyShot defaults: {e}")
+        print("[warn] couldn't get render options, using KeyShot defaults: {0}".format(e))
 
     queueing = bool(opts.get("add_to_queue"))
     if queueing:
-        print("Queueing enabled — frames go to KeyShot's render queue instead of rendering immediately.")
+        print("Queueing enabled -- frames go to KeyShot's render queue instead of rendering immediately.")
 
     pending = []
     outcomes = []
@@ -1044,29 +1096,29 @@ def run_cutaway(opts):
 
     if queueing and pending:
         if opts.get("process_queue_after"):
-            print(f"Processing render queue ({len(pending)} shot(s) pending)...")
+            print("Processing render queue ({0} shot(s) pending)...".format(len(pending)))
             queue_ok = True
             try:
                 lux.processQueue()
             except Exception as e:
                 queue_ok = False
-                print(f"[warn] couldn't process render queue: {e} — skipping video encoding; "
-                      f"frames may still be sitting in KeyShot's queue")
+                print("[warn] couldn't process render queue: {0} -- skipping video encoding; "
+                      "frames may still be sitting in KeyShot's queue".format(e))
             if queue_ok:
                 for result in pending:
                     log(encode_one_cutaway(result, opts, output_folder))
         else:
-            print(f"[info] {len(pending)} shot(s) queued but not rendered yet. Process the queue in "
-                  f"KeyShot (Render Queue window), then encode each frame folder into video manually — "
-                  f"or re-run with 'process queue after' enabled.")
+            print("[info] {0} shot(s) queued but not rendered yet. Process the queue in "
+                  "KeyShot (Render Queue window), then encode each frame folder into video manually -- "
+                  "or re-run with 'process queue after' enabled.".format(len(pending)))
 
-    print(f"Manifest written to {manifest_path}")
+    print("Manifest written to {0}".format(manifest_path))
     return [o.get("video_name") for o in outcomes]
 
 
 if __name__ == "__main__":
     options = get_options()
     if options is None:
-        print("Cancelled — nothing rendered.")
+        print("Cancelled -- nothing rendered.")
     else:
         run_cutaway(options)

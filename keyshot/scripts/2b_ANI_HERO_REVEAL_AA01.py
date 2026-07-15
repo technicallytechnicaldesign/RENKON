@@ -14,14 +14,14 @@ and plays that animation in sync with the render.
 
 Built for a scene with many cameras already set up: you can target the
 current viewport camera (single ad hoc shot), one named camera/Studio, a
-comma-separated handful, or every camera in the scene — one reveal video is
+comma-separated handful, or every camera in the scene -- one reveal video is
 produced per target.
 
 --------------------------------------------------------------------------
 OBJECT IMPORT + MODEL SET ANIMATION
 --------------------------------------------------------------------------
 KeyShot's native keyframe/Animation-timeline feature isn't something this
-pipeline can *author* from a script — there's no confirmed API for
+pipeline can *author* from a script -- there's no confirmed API for
 creating keyframes. What IS confirmed: reading/advancing the CURRENT frame
 of an animation that already exists, built in the GUI:
 lux.getAnimationFrame(), lux.setAnimationFrame(frame),
@@ -30,7 +30,7 @@ whatever) animation on a Model Set in the KeyShot GUI once, then this
 script imports the part into that same Model Set every run (confirmed:
 lux.getModelSets()/setModelSets()/lux.importFile(opts={"model_set_import_
 to": 1, ...})) and steps the existing animation's current frame in sync
-with the shot's own timeline. It will NOT create the Model Set for you —
+with the shot's own timeline. It will NOT create the Model Set for you --
 importing into one that doesn't already exist would just import into
 nothing with the animation missing, so this checks first and falls back to
 a plain import with a warning if the name isn't found.
@@ -45,7 +45,7 @@ By default the look-at pivot is computed once (from the hero camera's own
 framing) and held fixed. With "object always centered" enabled, it instead
 re-reads the object's live world-space center every frame
 (SceneNode.getCenter(world=True), the same confirmed call already used in
-the scatter/turntable scripts) and re-aims there each frame — so if a
+the scatter/turntable scripts) and re-aims there each frame -- so if a
 Model Set animation rotates around a pivot that isn't dead-center, the
 camera still tracks the object instead of the empty point where it used to
 be. Since setCameraLookAt() puts whatever point it's given at the exact
@@ -62,26 +62,26 @@ getters this script already relied on. This script still tries them via a
 short candidate list (setGroundShadows / enableGroundShadows /
 setGroundShadowsEnabled, same for reflections) rather than calling them
 directly, since that list costs nothing and keeps the script working on
-older KeyShot versions where the confirmed name might differ — but the
+older KeyShot versions where the confirmed name might differ -- but the
 first candidate in each list is now a documented API, not a guess.
 
 --------------------------------------------------------------------------
 WHY THERE'S NO ORBIT/ARC
 --------------------------------------------------------------------------
 An earlier version also swung the camera sideways around the object
-(orbiting it around its own "up" vector). That's fragile — Rodrigues'
+(orbiting it around its own "up" vector). That's fragile -- Rodrigues'
 rotation formula leaves a vector unchanged when the rotation axis is
 parallel to it, so for any camera whose up vector happens to be closely
 aligned with the camera-to-object direction, the orbit silently collapsed
 to zero and only the dolly (zoom) was visible. It's been removed in favor
-of a single, monotonic zoom track plus an optional vertical crane — both
+of a single, monotonic zoom track plus an optional vertical crane -- both
 plain vector addition, no rotation involved.
 
 --------------------------------------------------------------------------
 STUDIOS vs CAMERAS
 --------------------------------------------------------------------------
 A Studio pairs a camera with its matching environment/lighting (and image
-style) — confirmed: lux.getStudios(), lux.getStudio(name),
+style) -- confirmed: lux.getStudios(), lux.getStudio(name),
 lux.setActiveStudio(name). Where a target name matches a Studio, this
 script activates the Studio; a plain camera name just switches the camera
 and leaves whatever environment is already active.
@@ -109,16 +109,16 @@ lux.setAnimationFrame(frame), SceneNode.getCenter(world=True),
 env ground-state getters (isGroundShadowsEnabled-style),
 lux.getRenderOptions()/setAddToQueue()/setMaxTimeRendering(),
 lux.processQueue().
-Inferred-but-unconfirmed: env.setRotation() — the get/set pairing pattern
+Inferred-but-unconfirmed: env.setRotation() -- the get/set pairing pattern
 is consistent everywhere else in this API, but the literal setRotation
 signature isn't in the docs. (The ground shadow/reflection setter names
 were in this same unconfirmed category until a 2026-07-11 research pass
-found them documented — see the GROUND RENDERING note above; they're
+found them documented -- see the GROUND RENDERING note above; they're
 confirmed now.)
 Experimental: lux.getAnimationInfo()'s exact return shape (dict vs tuple)
 isn't documented; the optional product-turntable spin's Matrix.rotate()
 signature also isn't confirmed (same flag as the scatter animation
-script) — if you have a real Model Set animation to drive instead, that's
+script) -- if you have a real Model Set animation to drive instead, that's
 the more reliable route.
 
 Run inside the KeyShot Scripting Console, or via `keyshot -script` headless
@@ -197,6 +197,20 @@ def logManifestRow(manifestPath, row):
         writer.writerow(row)
 
 
+def verify_frame_sequence(folder, filenames):
+    """Confirm every expected frame exists + is non-trivial before encoding.
+    Returns (ok, missing_list)."""
+    missing = []
+    for fn in filenames:
+        p = os.path.join(folder, fn)
+        try:
+            if (not os.path.exists(p)) or os.stat(p).st_size < 512:
+                missing.append(fn)
+        except Exception:
+            missing.append(fn)
+    return (len(missing) == 0, missing)
+
+
 def load_scene_template(path):
     """Load a saved KeyShot scene as the starting point for the shot.
     Confirmed: lux.openFile() opens a file (as opposed to lux.importFile(),
@@ -205,11 +219,11 @@ def load_scene_template(path):
         return True
     try:
         lux.openFile(path, dontAsk=True)
-        print(f"Loaded scene template: {path}")
+        print("Loaded scene template: {0}".format(path))
         return True
     except Exception as e:
-        print(f"[warn] couldn't load scene template '{path}': {e} — "
-              f"continuing with whatever scene is currently open")
+        print("[warn] couldn't load scene template '{0}': {1} -- "
+              "continuing with whatever scene is currently open".format(path, e))
         return False
 
 
@@ -227,40 +241,40 @@ def import_into_model_set(file_path, model_set_name):
     try:
         existing = lux.getModelSets()
     except Exception as e:
-        print(f"[warn] couldn't list model sets: {e}")
+        print("[warn] couldn't list model sets: {0}".format(e))
         existing = []
 
     if model_set_name not in existing:
-        print(f"[warn] model set '{model_set_name}' not found in the loaded scene "
-              f"(found: {existing}) — importing without a specific model set target, "
-              f"so any animation on '{model_set_name}' won't apply.")
+        print("[warn] model set '{0}' not found in the loaded scene "
+              "(found: {1}) -- importing without a specific model set target, "
+              "so any animation on '{2}' won't apply.".format(model_set_name, existing, model_set_name))
         try:
             lux.importFile(file_path)
             return True
         except Exception as e:
-            print(f"[error] couldn't import '{file_path}': {e}")
+            print("[error] couldn't import '{0}': {1}".format(file_path, e))
             return False
 
     try:
         ok = lux.setModelSets([model_set_name])
         if not ok:
-            print(f"[warn] couldn't cleanly activate model set '{model_set_name}' — continuing anyway")
+            print("[warn] couldn't cleanly activate model set '{0}' -- continuing anyway".format(model_set_name))
     except Exception as e:
-        print(f"[warn] couldn't activate model set '{model_set_name}': {e}")
+        print("[warn] couldn't activate model set '{0}': {1}".format(model_set_name, e))
 
     try:
         import_opts = lux.getImportOptions()
     except Exception as e:
-        print(f"[warn] couldn't get import options, using defaults: {e}")
+        print("[warn] couldn't get import options, using defaults: {0}".format(e))
         import_opts = {}
     import_opts["model_set_import_to"] = 1  # 1 = Active model set
 
     try:
         lux.importFile(file_path, opts=import_opts)
-        print(f"Imported '{file_path}' into model set '{model_set_name}'")
+        print("Imported '{0}' into model set '{1}'".format(file_path, model_set_name))
         return True
     except Exception as e:
-        print(f"[error] couldn't import '{file_path}' into '{model_set_name}': {e}")
+        print("[error] couldn't import '{0}' into '{1}': {2}".format(file_path, model_set_name, e))
         return False
 
 
@@ -272,7 +286,7 @@ def resolve_animation_frame_count():
     try:
         info = lux.getAnimationInfo()
     except Exception as e:
-        print(f"[warn] couldn't get animation info: {e}")
+        print("[warn] couldn't get animation info: {0}".format(e))
         return None
     if isinstance(info, dict):
         for key in ("frames", "frame_count", "num_frames", "total_frames"):
@@ -280,8 +294,8 @@ def resolve_animation_frame_count():
                 return info[key]
     if isinstance(info, (list, tuple)) and len(info) >= 2:
         return info[1]
-    print(f"[warn] couldn't interpret lux.getAnimationInfo() result ({info!r}) — "
-          f"animation sync will be skipped")
+    print("[warn] couldn't interpret lux.getAnimationInfo() result ({0}) -- "
+          "animation sync will be skipped".format(repr(info)))
     return None
 
 
@@ -296,7 +310,7 @@ def get_focus_node(model_set_name):
             if matches:
                 return matches[0]
         except Exception as e:
-            print(f"  [warn] couldn't find model set '{model_set_name}' for focus tracking: {e}")
+            print("  [warn] couldn't find model set '{0}' for focus tracking: {1}".format(model_set_name, e))
     return root
 
 
@@ -329,11 +343,11 @@ def set_ground_rendering(env, enabled):
     used_reflect = try_setters(reflection_setters)
     if not used_shadow and not used_reflect:
         print("  [warn] couldn't find a working ground shadow/reflection toggle on this KeyShot "
-              "version — 'render ground' setting was not applied. Run help(env) in the Scripting "
+              "version -- 'render ground' setting was not applied. Run help(env) in the Scripting "
               "Console to find the exact method name on your build.")
         return False
     if DEBUG:
-        print(f"  Ground rendering set to {enabled} (via {used_shadow or '-'} / {used_reflect or '-'})")
+        print("  Ground rendering set to {0} (via {1} / {2})".format(enabled, used_shadow or '-', used_reflect or '-'))
     return True
 
 
@@ -355,22 +369,35 @@ def resolve_camera_list(raw_value):
         try:
             studios = list(lux.getStudios())
         except Exception as e:
-            print(f"[warn] couldn't list studios: {e}")
+            print("[warn] couldn't list studios: {0}".format(e))
             studios = []
+        # getStudio(name) is 2024.1+ ONLY -- on KS11 it raises. Guard it: with
+        # it present we can learn which camera each Studio owns and exclude
+        # those from 'extras' (no double-shooting on newer builds); without it
+        # we can't determine coverage, so we shoot the Studios only rather than
+        # resolving 'ALL' to every camera (each Studio activates its own camera).
+        _gs = getattr(lux, "getStudio", None)
         covered = set()
-        for s in studios:
-            try:
-                c = lux.getStudio(s).getCamera()
-                if c:
-                    covered.add(c)
-            except Exception:
-                continue
+        if _gs is not None:
+            for s in studios:
+                try:
+                    c = _gs(s).getCamera()
+                    if c:
+                        covered.add(c)
+                except Exception:
+                    continue
         try:
             cameras = lux.getCameras()
         except Exception as e:
-            print(f"[warn] couldn't list cameras: {e}")
+            print("[warn] couldn't list cameras: {0}".format(e))
             cameras = []
-        extras = [c for c in cameras if c not in covered]
+        if _gs is not None:
+            extras = [c for c in cameras if c not in covered]
+        else:
+            print("[info] lux.getStudio unavailable on this build (pre-2024.1) -- "
+                  "'ALL' resolves to Studios only; standalone cameras are not added "
+                  "to avoid double-shooting a Studio's own camera.")
+            extras = []
         return studios + extras
     return [n.strip() for n in v.split(",") if n.strip()]
 
@@ -385,16 +412,32 @@ def activate_camera_or_studio(name):
         studios = []
 
     if name in studios:
+        # setActiveStudio(name) works on every KeyShot build, so activate FIRST.
         try:
-            studio = lux.getStudio(name)
             lux.setActiveStudio(name)
-            cam = studio.getCamera()
-            if cam:
-                lux.setCamera(cam)
-            return cam or name
         except Exception as e:
-            print(f"  [warn] couldn't activate studio '{name}': {e}")
+            print("  [warn] couldn't activate studio '{0}': {1}".format(name, e))
             return None
+        # getStudio(name) is 2024.1+ ONLY; use it purely to learn the Studio's
+        # camera name if present, otherwise fall back to the now-active camera.
+        cam = None
+        _gs = getattr(lux, "getStudio", None)
+        if _gs is not None:
+            try:
+                cam = _gs(name).getCamera()
+            except Exception:
+                cam = None
+        if cam:
+            try:
+                lux.setCamera(cam)
+            except Exception as e:
+                print("  [warn] couldn't set camera '{0}' for studio '{1}': {2}".format(cam, name, e))
+        else:
+            try:
+                cam = lux.getCamera()
+            except Exception:
+                cam = None
+        return cam or name
 
     try:
         cameras = lux.getCameras()
@@ -405,10 +448,10 @@ def activate_camera_or_studio(name):
             lux.setCamera(name)
             return name
         except Exception as e:
-            print(f"  [warn] couldn't set camera '{name}': {e}")
+            print("  [warn] couldn't set camera '{0}': {1}".format(name, e))
             return None
 
-    print(f"  [warn] '{name}' not found as a studio or camera — skipping")
+    print("  [warn] '{0}' not found as a studio or camera -- skipping".format(name))
     return None
 
 
@@ -425,7 +468,7 @@ def vec_xyz(v):
         return (v.x, v.y, v.z)
     except Exception:
         pass
-    raise TypeError(f"Couldn't extract xyz from {v!r}")
+    raise TypeError("Couldn't extract xyz from {0}".format(repr(v)))
 
 
 def vadd(a, b): return (a[0] + b[0], a[1] + b[1], a[2] + b[2])
@@ -465,12 +508,12 @@ def compute_vertical_offset(t, enabled, direction, amount, hero_distance):
 
 
 # --------------------------------------------------------------------------
-# Options dialog (GUI only — auto-skipped in headless mode)
+# Options dialog (GUI only -- auto-skipped in headless mode)
 # --------------------------------------------------------------------------
 
 def get_options():
     if lux.isHeadless():
-        print("Headless session detected — skipping dialog, using DEFAULT_OPTIONS.")
+        print("Headless session detected -- skipping dialog, using DEFAULT_OPTIONS.")
         return dict(DEFAULT_OPTIONS)
 
     values = [
@@ -487,7 +530,7 @@ def get_options():
          "Play that model set's animation in sync with the shot",
          DEFAULT_OPTIONS["play_model_animation"]),
         ("camera_selection", lux.DIALOG_TEXT,
-         "Camera(s)/Studio(s) to shoot — blank = current viewport camera, 'ALL' = every one found, "
+         "Camera(s)/Studio(s) to shoot -- blank = current viewport camera, 'ALL' = every one found, "
          "or a comma-separated list of names:", DEFAULT_OPTIONS["camera_selection"]),
         ("num_frames", lux.DIALOG_INTEGER, "Total frames:", DEFAULT_OPTIONS["num_frames"], (10, 600)),
         ("fps", lux.DIALOG_INTEGER, "Frames per second:", DEFAULT_OPTIONS["fps"], (1, 60)),
@@ -579,7 +622,7 @@ def get_options():
 
 def build_reveal_profile(num_frames, hold_start, hold_end):
     """List of length num_frames, values in [0,1]: 0 = move start, 1 = hero
-    framing. Monotonic — a single clean ease, no overshoot, no reversal."""
+    framing. Monotonic -- a single clean ease, no overshoot, no reversal."""
     hold_start = min(hold_start, max(0, num_frames // 3))
     hold_end = min(hold_end, max(0, num_frames // 2))
     travel = max(2, num_frames - hold_start - hold_end)
@@ -619,8 +662,8 @@ def get_turntable_parts(name_filter=None):
 def shoot_one_reveal(opts, target, render_opts, output_folder, queueing, focus_node, anim_total):
     label = target if target else "current"
     safe_name = sanitize_name(label)
-    video_name = f"{opts.get('video_name_prefix') or 'REVEAL'}_{safe_name}.mp4"
-    frame_folder = os.path.join(output_folder, f"{safe_name}_reveal_frames")
+    video_name = "{0}_{1}.mp4".format(opts.get('video_name_prefix') or 'REVEAL', safe_name)
+    frame_folder = os.path.join(output_folder, "{0}_reveal_frames".format(safe_name))
 
     result = {"target": label, "video_name": video_name, "frame_folder": frame_folder,
               "frame_count": 0, "ok": False, "status": "FAILED", "output_path": ""}
@@ -628,9 +671,9 @@ def shoot_one_reveal(opts, target, render_opts, output_folder, queueing, focus_n
     if target is not None:
         resolved_cam = activate_camera_or_studio(target)
         if resolved_cam is None:
-            result["status"] = f"FAILED (couldn't activate '{target}')"
+            result["status"] = "FAILED (couldn't activate '{0}')".format(target)
             return result
-        print(f"--- Shooting '{target}' (camera '{resolved_cam}') ---")
+        print("--- Shooting '{0}' (camera '{1}') ---".format(target, resolved_cam))
     else:
         print("--- Shooting current viewport camera ---")
 
@@ -640,7 +683,7 @@ def shoot_one_reveal(opts, target, render_opts, output_folder, queueing, focus_n
         hero_lookat = vec_xyz(lux.getCameraLookAt())
         up = vec_xyz(lux.getCameraUp())
     except Exception as e:
-        print(f"  [error] couldn't read the camera for '{label}' — is a camera active? ({e})")
+        print("  [error] couldn't read the camera for '{0}' -- is a camera active? ({1})".format(label, e))
         result["status"] = "FAILED (no active camera)"
         return result
 
@@ -648,14 +691,15 @@ def shoot_one_reveal(opts, target, render_opts, output_folder, queueing, focus_n
     hero_offset = vsub(hero_pos, pivot)
     hero_distance = vlen(hero_offset)
     if hero_distance < 1e-6:
-        print(f"  [error] camera position and look-at coincide for '{label}' — can't compute a move.")
+        print("  [error] camera position and look-at coincide for '{0}' -- can't compute a move.".format(label))
         result["status"] = "FAILED (zero distance)"
         return result
 
     hero_dir = vnorm(hero_offset)
     up_unit = vnorm(up)
 
-    print(f"  pos={tuple(round(x,2) for x in hero_pos)} look-at={tuple(round(x,2) for x in hero_lookat)}")
+    print("  pos={0} look-at={1}".format(tuple(round(x, 2) for x in hero_pos),
+                                          tuple(round(x, 2) for x in hero_lookat)))
 
     # --- environment, captured fresh per target (a Studio may swap it) ------
     env = None
@@ -663,21 +707,21 @@ def shoot_one_reveal(opts, target, render_opts, output_folder, queueing, focus_n
     try:
         env = lux.getActiveEnvironment()
     except Exception as e:
-        print(f"  [warn] couldn't get active environment: {e}")
+        print("  [warn] couldn't get active environment: {0}".format(e))
     if env is not None:
         try:
             start_rotation = env.getRotation()
         except Exception as e:
-            print(f"  [warn] couldn't read environment rotation: {e}")
+            print("  [warn] couldn't read environment rotation: {0}".format(e))
         try:
             start_brightness = env.getBrightness()
         except Exception as e:
-            print(f"  [warn] couldn't read environment brightness: {e}")
+            print("  [warn] couldn't read environment brightness: {0}".format(e))
     if env is not None and opts.get("backplate_image"):
         try:
             env.setBackplateImage(opts["backplate_image"])
         except Exception as e:
-            print(f"  [warn] couldn't set backplate image: {e}")
+            print("  [warn] couldn't set backplate image: {0}".format(e))
     if env is not None:
         set_ground_rendering(env, bool(opts.get("render_ground", True)))
 
@@ -685,14 +729,14 @@ def shoot_one_reveal(opts, target, render_opts, output_folder, queueing, focus_n
     if opts.get("product_turntable"):
         turntable_parts = get_turntable_parts(resolve_filter(opts.get("turntable_name_filter")))
         if turntable_parts:
-            print(f"  Turntable: {len(turntable_parts)} part(s)")
+            print("  Turntable: {0} part(s)".format(len(turntable_parts)))
 
     if not os.path.isdir(frame_folder):
         try:
             os.makedirs(frame_folder)
         except Exception as e:
-            print(f"  [error] couldn't create frame folder '{frame_folder}': {e}")
-            result["status"] = f"FAILED (frame folder: {e})"
+            print("  [error] couldn't create frame folder '{0}': {1}".format(frame_folder, e))
+            result["status"] = "FAILED (frame folder: {0})".format(e)
             return result
 
     profile = build_reveal_profile(opts["num_frames"], opts["hold_start"], opts["hold_end"])
@@ -717,7 +761,7 @@ def shoot_one_reveal(opts, target, render_opts, output_folder, queueing, focus_n
             try:
                 frame_pivot = vec_xyz(focus_node.getCenter(world=True))
             except Exception as e:
-                print(f"  [warn] couldn't get live object center on frame {f}: {e}")
+                print("  [warn] couldn't get live object center on frame {0}: {1}".format(f, e))
 
         # --- camera move: single monotonic zoom, plus optional vertical crane ---
         dist_mult_t = compute_dist_mult(t, zoom_direction, zoom_amount)
@@ -729,7 +773,7 @@ def shoot_one_reveal(opts, target, render_opts, output_folder, queueing, focus_n
             lux.setCameraPosition(pos_t)
             lux.setCameraLookAt(pt=frame_pivot)  # centers frame_pivot exactly in frame
         except Exception as e:
-            print(f"  [warn] couldn't set camera on frame {f}: {e}")
+            print("  [warn] couldn't set camera on frame {0}: {1}".format(f, e))
 
         # --- play the model set's animation in sync with the shot ---
         if play_animation and animation_sync_available:
@@ -738,17 +782,19 @@ def shoot_one_reveal(opts, target, render_opts, output_folder, queueing, focus_n
                 lux.setAnimationFrame(anim_frame)
             except Exception as e:
                 animation_sync_available = False
-                print(f"  [warn] couldn't set animation frame ({e}) — continuing without animation sync")
+                print("  [warn] couldn't set animation frame ({0}) -- continuing without animation sync".format(e))
 
         # --- environment rotation (continuous across the whole clip) ---
         if env is not None and env_rotate_available and opts.get("rotate_environment") and start_rotation is not None:
             try:
                 sweep = opts["environment_rotation_degrees"] * (f / max(1, len(profile) - 1))
-                env.setRotation(start_rotation + sweep)
+                # Wrap into the documented [0, 360) domain so a value past 360
+                # can't throw mid-shot and disable env rotation partway through.
+                env.setRotation((start_rotation + sweep) % 360.0)
             except Exception as e:
                 env_rotate_available = False
-                print(f"  [warn] environment rotation not available in this KeyShot version "
-                      f"({e}) — continuing without it")
+                print("  [warn] environment rotation not available in this KeyShot version "
+                      "({0}) -- continuing without it".format(e))
 
         # --- brightness ramp, synced to the move ---
         if env is not None and opts.get("brightness_ramp") and start_brightness is not None:
@@ -757,7 +803,7 @@ def shoot_one_reveal(opts, target, render_opts, output_folder, queueing, focus_n
                 low = start_brightness * start_mult
                 env.setBrightness(low + (start_brightness - low) * t)
             except Exception as e:
-                print(f"  [warn] couldn't ramp brightness on frame {f}: {e}")
+                print("  [warn] couldn't ramp brightness on frame {0}: {1}".format(f, e))
 
         # --- optional experimental product turntable (skip if model-set animation is driving) ---
         if turntable_parts and rotation_available and not play_animation:
@@ -771,8 +817,8 @@ def shoot_one_reveal(opts, target, render_opts, output_folder, queueing, focus_n
                     node.applyTransform(R, absolute=False)
             except Exception as e:
                 rotation_available = False
-                print(f"  [warn] turntable rotation not available in this KeyShot version "
-                      f"({e}) — continuing without it")
+                print("  [warn] turntable rotation not available in this KeyShot version "
+                      "({0}) -- continuing without it".format(e))
 
         frame_file = FRAME_PATTERN % f
         frame_path = os.path.join(frame_folder, frame_file)
@@ -782,21 +828,21 @@ def shoot_one_reveal(opts, target, render_opts, output_folder, queueing, focus_n
             else:
                 lux.renderImage(frame_path, width=opts["width"], height=opts["height"])
         except Exception as e:
-            print(f"  [warn] couldn't render frame {f}: {e}")
+            print("  [warn] couldn't render frame {0}: {1}".format(f, e))
 
         if f % 10 == 0 or f == len(profile) - 1:
-            print(f"    frame {f + 1}/{len(profile)} (t={t:.2f})")
+            print("    frame {0}/{1} (t={2:.2f})".format(f + 1, len(profile), t))
 
     # --- restore exact hero state (guards against any float drift) ----------
     try:
         lux.setCameraPosition(hero_pos)
         lux.setCameraLookAt(pt=hero_lookat)
     except Exception as e:
-        print(f"  [warn] couldn't restore hero camera pose: {e}")
+        print("  [warn] couldn't restore hero camera pose: {0}".format(e))
     if env is not None:
         if start_rotation is not None:
             try:
-                env.setRotation(start_rotation)
+                env.setRotation(start_rotation % 360.0)
             except Exception:
                 pass
         if start_brightness is not None:
@@ -818,10 +864,25 @@ def shoot_one_reveal(opts, target, render_opts, output_folder, queueing, focus_n
 def encode_one_reveal(result, opts, output_folder):
     """Encode a single target's already-rendered frames into a video.
     Only safe to call once every frame in result['frame_folder'] actually
-    exists on disk — see the QUEUEING note in the module docstring."""
+    exists on disk -- see the QUEUEING note in the module docstring."""
     if not result.get("ok"):
         return result
     video_path = os.path.join(output_folder, result["video_name"])
+
+    # Never encode a gap-toothed sequence: confirm every expected frame exists
+    # and is non-trivial first. On any gap, do NOT encode -- keep the frames,
+    # warn with the missing list, and record a FAILED-style status.
+    expected_frames = [FRAME_PATTERN % i for i in range(result["frame_count"])]
+    frames_ok, missing = verify_frame_sequence(result["frame_folder"], expected_frames)
+    if not frames_ok:
+        preview = ", ".join(missing[:12]) + (", ..." if len(missing) > 12 else "")
+        result["status"] = "FAILED (missing {0} frame(s))".format(len(missing))
+        print("  [warn] not encoding '{0}': {1} of {2} expected frame(s) missing or "
+              "too small -- keeping frames at {3}. Missing: {4}".format(
+                  result["target"], len(missing), result["frame_count"],
+                  result["frame_folder"], preview))
+        return result
+
     try:
         lux.encodeVideo(
             folder=result["frame_folder"],
@@ -832,13 +893,13 @@ def encode_one_reveal(result, opts, output_folder):
             lastFrame=result["frame_count"] - 1,
             keepFrames=opts.get("keep_frames", False),
         )
-        print(f"  Video encoded: {os.path.abspath(video_path)}")
+        print("  Video encoded: {0}".format(os.path.abspath(video_path)))
         result["status"] = "encoded"
         result["output_path"] = video_path
     except Exception as e:
-        result["status"] = f"FAILED (encode: {e})"
-        print(f"  [warn] video encoding failed for '{result['target']}': {e} — "
-              f"frames are still on disk at {result['frame_folder']}")
+        result["status"] = "FAILED (encode: {0})".format(e)
+        print("  [warn] video encoding failed for '{0}': {1} -- "
+              "frames are still on disk at {2}".format(result['target'], e, result['frame_folder']))
     return result
 
 
@@ -847,7 +908,7 @@ def encode_one_reveal(result, opts, output_folder):
 # --------------------------------------------------------------------------
 
 def run_reveal(opts):
-    print(f"lux.isHeadless() = {lux.isHeadless()}")
+    print("lux.isHeadless() = {0}".format(lux.isHeadless()))
 
     output_folder = opts.get("output_folder") or "."
     abs_folder = os.path.abspath(output_folder)
@@ -875,16 +936,16 @@ def run_reveal(opts):
     if opts.get("play_model_animation"):
         anim_total = resolve_animation_frame_count()
         if anim_total:
-            print(f"Animation: {anim_total} frame(s) found, will sync to the shot")
+            print("Animation: {0} frame(s) found, will sync to the shot".format(anim_total))
         else:
-            print("[info] no readable animation found — shots will run without animation sync")
+            print("[info] no readable animation found -- shots will run without animation sync")
 
     camera_list = resolve_camera_list(opts.get("camera_selection"))
     targets = [None] if camera_list is None else camera_list
     if not targets:
-        print("[error] no cameras/studios resolved from camera_selection — nothing to render.")
+        print("[error] no cameras/studios resolved from camera_selection -- nothing to render.")
         return []
-    print(f"Shooting {len(targets)} target(s): {', '.join(t or 'current' for t in targets)}")
+    print("Shooting {0} target(s): {1}".format(len(targets), ', '.join(t or 'current' for t in targets)))
 
     render_opts = None
     try:
@@ -893,18 +954,18 @@ def run_reveal(opts):
             try:
                 render_opts.setMaxTimeRendering(2)
             except Exception as e:
-                print(f"[warn] couldn't set preview render mode: {e}")
+                print("[warn] couldn't set preview render mode: {0}".format(e))
         if opts.get("add_to_queue"):
             try:
                 render_opts.setAddToQueue(True)
             except Exception as e:
-                print(f"[warn] couldn't enable queueing: {e}")
+                print("[warn] couldn't enable queueing: {0}".format(e))
     except Exception as e:
-        print(f"[warn] couldn't get render options, using KeyShot defaults: {e}")
+        print("[warn] couldn't get render options, using KeyShot defaults: {0}".format(e))
 
     queueing = bool(opts.get("add_to_queue"))
     if queueing:
-        print("Queueing enabled — frames go to KeyShot's render queue instead of rendering immediately.")
+        print("Queueing enabled -- frames go to KeyShot's render queue instead of rendering immediately.")
 
     pending = []
     outcomes = []
@@ -918,29 +979,29 @@ def run_reveal(opts):
 
     if queueing and pending:
         if opts.get("process_queue_after"):
-            print(f"Processing render queue ({len(pending)} shot(s) pending)...")
+            print("Processing render queue ({0} shot(s) pending)...".format(len(pending)))
             queue_ok = True
             try:
                 lux.processQueue()
             except Exception as e:
                 queue_ok = False
-                print(f"[warn] couldn't process render queue: {e} — skipping video encoding; "
-                      f"frames may still be sitting in KeyShot's queue")
+                print("[warn] couldn't process render queue: {0} -- skipping video encoding; "
+                      "frames may still be sitting in KeyShot's queue".format(e))
             if queue_ok:
                 for result in pending:
                     log(encode_one_reveal(result, opts, output_folder))
         else:
-            print(f"[info] {len(pending)} shot(s) queued but not rendered yet. Process the queue in "
-                  f"KeyShot (Render Queue window), then encode each frame folder into video manually — "
-                  f"or re-run with 'process queue after' enabled.")
+            print("[info] {0} shot(s) queued but not rendered yet. Process the queue in "
+                  "KeyShot (Render Queue window), then encode each frame folder into video manually -- "
+                  "or re-run with 'process queue after' enabled.".format(len(pending)))
 
-    print(f"Manifest written to {manifest_path}")
+    print("Manifest written to {0}".format(manifest_path))
     return [o.get("video_name") for o in outcomes]
 
 
 if __name__ == "__main__":
     options = get_options()
     if options is None:
-        print("Cancelled — nothing rendered.")
+        print("Cancelled -- nothing rendered.")
     else:
         run_reveal(options)

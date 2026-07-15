@@ -15,6 +15,8 @@
 import os, re, sys
 import os.path
 import csv
+import time
+import json
 from datetime import datetime
 
 MANIFEST_FIELDS = ["timestamp", "part_file", "base_name", "view", "template", "output_path", "status"]
@@ -27,57 +29,74 @@ def logManifestRow(manifestPath, row):
             writer.writeheader()
         writer.writerow(row)
 
-def genericInput(msg, default=None, check=lambda x: len(x) > 0):
-    if default is not None:
-        msg += " [{}] ".format(default)
-    if not msg.endswith(" "):
-        msg += " "
-    while True:
-        try:
-            value = input(msg)
-            if check(value):
-                return value
-            elif len(value) == 0 and default is not None:
-                return default
-        except EOFError:
-            sys.stdout.write("\n")  # Yield a new line so next input isn't on same line.
-            continue
-        except KeyboardInterrupt:
-            sys.exit()
+# --------------------------------------------------------------------------
+# Reliability helpers (Phase-1, RAR-6E1F3B sec 6). ASCII-only, f-string-free.
+# --------------------------------------------------------------------------
 
-def inputFolder(msg):
-    return genericInput(msg, check=lambda x: os.path.isdir(x))
-
-def inputOptionalFolder(msg, fallback):
-    # Same as inputFolder, but blank input is allowed and falls back to `fallback`.
-    val = genericInput(msg, default="", check=lambda x: len(x) == 0 or os.path.isdir(x))
-    return val if len(val) > 0 else fallback
-
-def inputText(msg, default):
-    return genericInput(msg, default=default)
-
-def intInRange(value, valueRange=None):
+def verify_output(path, started_at):
+    """Confirm a render actually wrote: exists, non-trivial size, mtime >= start.
+    renderImage's return value is undocumented, so the file on disk is the truth."""
     try:
-        n = int(value)
-        if valueRange is not None:
-            return n >= valueRange[0] and n <= valueRange[1]
-        else:
-            return True
-    except ValueError:
+        if not os.path.exists(path):
+            return False
+        st = os.stat(path)
+        if st.st_size < 512:
+            return False
+        return st.st_mtime >= (started_at - 2.0)
+    except Exception:
         return False
 
-def inputInt(msg, default, valueRange=None):
-    return int(genericInput(msg, default=default, check=lambda x: intInRange(x, valueRange)))
 
-def inputItem(msg, defaultIndex, items):
-    pre = ""
-    for i in range(len(items)):
-        pre += "[{}] {}\n".format(i + 1, items[i])
-    idx = inputInt(pre + msg, defaultIndex + 1, (1, len(items))) - 1
-    return (idx, items[idx])
+_SANITIZE_RE = re.compile(r'[\\/:*?"<>|\s]+')
 
-def inputBool(msg, default=False):
-    return str(genericInput(msg, default=default)).lower() in ["y", "yes", "true", "1"]
+
+def sanitize_name(name):
+    """Replace path-hostile characters (/ \\ : * ? " < > |) and whitespace runs
+    with '_' so a studio/camera/base name can't produce an invalid output path."""
+    cleaned = _SANITIZE_RE.sub("_", str(name)).strip("_")
+    return cleaned if cleaned else "unnamed"
+
+
+def load_job_json(folder):
+    """Headless AUTO sidecar (RPA-7B2E4D sec 3): if a job.json sits in `folder`,
+    load it and return its dict so its keys can override DEFAULT_OPTIONS. Never
+    fatal -- a missing or malformed job.json yields {}."""
+    if not folder:
+        return {}
+    jp = os.path.join(folder, "job.json")
+    try:
+        if not os.path.isfile(jp):
+            return {}
+        fh = open(jp)
+        try:
+            data = json.load(fh)
+        finally:
+            fh.close()
+        if isinstance(data, dict):
+            print("Loaded job.json from {0}".format(jp))
+            return data
+        print("[warn] job.json at {0} is not a JSON object -- ignoring".format(jp))
+    except Exception as e:
+        print("[warn] couldn't read job.json at {0}: {1}".format(jp, e))
+    return {}
+
+
+# Headless defaults mirror the PRO dialog's keys/defaults. A job.json (CWD or
+# import folder) overrides these; the interactive input() path is gone (a closed
+# stdin under keyshot_headless -script made it spin forever -- RAR-6E1F3B 1.1-W5).
+# width/height None -> fall back to the scene info size (the dialog's default);
+# template is an index into the runtime template list (0 = "-- None --").
+DEFAULT_OPTIONS = {
+    "folder": "",
+    "outFolder": "",
+    "iext": "bip",
+    "oext": "png",
+    "width": None,
+    "height": None,
+    "template": 0,
+    "queue": True,
+    "process": False,
+}
 
 def cleanExt(ext):
     while ext.startswith("."):
@@ -122,15 +141,31 @@ def main():
                                   values = values,
                                   id = "renderallviews.py.luxion")
     else:
-        opts["folder"] = inputFolder("Folder to import from:")
-        opts["outFolder"] = inputOptionalFolder("Folder to save renders to (blank = same as import folder):", opts["folder"])
-        opts["iext"] = inputText("Input file format to read:", "bip")
-        opts["oext"] =  inputText("Output image format:", "png")
-        opts["width"] =  inputInt("Output width:", info["width"])
-        opts["height"] =  inputInt("Output height:", info["height"])
-        opts["template"] = inputItem("Apply material template on each import (optional):", 0, tmpls)
-        opts["queue"] = inputBool("Add to queue", True)
-        opts["process"] = inputBool("Process queue after running script", False)
+        # Headless: no interactive prompts (a closed stdin would hang). Start
+        # from DEFAULT_OPTIONS, overlay a job.json from the CWD, then one from
+        # the import folder that job.json may have named (RPA-7B2E4D sec 3).
+        opts = dict(DEFAULT_OPTIONS)
+        try:
+            cwd = os.getcwd()
+        except Exception:
+            cwd = ""
+        opts.update(load_job_json(cwd))
+        jobFld = opts.get("folder", "") or ""
+        if jobFld and (not cwd or os.path.abspath(jobFld) != os.path.abspath(cwd)):
+            opts.update(load_job_json(jobFld))
+        if opts.get("width") is None:
+            opts["width"] = info["width"]
+        if opts.get("height") is None:
+            opts["height"] = info["height"]
+        # Normalise the template index into the (index, label) shape the code
+        # below expects (mirrors the old inputItem return / the dialog result).
+        try:
+            ti = int(opts.get("template", 0))
+        except (ValueError, TypeError):
+            ti = 0
+        if ti < 0 or ti >= len(tmpls):
+            ti = 0
+        opts["template"] = (ti, tmpls[ti])
     if not opts: return
 
     if len(opts["folder"]) == 0:
@@ -142,10 +177,11 @@ def main():
     if len(opts["iext"]) == 0:
         raise Exception("Input extension cannot be empty!")
     iext = cleanExt(opts["iext"])
-    reFiles = re.compile(".*{}".format(iext), re.IGNORECASE)
+    # Use the same endswith semantics as the processing loop below so the
+    # found-check can't claim files exist that the loop then skips (1.1-W7).
     found = False
-    for f in os.listdir(fld):
-        if reFiles.match(f):
+    for name in sorted(os.listdir(fld)):
+        if name.lower().endswith(iext):
             found = True
             break
     if not found:
@@ -173,12 +209,34 @@ def main():
     renderOpts = lux.getRenderOptions()
     renderOpts.setAddToQueue(queue)
 
-    for f in [f for f in os.listdir(fld) if f.lower().endswith(iext)]:
+    # Timestamp before the batch so queue-mode reconciliation (after
+    # processQueue) can confirm files were written during this run.
+    runStart = time.time()
+    # Queued rows are logged as "queued" now and reconciled to
+    # rendered_verified / MISSING after processQueue (1.1-W3).
+    queuedRows = []
+
+    for f in sorted([f for f in os.listdir(fld) if f.lower().endswith(iext)]):
         path = fld + os.path.sep + f
         lux.newScene()
 
         print("Importing {}".format(path))
-        lux.importFile(path)
+        # Wrap the import so one corrupt file yields one FAILED row + continue
+        # instead of killing the whole batch (1.1-W2).
+        try:
+            lux.importFile(path)
+        except Exception as e:
+            print("  [warn] couldn't import {0}: {1} -- skipping".format(path, e))
+            logManifestRow(manifestPath, {
+                "timestamp": datetime.now().isoformat(timespec="seconds"),
+                "part_file": f,
+                "base_name": stripExt(f, iext),
+                "view": "",
+                "template": template or "",
+                "output_path": "",
+                "status": "FAILED (import)",
+            })
+            continue
 
         if template:
             print("  Setting material template {}".format(template))
@@ -198,15 +256,13 @@ def main():
             print("  Found {} studio(s): {}".format(len(studios), ", ".join(studios)))
             for studioName in studios:
                 cam = None
+                # Activation FIRST and unconditionally: setActiveStudio exists in
+                # every documented build and switches camera + environment + image
+                # style together. It must NEVER be gated on getStudio (2024.1+
+                # only), or a KS11 build logs every studio FAILED and renders zero
+                # images while "completing" (RAR-6E1F3B headline #2 / 1.1-W1).
                 try:
-                    studio = lux.getStudio(studioName)
-                    # setActiveStudio should already switch camera + environment
-                    # + image style together; explicitly setting the camera too
-                    # is belt-and-suspenders in case that pairing isn't total.
                     lux.setActiveStudio(studioName)
-                    cam = studio.getCamera()
-                    if cam:
-                        lux.setCamera(cam)
                 except Exception as e:
                     print("  [warn] couldn't activate studio '{}': {}".format(studioName, e))
                     logManifestRow(manifestPath, {
@@ -220,6 +276,25 @@ def main():
                     })
                     continue
 
+                # getStudio is 2024.1+ ONLY -- use it (getattr-guarded) purely to
+                # LEARN the paired camera name for the log + a belt-and-suspenders
+                # setCamera. Its absence must not fail the studio; setActiveStudio
+                # already paired the camera + lighting above.
+                _gs = getattr(lux, "getStudio", None)
+                if _gs is not None:
+                    try:
+                        cam = _gs(studioName).getCamera()
+                        if cam:
+                            lux.setCamera(cam)
+                    except Exception as e:
+                        print("  [warn] getStudio('{}') unusable ({}) -- using active camera".format(studioName, e))
+                        cam = None
+                if not cam:
+                    try:
+                        cam = lux.getCamera()
+                    except Exception:
+                        cam = None
+
                 # Reframe the active camera to the part's bounding box. Keeps the
                 # camera's orientation (front stays front, iso stays iso) but
                 # adjusts distance/zoom so parts of any size fill the frame the
@@ -228,9 +303,19 @@ def main():
                 # Pull the camera back to leave padding around the part instead
                 # of a tight edge-to-edge fit.
                 lux.setCameraDistance(lux.getCameraDistance() * PADDING_FACTOR)
-                outPath = os.path.join(outFld, "{}_{}.{}".format(baseName, studioName, oext))
-                print("  Queuing studio '{}' (camera '{}') -> {}".format(studioName, cam, outPath))
-                success = lux.renderImage(path=outPath, width=width, height=height, opts=renderOpts)
+                outStem = sanitize_name("{}_{}".format(baseName, studioName))
+                outPath = os.path.join(outFld, "{}.{}".format(outStem, oext))
+                print("  Rendering studio '{}' (camera '{}') -> {}".format(studioName, cam, outPath))
+                if queue:
+                    lux.renderImage(path=outPath, width=width, height=height, opts=renderOpts)
+                    queuedRows.append({"part_file": f, "base_name": baseName,
+                                       "view": studioName, "template": template or "",
+                                       "output_path": outPath})
+                    status = "queued"
+                else:
+                    t0 = time.time()
+                    lux.renderImage(path=outPath, width=width, height=height, opts=renderOpts)
+                    status = "rendered_verified" if verify_output(outPath, t0) else "MISSING"
                 logManifestRow(manifestPath, {
                     "timestamp": datetime.now().isoformat(timespec="seconds"),
                     "part_file": f,
@@ -238,7 +323,7 @@ def main():
                     "view": studioName,
                     "template": template or "",
                     "output_path": outPath,
-                    "status": "queued" if success else "FAILED",
+                    "status": status,
                 })
         else:
             # No Studios defined on this part -- fall back to the original
@@ -264,9 +349,19 @@ def main():
                 lux.setCamera(cam)
                 sceneRoot.centerAndFit()
                 lux.setCameraDistance(lux.getCameraDistance() * PADDING_FACTOR)
-                outPath = os.path.join(outFld, "{}_{}.{}".format(baseName, cam, oext))
-                print("  Queuing {} -> {}".format(cam, outPath))
-                success = lux.renderImage(path=outPath, width=width, height=height, opts=renderOpts)
+                outStem = sanitize_name("{}_{}".format(baseName, cam))
+                outPath = os.path.join(outFld, "{}.{}".format(outStem, oext))
+                print("  Rendering {} -> {}".format(cam, outPath))
+                if queue:
+                    lux.renderImage(path=outPath, width=width, height=height, opts=renderOpts)
+                    queuedRows.append({"part_file": f, "base_name": baseName,
+                                       "view": cam, "template": template or "",
+                                       "output_path": outPath})
+                    status = "queued"
+                else:
+                    t0 = time.time()
+                    lux.renderImage(path=outPath, width=width, height=height, opts=renderOpts)
+                    status = "rendered_verified" if verify_output(outPath, t0) else "MISSING"
                 logManifestRow(manifestPath, {
                     "timestamp": datetime.now().isoformat(timespec="seconds"),
                     "part_file": f,
@@ -274,12 +369,25 @@ def main():
                     "view": cam,
                     "template": template or "",
                     "output_path": outPath,
-                    "status": "queued" if success else "FAILED",
+                    "status": status,
                 })
 
     if process:
         print("Processing queue")
         lux.processQueue()
+        # Reconcile every queued row now that processQueue has run: the file on
+        # disk is the truth (1.1-W3). Append a reconciled row per queued output.
+        for q in queuedRows:
+            st = "rendered_verified" if verify_output(q["output_path"], runStart) else "MISSING"
+            logManifestRow(manifestPath, {
+                "timestamp": datetime.now().isoformat(timespec="seconds"),
+                "part_file": q["part_file"],
+                "base_name": q["base_name"],
+                "view": q["view"],
+                "template": q["template"],
+                "output_path": q["output_path"],
+                "status": st,
+            })
 
     print("Manifest written to {}".format(manifestPath))
 
