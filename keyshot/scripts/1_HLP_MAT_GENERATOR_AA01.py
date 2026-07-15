@@ -147,6 +147,7 @@ DEFAULT_OPTIONS = {
     "add_occlusion_roughness": False,
     "add_color_gradient": False,
     "randomize_features": False,
+    "random_seed": "",
     "name_filter": "",
 }
 
@@ -155,8 +156,15 @@ def clamp01(v):
     return max(0.0, min(1.0, v))
 
 
+# Material names must stay globally unique even when a run is seeded for a
+# reproducible *look* (see _apply_seed), so the ID suffix is drawn from a
+# dedicated, never-seeded RNG. This also keeps the createSceneMaterial
+# collision-retry loop from regenerating the same name five times in a row.
+_name_rng = random.Random()
+
+
 def random_suffix(n=6):
-    return "".join(random.choice("0123456789ABCDEF") for _ in range(n))
+    return "".join(_name_rng.choice("0123456789ABCDEF") for _ in range(n))
 
 
 def resolve_filter(value, sentinel="ALL"):
@@ -199,6 +207,23 @@ def randomize_feature_flags():
     return flags
 
 
+def _apply_seed(opts):
+    """Seed the feature/parameter RNG for reproducible variants. Blank = fully
+    random. Only meaningful with 'Randomize features' on — in manual mode the
+    look is fully determined by the checkboxes, so a seed has nothing to vary.
+    Material *names* stay unique regardless (see _name_rng). Accepts an int or
+    any hashable string."""
+    raw = str(opts.get("random_seed", "") or "").strip()
+    if not raw:
+        return None
+    try:
+        seed = int(raw)
+    except ValueError:
+        seed = raw
+    random.seed(seed)
+    return seed
+
+
 # --------------------------------------------------------------------------
 # Options dialog (GUI only — auto-skipped in headless mode)
 # --------------------------------------------------------------------------
@@ -210,9 +235,14 @@ def get_options():
 
     values = [
         ("name_prefix", lux.DIALOG_TEXT, "Name prefix (blank = 'MAT'):", DEFAULT_OPTIONS["name_prefix"]),
+        # DIALOG_ITEM default is an INDEX into the item list, not the label —
+        # passing the label string here left KeyShot with no valid default and
+        # (combined with the index-typed return value) silently defeated the
+        # dropdown. See norm_item below for the matching return-side fix.
         ("material_type", lux.DIALOG_ITEM, "Material type:",
-         DEFAULT_OPTIONS["material_type"], MATERIAL_TYPE_ORDER),
-        ("wear_level", lux.DIALOG_ITEM, "Wear level:", DEFAULT_OPTIONS["wear_level"], WEAR_ORDER),
+         MATERIAL_TYPE_ORDER.index(DEFAULT_OPTIONS["material_type"]), MATERIAL_TYPE_ORDER),
+        ("wear_level", lux.DIALOG_ITEM, "Wear level:",
+         WEAR_ORDER.index(DEFAULT_OPTIONS["wear_level"]), WEAR_ORDER),
         ("wear_multiplier", lux.DIALOG_DOUBLE, "Wear fine-tune (x):",
          DEFAULT_OPTIONS["wear_multiplier"], (0.0, 3.0)),
         (lux.DIALOG_LABEL, "-- surface detail --"),
@@ -226,6 +256,9 @@ def get_options():
     values.append(("randomize_features", lux.DIALOG_CHECK,
                     "Randomize features instead (ignores checkboxes above)",
                     DEFAULT_OPTIONS["randomize_features"]))
+    values.append(("random_seed", lux.DIALOG_TEXT,
+                    "Seed (blank = random; only affects Randomize):",
+                    DEFAULT_OPTIONS["random_seed"]))
     values.append((lux.DIALOG_LABEL, "-- application --"))
     values.append(("name_filter", lux.DIALOG_TEXT, "Apply to parts matching (ALL = every part):",
                     "ALL"))
@@ -242,12 +275,25 @@ def get_options():
         return None
 
     def norm_item(v, valid):
+        # KeyShot's DIALOG_ITEM return type varies by build: usually the
+        # selected index (int), sometimes the label (str), occasionally a
+        # list. Normalise all three to a valid label and never return
+        # something that isn't a real option — the old code returned the raw
+        # value, so an int index bypassed the selection entirely and always
+        # fell through to the default material/wear.
+        if isinstance(v, bool):
+            v = int(v)
+        if isinstance(v, int):
+            return valid[v] if 0 <= v < len(valid) else valid[0]
         if isinstance(v, (list, tuple)):
             for candidate in reversed(v):
-                if candidate in valid:
-                    return candidate
-            return v[-1]
-        return v
+                r = norm_item(candidate, valid)
+                if r in valid:
+                    return r
+            return valid[0]
+        if isinstance(v, str) and v in valid:
+            return v
+        return valid[0]
 
     opts["material_type"] = norm_item(opts.get("material_type"), MATERIAL_TYPE_ORDER)
     opts["wear_level"] = norm_item(opts.get("wear_level"), WEAR_ORDER)
@@ -453,7 +499,8 @@ def add_color_gradient(graph, base_node, base_color):
     if not (ok1 or ok2):
         print("  [warn] couldn't find Color Gradient's color-stop parameters — it will use "
               "KeyShot's own default gradient colors, which may look more extreme than intended")
-    return wire_scalar_driver(graph, n, base_node, ["color", "tint", "reflectance"], "color")
+    return wire_scalar_driver(graph, n, base_node,
+                              ["color", "diffuse", "tint", "reflectance"], "color")
 
 
 # --------------------------------------------------------------------------
@@ -464,6 +511,10 @@ def build_material(opts):
     material_type = opts.get("material_type", DEFAULT_OPTIONS["material_type"])
     wear_level = opts.get("wear_level", DEFAULT_OPTIONS["wear_level"])
     wear_mult = WEAR_PRESETS.get(wear_level, 1.0) * float(opts.get("wear_multiplier", 1.0))
+
+    seed = _apply_seed(opts)
+    if seed is not None:
+        print(f"  Seeded feature RNG with {seed!r} (reproducible in randomize mode)")
 
     features = {k: bool(opts.get(k, False)) for k in FEATURE_KEYS}
     if opts.get("randomize_features"):
@@ -506,7 +557,12 @@ def build_material(opts):
 
     base_node = new_node(graph, shader_type, material_type)
     safe_edge(graph, source=base_node, target=root, param="surface", label="base -> root.surface")
-    set_display(base_node, ["color", "tint", "reflectance"], base_color, ptype=lux.PARAMETER_TYPE_COLOR)
+    # "diffuse" is essential: KeyShot's Plastic material names its colour
+    # channel "Diffuse", not "Color" — without it, plastic bases silently kept
+    # KeyShot's default colour instead of the one picked here. Metal uses
+    # "Color"; both are covered by the keyword list.
+    set_display(base_node, ["color", "diffuse", "tint", "reflectance", "base color"],
+                base_color, ptype=lux.PARAMETER_TYPE_COLOR)
     set_display(base_node, ["roughness"], base_roughness)
 
     # --- bump-domain layers, combined into one bump input -----------------
