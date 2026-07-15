@@ -67,6 +67,16 @@ import lux
 import random
 import math
 
+# lux's PARAMETER_TYPE_* names vary between KeyShot builds, and a bare
+# lux.PARAMETER_TYPE_X reference to a name this build lacks raises AttributeError
+# -- which crashes the whole run (there is no PARAMETER_TYPE_SHADERCOLOR, for
+# one). Resolve the few we use once, defensively: a missing type becomes None,
+# and the helpers below treat None as "no type filter" / "skip this wiring"
+# rather than crashing. Colour/texture inputs are PARAMETER_TYPE_COLOR (you
+# connect a texture into a colour input); there is no separate shader-colour type.
+PT_COLOR = getattr(lux, "PARAMETER_TYPE_COLOR", None)
+PT_SHADERBUMP = getattr(lux, "PARAMETER_TYPE_SHADERBUMP", None)
+
 # --------------------------------------------------------------------------
 # Debug / diagnostics
 # --------------------------------------------------------------------------
@@ -386,6 +396,8 @@ def find_param(node, keywords, ptype=None):
 
 
 def connection_param_names(node, ptype):
+    if ptype is None:
+        return []
     return [p.getName() for p in node.getParameters() if p.getType() == ptype]
 
 
@@ -429,7 +441,7 @@ def combine_bump_sources(graph, sources):
         if bump_add is None:
             print("  [warn] stopping bump combination early -- Bump Add unavailable")
             return current
-        slots = connection_param_names(bump_add, lux.PARAMETER_TYPE_SHADERBUMP)
+        slots = connection_param_names(bump_add, PT_SHADERBUMP)
         if len(slots) < 2:
             print("  [warn] Bump Add missing expected 2 inputs (found {0}) -- stopping chain".format(slots))
             return current
@@ -464,12 +476,12 @@ def add_curvature_mask(graph, feather=True):
     n = try_new_node(graph, "SHADER_TYPE_CURVATURE", "Curvature (edge mask)")
     if n is None:
         return None
-    set_display(n, ["positive curvature"], (1.0, 1.0, 1.0), ptype=lux.PARAMETER_TYPE_COLOR)
+    set_display(n, ["positive curvature"], (1.0, 1.0, 1.0), ptype=PT_COLOR)
     # A mid-grey zero-curvature feathers the wear off the edge onto the faces;
     # pure black gives a hard rim only on the corners.
     zero = (0.35, 0.35, 0.35) if feather else (0.0, 0.0, 0.0)
-    set_display(n, ["zero curvature"], zero, ptype=lux.PARAMETER_TYPE_COLOR)
-    set_display(n, ["negative curvature"], (0.0, 0.0, 0.0), ptype=lux.PARAMETER_TYPE_COLOR)
+    set_display(n, ["zero curvature"], zero, ptype=PT_COLOR)
+    set_display(n, ["negative curvature"], (0.0, 0.0, 0.0), ptype=PT_COLOR)
     return n
 
 
@@ -481,9 +493,9 @@ def add_occlusion_mask(graph):
     n = try_new_node(graph, "SHADER_TYPE_OCCLUSION", "Occlusion (cavity mask)")
     if n is None:
         return None
-    set_display(n, ["occluded"], (1.0, 1.0, 1.0), ptype=lux.PARAMETER_TYPE_COLOR)
+    set_display(n, ["occluded"], (1.0, 1.0, 1.0), ptype=PT_COLOR)
     set_display(n, ["unoccluded", "bright", "far", "exposed"], (0.0, 0.0, 0.0),
-                ptype=lux.PARAMETER_TYPE_COLOR)
+                ptype=PT_COLOR)
     return n
 
 
@@ -503,8 +515,15 @@ def masked(graph, effect_node, mask_node, label="masked"):
         print("  [warn] Color Composite unavailable -- {0} left unmasked".format(label))
         return effect_node
 
-    color_slots = connection_param_names(comp, lux.PARAMETER_TYPE_SHADERCOLOR)
-    alpha_param = find_param(comp, ["alpha", "opacity", "mask", "blend amount"])
+    # Colour/texture inputs on a Color Composite are PARAMETER_TYPE_COLOR
+    # (no SHADERCOLOR type exists). Fall back to name matching if the type
+    # lookup finds nothing on this build.
+    color_slots = connection_param_names(comp, PT_COLOR)
+    if not color_slots:
+        color_slots = [p.getName() for p in comp.getParameters()
+                       if any(k in p.getDisplayName().lower()
+                              for k in ("color", "input", "top", "bottom", "base", "background"))]
+    alpha_param = find_param(comp, ["alpha", "opacity", "mask", "blend amount", "amount", "blend"])
 
     ok_effect = False
     if color_slots:
@@ -605,8 +624,8 @@ def add_color_gradient(graph, base_node, base_color):
     # nodes do. If no match is found, that's reported rather than assumed.
     light = tuple(clamp01(c * 1.25 + 0.05) for c in base_color)
     dark = tuple(clamp01(c * 0.6) for c in base_color)
-    ok1 = set_display(n, ["color 1", "start color", "color a"], light, ptype=lux.PARAMETER_TYPE_COLOR)
-    ok2 = set_display(n, ["color 2", "end color", "color b"], dark, ptype=lux.PARAMETER_TYPE_COLOR)
+    ok1 = set_display(n, ["color 1", "start color", "color a"], light, ptype=PT_COLOR)
+    ok2 = set_display(n, ["color 2", "end color", "color b"], dark, ptype=PT_COLOR)
     if not (ok1 or ok2):
         print("  [warn] couldn't find Color Gradient's color-stop parameters -- it will use "
               "KeyShot's own default gradient colors, which may look more extreme than intended")
@@ -681,7 +700,7 @@ def build_material(opts):
     # KeyShot's default colour instead of the one picked here. Metal uses
     # "Color"; both are covered by the keyword list.
     set_display(base_node, ["color", "diffuse", "tint", "reflectance", "base color"],
-                base_color, ptype=lux.PARAMETER_TYPE_COLOR)
+                base_color, ptype=PT_COLOR)
     set_display(base_node, ["roughness"], base_roughness)
 
     # --- bump-domain layers, combined into one bump input -----------------
@@ -708,7 +727,7 @@ def build_material(opts):
 
     combined_bump = combine_bump_sources(graph, bump_sources)
     if combined_bump is not None:
-        base_bump_slots = connection_param_names(base_node, lux.PARAMETER_TYPE_SHADERBUMP)
+        base_bump_slots = connection_param_names(base_node, PT_SHADERBUMP)
         if base_bump_slots:
             safe_edge(graph, source=combined_bump, target=base_node, param=base_bump_slots[0],
                       label="combined bump -> base.bump")
