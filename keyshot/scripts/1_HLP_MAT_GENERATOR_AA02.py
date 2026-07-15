@@ -172,7 +172,10 @@ DEFAULT_OPTIONS = {
     "mask_scratches_to_edges": False,
     "mask_spots_to_cavities": False,
     "randomize_features": False,
-    "random_seed": "",
+    # NB: KeyShot's getInputDialog rejects an EMPTY string default ("Default
+    # value of a string tuple cannot be empty!"), so the "random" sentinel is
+    # a non-empty word, not "". _apply_seed treats auto/random/none as no seed.
+    "random_seed": "auto",
     "name_filter": "",
 }
 
@@ -239,7 +242,7 @@ def _apply_seed(opts):
     Material *names* stay unique regardless (see _name_rng). Accepts an int or
     any hashable string."""
     raw = str(opts.get("random_seed", "") or "").strip()
-    if not raw:
+    if not raw or raw.lower() in ("auto", "random", "none"):
         return None
     try:
         seed = int(raw)
@@ -289,7 +292,7 @@ def get_options():
                     "Randomize features instead (ignores checkboxes above)",
                     DEFAULT_OPTIONS["randomize_features"]))
     values.append(("random_seed", lux.DIALOG_TEXT,
-                    "Seed (blank = random; only affects Randomize):",
+                    "Seed ('auto' = random; only affects Randomize):",
                     DEFAULT_OPTIONS["random_seed"]))
     values.append((lux.DIALOG_LABEL, "-- application --"))
     values.append(("name_filter", lux.DIALOG_TEXT, "Apply to parts matching (ALL = every part):",
