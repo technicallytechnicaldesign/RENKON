@@ -1,14 +1,30 @@
 # Masked / Targeted Wear — Research
 
 **UID:** MWR-9C4E21
-**Rev:** 1
+**Rev:** 2
 **Date:** 2026-07-15
 **Audience:** whoever extends `1_HLP_MAT_GENERATOR_AA02.py` next (TJ + agent).
-**Status:** research/design spec — nothing built yet. This is the answer to
-"can we make wear land only where it physically would — scratches on edges,
-grime in crevices, the odd fingerprint on polished metal — instead of
-uniformly over the whole surface?" Short answer: **yes, and it's scriptable**,
-with one architectural constraint that decides the whole approach.
+**Status:** built into the generator + **corrected against a real KeyShot graph dump**.
+
+> **Rev 2 correction (from the first clean KS run).** The Recipe-A/B "mask ×
+> effect × **Color Composite** (alpha = mask)" plan below is **wrong for the
+> bump domain** and is superseded. A Color Composite outputs a *colour*, and
+> KeyShot refuses to plug a colour node into a bump input — the graph dump
+> showed `Could not create requested edge`, and the masked layer got silently
+> dropped. **What actually works:** map the mask texture straight onto the bump
+> layer's **`bump_height`** input, so bump strength follows the mask (white =
+> full on edges/cavities, black = none on flats) while the effect stays a plain
+> texture that still chains into Bump Add. Confirmed node/param names from the
+> dump: Curvature = `positive_curvature` / `zero_curvature` / `negative_curvature`.
+> The Color Composite (with its `source` / `background` / `clipping_mask` /
+> `alpha` inputs) is still the right tool for **colour/roughness** masking
+> (fingerprints), just not for bump. Read the rest as background; take the
+> bump-height approach as the built one.
+
+This is the answer to "can we make wear land only where it physically would —
+scratches on edges, grime in crevices, the odd fingerprint on polished metal —
+instead of uniformly over the whole surface?" Short answer: **yes, and it's
+scriptable.**
 
 ---
 
