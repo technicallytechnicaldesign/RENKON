@@ -291,28 +291,29 @@
         'Scatter tech reference for the planned particle / assembly-scatter script &mdash; exists elsewhere.'],
     ];
 
-    /* Last-touched dates, from git (last commit that changed each file).
+    /* Last-touched date + time, from git (last commit that changed each file).
        Regenerate from the repo root with:
          for f in keyshot/scripts/*.py keyshot/scripts/archive/*.py; do \
-           echo "'$(basename "$f")': '$(git log -1 --format=%cs -- "$f")',"; done
+           echo "'$(basename "$f")': '$(git log -1 --format=%cd \
+             --date=format:'%Y-%m-%d %H:%M' -- "$f")',"; done
        Update whenever a script changes (or paste a fresh run of the above). */
     var UPDATED = {
-      '0_VAL_STEP_PREFLIGHT_AA01.py': '2026-07-11',
-      '0_VAL_IMPORT_HEALTH_AA01.py': '2026-07-11',
-      '0_VAL_ORIENTATION_CHECK_AA01.py': '2026-07-11',
-      '1_HLP_MAT_PREFLIGHT_AA01.py': '2026-07-11',
-      '1_HLP_MAT_LOOKUP_AA01.py': '2026-07-11',
-      '1_HLP_MAT_GENERATOR_AA02.py': '2026-07-15',
-      '2a_BAT_STD_VIEW_AA01.py': '2026-07-11',
-      '2a_BAT_TURNTABLE_AA01.py': '2026-07-11',
-      '2b_ANI_HERO_REVEAL_AA01.py': '2026-07-11',
-      '2b_ANI_CUTAWAY_REVEAL_AA01.py': '2026-07-11',
-      '2b_ANI_ASSEMBLY_PROCEDURAL_AA01.py': '2026-07-11',
-      '3_PRC_CONTACT_SHEET_AA01.py': '2026-07-11',
-      '3_PRC_FADE_REEL_AA01.py': '2026-07-11',
-      '4_CHK_AUDIT_AA01.py': '2026-07-11',
-      'batch_turntable.py': '2026-07-11',
-      'batch_import_and_render_all_views.py': '2026-07-11'
+      '0_VAL_STEP_PREFLIGHT_AA01.py': '2026-07-11 09:29',
+      '0_VAL_IMPORT_HEALTH_AA01.py': '2026-07-11 09:29',
+      '0_VAL_ORIENTATION_CHECK_AA01.py': '2026-07-11 09:29',
+      '1_HLP_MAT_PREFLIGHT_AA01.py': '2026-07-11 02:12',
+      '1_HLP_MAT_LOOKUP_AA01.py': '2026-07-11 02:20',
+      '1_HLP_MAT_GENERATOR_AA02.py': '2026-07-15 09:51',
+      '2a_BAT_STD_VIEW_AA01.py': '2026-07-11 01:58',
+      '2a_BAT_TURNTABLE_AA01.py': '2026-07-11 01:58',
+      '2b_ANI_HERO_REVEAL_AA01.py': '2026-07-11 09:23',
+      '2b_ANI_CUTAWAY_REVEAL_AA01.py': '2026-07-11 09:23',
+      '2b_ANI_ASSEMBLY_PROCEDURAL_AA01.py': '2026-07-11 09:23',
+      '3_PRC_CONTACT_SHEET_AA01.py': '2026-07-11 02:12',
+      '3_PRC_FADE_REEL_AA01.py': '2026-07-11 02:31',
+      '4_CHK_AUDIT_AA01.py': '2026-07-11 02:31',
+      'batch_turntable.py': '2026-07-11 02:12',
+      'batch_import_and_render_all_views.py': '2026-07-11 02:12'
     };
 
     /* stage metadata for the "by stage" zones and the pipeline sub-headers */
