@@ -270,6 +270,19 @@ launcher and the tier classifier want to *import* this, not copy it a fifth
 time. Extract an L3 `shared/` module first — it's low-risk and unblocks
 everything else.
 
+### Masked / targeted wear (2026-07-15) → `scripts/research/MASKED_WEAR_RESEARCH.md`
+Research spec (UID MWR-9C4E21) for making wear land where it physically would —
+scratches on edges, grime in crevices, the occasional fingerprint on polished
+metal — rather than uniformly. Key finding: **`lux` has no label API**, so the
+GUI tutorials' label-opacity trick is out; instead mask the *effect* inside one
+graph via **mask × effect × Color Composite (alpha = mask)**. All the needed
+node ids are confirmed scriptable: `SHADER_TYPE_CURVATURE` (`lux_curvature`,
+edge mask), `SHADER_TYPE_OCCLUSION` (`lux_occlusion_tex`, cavity mask — already
+in the generator), `SHADER_TYPE_COLOR_COMPOSITE` (`lux_color_blend`), and
+`SHADER_TYPE_COLOR_TO_NUMBER` (`convert_rgba_to_float`, inverted → drives
+roughness for fingerprints). Lands in the generator as a per-layer, opt-in mask
+stage — see the doc for the three recipes + build order.
+
 ### Open questions carried over (for TJ, before building the launcher)
 1. **Input file formats** — STEP/IGES vs STL/OBJ? Sets how much the bbox sanity
    check must carry vs. how much auto-detect can be trusted.

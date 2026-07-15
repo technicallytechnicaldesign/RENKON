@@ -43,6 +43,7 @@ replace it, as scripts move status.
 | P2 | 3 | Multi-angle fade reel (crossfade between Studios/cameras) | ✅ done — `3_PRC_FADE_REEL_AA01.py` | Consumes stills from `2a_BAT_TURNTABLE`/`2a_BAT_STD_VIEW` |
 | P2 | 3 | BOM-driven manifest (opt-in) | Not started | Research Q3 — BOM access method |
 | P2 | 2b | Dynamic BOM callouts on assembly renders | Not started | BOM-driven manifest, above |
+| P1 | 1 | Masked / targeted wear in the material generator — edge-only scratches (Curvature mask), cavity grime (Occlusion mask), occasional fingerprints (image + noise-gated roughness) via a per-layer `masked()` Color-Composite stage | Research done | Spec: `scripts/research/MASKED_WEAR_RESEARCH.md` (MWR-9C4E21). Node ids confirmed scriptable; no label API so mask the effect, not a label. Recipe A (edge scratches) is the first build |
 | P2 | 1 | Studio/camera-rig template library | Not started | — |
 | P2 | 0 | STEP-file preflight (units, filename hygiene, material-name hints) | ✅ done — `0_VAL_STEP_PREFLIGHT_AA01.py` | Forum-grounded: STEP unit/scale mismatch is the #1 reported KeyShot import complaint (see RESEARCH_CREO_KEYSHOT.md) |
 | P2 | 0 | Trial-import geometry/appearance health check | ✅ done — `0_VAL_IMPORT_HEALTH_AA01.py` | This is the original "pre-import geometry/appearance validator" item, now split out and grounded in specific forum reports (missing assembly components, tessellation gaps, failed imports) |
