@@ -21,12 +21,12 @@
 # Confirmed layers (per KeyShot's scripting docs): Fine Noise, Scratches,
 # Rounded Edges, Spots, Fractal Noise, Occlusion. Experimental (getattr-
 # guarded -- skip with a console [warn] if the lux constant is absent on this
-# build): Cellular, Colour Gradient. Masking (targeted wear) uses Curvature +
-# Occlusion + Color Composite (ids confirmed in the 11.0 lux ref); the exact
-# input-slot wiring is probe-and-confirm -- masking degrades to unmasked on any
-# wiring failure, so it can never break the base material. See MWR-9C4E21
-# (scripts/research/MASKED_WEAR_RESEARCH.md). Fingerprints (raster) are a
-# planned follow-on.
+# build): Cellular, Colour Gradient. Masking (targeted wear) maps a Curvature
+# (edges) / Occlusion (cavities) mask onto a bump layer's bump-height, so wear
+# lands only where the mask is white; param names confirmed against the real
+# material-graph dump. Degrades to unmasked (never dropped) if bump-height isn't
+# mappable. See MWR-9C4E21 (scripts/research/MASKED_WEAR_RESEARCH.md).
+# Fingerprints (raster) are a planned follow-on.
 
 """
 KeyShot Procedural Material Generator
@@ -53,10 +53,10 @@ console warning if unavailable, rather than crashing:
   Cellular, Color Gradient, Thin Film
 
 Masking / targeted wear (opt-in, off by default):
-  Scratches-to-edges (Curvature mask) and Spots-to-cavities (Occlusion mask),
-  composited via Color Composite (alpha = mask). Node ids are confirmed; the
-  exact input-slot names are discovered at run time (DEBUG dumps them), and
-  any wiring failure falls back to the unmasked effect.
+  Scratches-to-edges (Curvature mask) and Spots-to-cavities (Occlusion mask).
+  The mask texture is mapped onto the bump layer's bump-height, so bump strength
+  follows the mask -- full on edges/cavities, none on the flats. If bump-height
+  isn't mappable the layer is left unmasked (present, never dropped).
 
 If a toggle you enabled doesn't show up in the final material, check the
 console for a "[warn] ... not available in this KeyShot version" line --
@@ -470,17 +470,15 @@ def wire_scalar_driver(graph, texture_node, base_node, keywords, label):
 # effect so masking can never break the base material. See MWR-9C4E21.
 # --------------------------------------------------------------------------
 
-def add_curvature_mask(graph, feather=True):
+def add_curvature_mask(graph):
     """Convex-edge mask: white on positive curvature (edges/corners), black on
-    the flats -- so an effect composited through it only lands on edges."""
+    the flats -- param names confirmed from the material-graph dump. Feeds a
+    bump layer's bump-height so wear lands only on the edges."""
     n = try_new_node(graph, "SHADER_TYPE_CURVATURE", "Curvature (edge mask)")
     if n is None:
         return None
     set_display(n, ["positive curvature"], (1.0, 1.0, 1.0), ptype=PT_COLOR)
-    # A mid-grey zero-curvature feathers the wear off the edge onto the faces;
-    # pure black gives a hard rim only on the corners.
-    zero = (0.35, 0.35, 0.35) if feather else (0.0, 0.0, 0.0)
-    set_display(n, ["zero curvature"], zero, ptype=PT_COLOR)
+    set_display(n, ["zero curvature"], (0.0, 0.0, 0.0), ptype=PT_COLOR)
     set_display(n, ["negative curvature"], (0.0, 0.0, 0.0), ptype=PT_COLOR)
     return n
 
@@ -499,50 +497,28 @@ def add_occlusion_mask(graph):
     return n
 
 
-def masked(graph, effect_node, mask_node, label="masked"):
-    """Gate effect_node by mask_node through a Color Composite (alpha = mask),
-    returning a node that can drop in wherever effect_node would have gone.
-    Defensive: if the composite or its wiring is unavailable, returns the raw
-    effect_node so a mask can never make an effect vanish entirely. The exact
-    slot names are build-dependent -- DEBUG dumps them on first run so they can
-    be pinned precisely later."""
-    if effect_node is None:
-        return None
-    if mask_node is None:
+def mask_bump_layer(graph, effect_node, mask_node, label):
+    """Spatially gate a bump layer by mapping the mask texture into the effect's
+    bump-height input, so bump strength follows the mask (white = full on the
+    edges/cavities, black = none on the flats). The effect stays a plain texture,
+    so it still chains into Bump Add normally -- and if bump-height isn't
+    mappable on this build the layer is left unmasked (present, not dropped).
+
+    Supersedes the earlier Color Composite approach: a Composite outputs a
+    colour, which KeyShot will not accept into a bump input -- the graph dump
+    showed 'Could not create requested edge', so the whole layer got silently
+    dropped. Mapping the mask onto bump-height keeps everything in the bump
+    domain."""
+    if effect_node is None or mask_node is None:
         return effect_node
-    comp = try_new_node(graph, "SHADER_TYPE_COLOR_COMPOSITE", "Color Composite ({0})".format(label))
-    if comp is None:
-        print("  [warn] Color Composite unavailable -- {0} left unmasked".format(label))
+    p = find_param(effect_node, ["bump height", "height", "amount"])
+    if p is None:
+        print("  [warn] {0}: no bump-height input to mask on -- left unmasked".format(label))
         return effect_node
-
-    # Colour/texture inputs on a Color Composite are PARAMETER_TYPE_COLOR
-    # (no SHADERCOLOR type exists). Fall back to name matching if the type
-    # lookup finds nothing on this build.
-    color_slots = connection_param_names(comp, PT_COLOR)
-    if not color_slots:
-        color_slots = [p.getName() for p in comp.getParameters()
-                       if any(k in p.getDisplayName().lower()
-                              for k in ("color", "input", "top", "bottom", "base", "background"))]
-    alpha_param = find_param(comp, ["alpha", "opacity", "mask", "blend amount", "amount", "blend"])
-
-    ok_effect = False
-    if color_slots:
-        ok_effect = safe_edge(graph, source=effect_node, target=comp,
-                              param=color_slots[0], label="{0}: effect->input".format(label))
-    ok_mask = False
-    if alpha_param is not None:
-        ok_mask = safe_edge(graph, source=mask_node, target=comp,
-                            param=alpha_param.getName(), label="{0}: mask->alpha".format(label))
-    elif len(color_slots) >= 2:
-        # No obvious alpha slot -- fall back to the second colour input so the
-        # mask still modulates the blend rather than being dropped silently.
-        ok_mask = safe_edge(graph, source=mask_node, target=comp,
-                            param=color_slots[1], label="{0}: mask->input2".format(label))
-
-    if ok_effect and ok_mask:
-        return comp
-    print("  [warn] {0}: mask wiring incomplete (effect={1}, mask={2}) -- using unmasked effect".format(
-        label, ok_effect, ok_mask))
+    ok = safe_edge(graph, source=mask_node, target=effect_node, param=p.getName(),
+                   label="{0}: mask -> bump height".format(label))
+    if not ok:
+        print("  [info] {0}: bump-height not mappable here -- left unmasked".format(label))
     return effect_node
 
 
@@ -582,7 +558,9 @@ def add_spots_bump(graph, wear_mult, damping=1.0):
     if n:
         set_display(n, ["bump height", "height"], clamp01(BASE["spots_bump_height"] * wear_mult * damping))
         set_display(n, ["density"], clamp01(BASE["spots_density"] * wear_mult))
-        set_display(n, ["size"], clamp01(BASE["spots_size"] * wear_mult))
+        # Spots has no 'Size' param (per the graph dump) -- 'Radius' is the
+        # per-spot size.
+        set_display(n, ["radius", "size", "scale"], clamp01(BASE["spots_size"] * wear_mult))
     return n
 
 
@@ -699,28 +677,31 @@ def build_material(opts):
     # channel "Diffuse", not "Color" -- without it, plastic bases silently kept
     # KeyShot's default colour instead of the one picked here. Metal uses
     # "Color"; both are covered by the keyword list.
+    # Match by name only: the base Color is PARAMETER_TYPE 14 (a texture-able
+    # colour input), not PT_COLOR (13, the plain colour-value type) -- filtering
+    # by PT_COLOR missed it and the colour never applied. Names cover metal
+    # ("Color") and plastic ("Diffuse").
     set_display(base_node, ["color", "diffuse", "tint", "reflectance", "base color"],
-                base_color, ptype=PT_COLOR)
+                base_color)
     set_display(base_node, ["roughness"], base_roughness)
 
     # --- bump-domain layers, combined into one bump input -----------------
-    # Masking is applied per-layer here: a masked layer is wrapped through a
-    # Curvature/Occlusion + Color Composite before it joins the bump chain.
+    # Masking is applied per-layer here: a masked layer gets a Curvature/
+    # Occlusion mask mapped onto its bump-height before it joins the bump chain.
     bump_sources = []
     if features["add_fine_noise"]:
         bump_sources.append(add_fine_noise_bump(graph))
     if features["add_scratches"]:
         scr = add_scratches_bump(graph, wear_mult, damping)
         if mask_scratches:
-            scr = masked(graph, scr, add_curvature_mask(graph, feather=(wear_level != "Heavy Wear")),
-                         "scratches->edges")
+            scr = mask_bump_layer(graph, scr, add_curvature_mask(graph), "scratches->edges")
         bump_sources.append(scr)
     if features["add_rounded_edges"]:
         bump_sources.append(add_rounded_edges_bump(graph, wear_mult, damping))
     if features["add_spots"]:
         sp = add_spots_bump(graph, wear_mult, damping)
         if mask_spots:
-            sp = masked(graph, sp, add_occlusion_mask(graph), "spots->cavities")
+            sp = mask_bump_layer(graph, sp, add_occlusion_mask(graph), "spots->cavities")
         bump_sources.append(sp)
     if features["add_cellular"]:
         bump_sources.append(add_cellular_bump(graph, wear_mult, damping))
