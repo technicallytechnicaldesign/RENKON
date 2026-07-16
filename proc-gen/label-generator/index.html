@@ -168,9 +168,8 @@
   <main id="app-main">
     <div class="page-head">
       <h1>Label Generator</h1>
-      <p>Procedural placeable label decals — localized image maps in the KeyShot Label sense.
-         Pick a generator, dial the parameters, and export the opacity / bump / spec (and optional normal)
-         channel set ready to drop into a KeyShot label. Pure browser, seeded &amp; reproducible, no rendering.</p>
+      <p>Placeable label decals for KeyShot. Pick a generator, set the parameters, and export the
+         opacity / bump / spec (and optional normal) maps.</p>
     </div>
 
     <div class="layout">
@@ -258,11 +257,9 @@
     </div>
 
     <footer class="note">
-      Channels: <code>opacity</code> is the real RGBA cutout (alpha = where the label shows) rendered over the
-      material; <code>bump</code> is the height field with mid-grey 128 = flat (Bump Depth scales contrast around 128);
-      <code>spec</code> drives roughness (white = shinier, black = matte); <code>normal</code> is derived from bump via a
-      Sobel filter. Exports name as <code>&lt;basename&gt;_opacity.png</code> / <code>_bump.png</code> /
-      <code>_spec.png</code> / <code>_normal.png</code> — drop the set into the KeyShot label template's channel slots.
+      Channels: <code>opacity</code> = RGBA cutout (alpha = where the label shows), <code>bump</code> = height
+      (mid-grey 128 = flat), <code>spec</code> = roughness (white shinier, black matte), <code>normal</code> = Sobel of bump.
+      Exports as <code>&lt;basename&gt;_opacity/_bump/_spec/_normal.png</code> for the label's channel slots.
     </footer>
   </main>
 

@@ -1384,7 +1384,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     {
       id: "texture-generator",
       title: "Texture & Bump Map Generator",
-      description: "Procedural grayscale texture and bump-map previews from a few generation criteria.",
+      description: "Procedural grayscale texture and bump-map previews.",
       status: "active",
       mount: mountTextureTool
     }
@@ -1394,7 +1394,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     main.innerHTML = "";
     const head = document.createElement("div");
     head.className = "page-head";
-    head.innerHTML = `<h1>Parametric Generators</h1><p>Procedural / parametric generators for the rendering &amp; overlay compositing pipeline. Each tile is a self-contained tool; more get added here over time.</p>`;
+    head.innerHTML = `<h1>Parametric Generators</h1><p>Procedural generators for the rendering and overlay pipeline. Each tile is a standalone tool.</p>`;
     main.appendChild(head);
 
     const grid = document.createElement("div");
@@ -1410,7 +1410,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
 
     const placeholder = document.createElement("div");
     placeholder.className = "card planned";
-    placeholder.innerHTML = `<div class="tag">Reserved</div><h2>Next tool slot</h2><p>New tools register in the TOOLS array and appear here automatically.</p>`;
+    placeholder.innerHTML = `<div class="tag">Reserved</div><h2>Next tool slot</h2><p>New tools appear here as they're added.</p>`;
     grid.appendChild(placeholder);
 
     main.appendChild(grid);

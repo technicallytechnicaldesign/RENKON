@@ -223,11 +223,9 @@
 
     <div class="page-head">
       <h1>Scripts</h1>
-      <p>Automation for the Creo &rarr; KeyShot pipeline &mdash; batch views, turntables,
-         and camera-driven reveal animations, written against the <code
+      <p>Creo to KeyShot automation in the <code
          style="color:var(--c-fluid)">lux</code> / <code style="color:var(--c-fluid)">luxmath</code>
-         scripting API. Headless-compliant where noted, so batch stages can run
-         unattended on a licensed KeyShot install.</p>
+         API: batch views, turntables, and reveal animations. Headless where noted.</p>
     </div>
 
     <section>
@@ -254,45 +252,45 @@
      * ------------------------------------------------------------------ */
     var SCRIPTS = [
       ['0','VAL','current','0_VAL_STEP_PREFLIGHT_AA01.py',true,
-        'STEP-file preflight &mdash; runs on plain STEP text before KeyShot ever opens the file. Checks the declared unit/scale (the #1 reported import complaint), filename hygiene, duplicate base names, and best-effort material-name hints cross-referenced against a <code>1_HLP_MAT_LOOKUP</code>-format map. Forum-grounded &mdash; see <code>RESEARCH_CREO_KEYSHOT.md</code>.'],
+        'STEP-file preflight before KeyShot opens the file: checks unit/scale, filename hygiene, duplicate names, and material-name hints against a <code>1_HLP_MAT_LOOKUP</code> map.'],
       ['0','VAL','current','0_VAL_IMPORT_HEALTH_AA01.py',true,
-        'Trial-import geometry/appearance health check &mdash; a fast, no-render gate before committing a folder to the full batch. Flags import failures, bounding-box anomalies, assembly-named files that imported as a single object (missing components), and parts with no Studios or cameras. Uses the confirmed <code>getBoundingBox()</code>.'],
+        'Trial-import health check, no render. Flags import failures, bounding-box anomalies, assemblies that came in as one object, and parts with no Studios or cameras.'],
       ['0','VAL','current','0_VAL_ORIENTATION_CHECK_AA01.py',true,
-        'Orientation / up-axis sanity check &mdash; footprint ratio per part from its bounding box, flags statistical outliers across the batch. A review-flagging heuristic, not a fixer &mdash; a flagged part may be legitimately different, and a whole batch sharing one bad orientation wouldn\'t be caught.'],
+        'Up-axis sanity check: footprint ratio per part from its bounding box, flagging outliers across the batch. Flags for review, does not fix.'],
       ['0','CHK','current','0_CHK_MATGRAPH_PROBE_AA01.py',true,
-        'One-off <em>diagnostic</em> (not a pipeline stage) &mdash; builds a throwaway material and runs 13 probes from <code>MATERIAL_DIVERSITY_DESIGN.md</code> §8 to turn the design\'s assumptions into ground truth: root label slot (chip-through), masked-bump plan-Bs, Displace, ~24 new base BRDFs + ~14 texture nodes, image-map paths, blend-mode format, multi-material, film/anodise. Verifies edges actually landed. Delete the <code>MATGRAPH_PROBE</code> material after running.'],
+        'One-off diagnostic, not a pipeline stage: builds a throwaway material and runs 13 probes to confirm what the material graph actually supports. Delete the probe material after.'],
       ['0','VAL','current','0_VAL_LOAD_SAFETY_AA01.py',true,
-        '<em>Dev/CI guard</em> (runs in normal Python, NOT KeyShot) &mdash; scans every KeyShot script for the two things that stop it loading in the console: f-strings (AST <code>JoinedStr</code> walk) and non-ASCII characters (Python &lt; 3.6, ASCII-sensitive). PASS/FAIL per file, exits nonzero on any offender so the load-blocker can\'t regress. Currently 18/18 pass.'],
+        'Dev guard in plain Python, not KeyShot: scans every script for the two things that block console load, f-strings and non-ASCII. PASS/FAIL per file, 18/18 pass.'],
       ['1','HLP','current','1_HLP_MAT_PREFLIGHT_AA01.py',true,
-        'Material-template coverage QC, ahead of a full batch render. Imports every part, applies a material template, and reports which objects\' materials did not change &mdash; a strong signal the template has no entry for that native material name. No rendering, so it runs in seconds.'],
+        'Material-template coverage check before a batch: applies a template and reports which objects did not change, meaning the template has no entry for that material. No render.'],
       ['1','HLP','current','1_HLP_MAT_LOOKUP_AA01.py',true,
-        'Creo &rarr; KeyShot material-name lookup table. Loads a CSV/JSON map of native appearance names to KeyShot templates, then applies the match per object across a batch import. Prevention, complementing what preflight catches after the fact. Per-object apply is unconfirmed on this build &mdash; probes candidate setters, reports which worked.'],
+        'Creo to KeyShot material-name lookup: maps native appearance names to KeyShot templates and applies them across a batch import. Per-object apply is unconfirmed on this build.'],
       ['1','HLP','current','1_HLP_MAT_GENERATOR_AB06.py',true,
-        'Procedural material <em>variant</em> generator &mdash; <strong>AB06 adds an OPTIONAL emulated IMAGE-LABEL</strong> (OFF by default) on AB05\'s part-size-aware rev. True KeyShot <em>Labels</em> are not exposed to scripting, so this is the material-graph EMULATION (design option B): image-map texture nodes wired into the base material\'s own channels, surface/UV-mapped (Center On: Part + Scale) &mdash; it COMPLEMENTS, not replaces, the UI-authored label template (<code>04_DOCS/labels-guide.html</code> + the demo assets in <code>03_OUTPUT/labels/</code>). Experimental scripted path, so it is heavily defensive + carries a thorough CONFIRM-AT-RENDER list; the human render loop is the API probe. (1) <strong>Options</strong> &mdash; <code>enable_labels</code> + three channel paths (<code>label_opacity_path</code>/<code>label_bump_path</code>/<code>label_spec_path</code>, defaults pointing at the demo spec-plate set; an empty path skips that channel) + <code>label_scale</code> (0.1&ndash;10), <code>label_bump_strength</code>/<code>label_spec_strength</code> (0&ndash;3), all threaded into <code>spec[&#39;label&#39;]</code>, clamped, echoed in the summary + <code>emit_spec</code>. (2) <strong>Self-probing image-map helper</strong> &mdash; <code>make_image_map</code> resolves the node type by getattr over <code>SHADER_TYPE_TEXTURE_MAP/IMAGE_MAP/IMAGE/BITMAP/TEXTURE</code> (first that exists; none &rarr; <code>[warn] no image-map node type &mdash; labels skipped</code>), DEBUG-dumps ALL its params so the render log reveals the real API, sets the file path over several candidate names, places via Center On: Part + Scale. (3) <strong>Three channels, risk-ordered</strong> (<code>apply_image_label</code>) &mdash; the bump image-map is appended to <code>bump_sources</code> before the bump bus (LOW RISK); the spec image-map is appended to <code>rough_sources</code> before the roughness bus (composites via Lighten, LOW RISK); the colour overlay (HIGHER RISK, done LAST + fully guarded) composites the label colour over the base colour via a Color Composite (blend Normal) with the label ALPHA best-effort into <code>clipping_mask</code>, driving the BASE COLOUR input. <strong>The alpha is NEVER wired into base opacity</strong> (that would make the whole part transparent where the label isn\'t); if the composite can\'t build, the overlay skips with <code>[info] label colour overlay skipped &mdash; bump/spec still applied</code>. All new nodes/params/paths UNPROBED &rarr; getattr/find_param/try-except, always builds. Load-safe (19/19). Preserves every AB01&ndash;AB05 fix. <em>In render-validation; supersedes AB05 (kept on disk pending recycle) then AA02 once confirmed. Set <code>enable_labels</code> and the defaults point at the demo spec-plate.</em>'],
+        'Procedural material variant generator, current rev. Optional emulated image-label (off by default) on top of AB05: image maps into the bump, roughness and colour channels. Experimental, in render-validation.'],
       ['1','HLP','current','1_HLP_MAT_GENERATOR_AB05.py',true,
-        'Prior candidate &mdash; <strong>AB05 makes texture scaling PART-SIZE AWARE</strong>, on AB04\'s four-families rev. AB04 and earlier were not part-size aware: no bounding-box query anywhere, and <code>Center On</code> (texture_space) was never set &mdash; so KeyShot defaulted to <em>Center On: Model</em> and every procedural texture mapped to the whole ~6700-unit MODEL, making feature sizes wildly wrong on a ~40 mm part. All texture Scales were hardcoded absolutes, and <strong>Spots\' own tiling Scale was never set at all</strong> (the <code>[&quot;radius&quot;,&quot;size&quot;,&quot;scale&quot;]</code> list matched Radius first &rarr; Scale stayed at the ~6700 default &rarr; giant blobs). AB05: (1) <strong>Part-size resolution</strong> &mdash; <code>resolve_part_size</code> takes an operator-entered <code>part_size_mm</code> dialog field if &gt; 0, else <code>measure_part_size</code> walks the scene geometry trying UNPROBED bbox APIs (<code>getWorldBounds</code>/<code>getBounds</code>/<code>getBoundingBox</code>), else falls back to <code>DEFAULT_PART_SIZE_MM = 50</code>; captured into <code>spec[&#39;scale&#39;]</code>. (2) <strong>Part-relative scales</strong> &mdash; <code>SCALE_FRACTIONS</code> maps each tiling texture\'s Scale to a fraction of part size (scratch 0.12, fine 0.02, fractal 0.15, cellular 0.08, spots 0.06), so a 40 mm part reproduces roughly the old good values and auto-adapts. (3) <strong>Scale set on every node + Center On: Part</strong> &mdash; every tiling builder sets its Scale explicitly (incl. the Spots-Scale fix as a separate call), and <code>set_center_on_part</code> sets the type-2 enum to Part (string then int 1/0, read-back pattern). (4) <strong>Spots distortion</strong> (~0.4 + part-relative distortion scale) so pits read organic. All new APIs/params UNPROBED &rarr; getattr/find_param guarded, always builds. Preserves every AB01&ndash;AB04 fix. <em>Superseded by AB06 (optional emulated image-label); kept on disk pending recycle once AB06 is render-confirmed.</em>'],
+        'Prior rev: makes texture scaling part-size aware. Queries the part bounding box, sets Center On: Part, and scales every texture to a fraction of part size. Superseded by AB06.'],
       ['1','HLP','current','1_HLP_MAT_GENERATOR_AB04.py',true,
-        'Prior candidate &mdash; <strong>AB04 adds four new shader FAMILIES</strong> as data (not new texture layers), on AB03\'s three-confirmed-bugfixes rev. (1) <strong>Schema <code>extra</code></strong> &mdash; MATERIALS rows gain an optional 6th element, a dict carrying <code>family</code> + family params (default <code>{}</code> = &quot;opaque&quot;, so every AB03 row is untouched); threaded through <code>sample_spec</code> &rarr; <code>spec[&#39;base&#39;][&#39;extra&#39;]</code> (a copy) &rarr; <code>validate_spec</code> (family params clamped) &rarr; <code>build_material</code>, with a <code>meta.family</code> echo. (2) <strong>Families</strong> &mdash; <em>metal_aniso</em> (&quot;Aluminum (anisotropic brushed)&quot;, &quot;Steel (anisotropic)&quot;: Metal + anisotropy + stable per-build brush angle); <em>dielectric</em> glass ships BOTH &quot;Glass (clear)&quot; and &quot;Glass (frosted)&quot; on <code>SHADER_TYPE_DIELECTRIC</code> (fallbacks GLASS &rarr; SOLID_GLASS &rarr; Plastic), ior ~1.51, frosted drives base roughness high; <em>thinfilm</em> (&quot;Thin Film (oil slick)&quot;, &quot;Anodised (iridescent)&quot;) on <code>SHADER_TYPE_THIN_FILM</code> (fallback Metal). (3) <strong>Family-aware base setup</strong> &mdash; <code>apply_family_params</code> sets IOR / refraction-roughness / anisotropy+angle / film thickness+IOR defensively (find_param-guarded, skip-with-warn); <code>resolve_shader</code> gained per-family fallback chains. (4) <strong>Per-family wear-layer gating</strong> &mdash; <code>FAMILY_ALLOWED_LAYERS</code> intersects chosen features with each family\'s allowed set before building the buses (glass/thin-film drop spots/cellular/occlusion-grime/colour-gradient), logging each dropped layer, so clear glass never gets grime or pitting. All new constants + param names UNPROBED &rarr; getattr/find_param guarded, always builds. Preserves every AB01/AB02/AB03/AA02 fix. <em>Superseded by AB05 (part-size-aware scaling); kept on disk pending recycle once AB05 is render-confirmed.</em>'],
+        'Prior rev: adds four shader families (anisotropic metal, clear and frosted glass, thin film, anodised) as data, with per-family wear gating so glass never gets grime. Superseded by AB05.'],
       ['1','HLP','current','1_HLP_MAT_GENERATOR_AB03.py',true,
-        'Prior candidate &mdash; <strong>three CONFIRMED bugfixes</strong> against a real AB02 DEBUG run (ground-truth KeyShot node params), on AB02\'s routing-fix + Finish axis + seeded-placement rev. (1) <strong>Roughness composite fixed</strong> &mdash; <code>_composite_inputs</code> was filtering the Color Composite\'s Source/Background by <code>PT_COLOR</code> (type 13, a colour <em>value</em>) when they are type-14 <em>connection</em> inputs, so it matched nothing and the roughness bus always degraded to a single driver; now matched by name (<code>Source</code>/<code>Background</code>) with no type filter, with a defensively-derived positional fallback. Expect <code>Roughness bus: N source(s) -&gt; mode &#39;composite&#39;</code>. (2) <strong>Anti-repetition placement fixed</strong> &mdash; AB02 guessed offset/rotation/translate params that don\'t exist on these nodes; AB03 jitters the REAL per-node scalars from the dump (scale on every tiling node; +noise_scale/level_scale on Scratches; magnitude on Fine Noise; seed/distortion/radius on Spots; noise_scale/shape_1..3 on Cellular; bias_x/y/z on Occlusion), seeded + reproducible. The type-12 Texture Transform matrix is intentionally left unset. (3) <strong>Auto-apply fixed</strong> (CONFIRM-AT-RENDER, least certain) &mdash; walks the scene tree recursively via <code>getChildren()</code> instead of <code>root.find(&#39;&#39;)</code> (which returned only cameras, kind 6), and prints a candidate-kind histogram before applying. <em>Superseded by AB04 (the families rev); kept on disk pending recycle once AB04 is render-confirmed.</em>'],
+        'Prior rev: three confirmed bugfixes against a real AB02 run (roughness composite, seeded anti-repetition placement, recursive auto-apply). Superseded by AB04.'],
       ['1','HLP','current','1_HLP_MAT_GENERATOR_AA02.py',true,
-        'Previous stable rev &mdash; fallback kept while AB06 is render-validated (to be retired once AB06 is confirmed). Same 12-material palette + toggleable layers (fine noise, scratches, spots, cellular, rounded edges, fractal/occlusion roughness, colour gradient) on a metal/plastic/paint base; recessed matte scratches; single roughness driver (first wins). Cellular + Colour Gradient are getattr-guarded experimental layers.'],
+        'Previous stable rev, kept as the fallback until AB06 is render-confirmed. 12-material palette with toggleable wear layers on a metal, plastic or paint base; recessed matte scratches.'],
       ['2a','BAT','current','2a_BAT_STD_VIEW_AA01.py',true,
-        'Studios-first multi-view batch render. Imports every model of a chosen extension from a folder, applies an optional material template, then renders every Studio (camera + environment) defined per part &mdash; falls back to raw cameras only when a part has none. Logs a CSV manifest.'],
+        'Studios-first multi-view batch render: imports every part in a folder, applies an optional template, and renders every Studio per part (falls back to cameras). Logs a CSV manifest.'],
       ['2a','BAT','current','2a_BAT_TURNTABLE_AA01.py',true,
-        'Studios-first 360&deg; turntable batch. Same Studio-aware camera/lighting selection; spins each part and encodes a small mp4 per part. Kept as a continuous spin on purpose &mdash; the "fade between angles" idea ships as a separate <code>3_</code> post-process script instead.'],
+        'Studios-first 360 turntable batch: spins each part and encodes an mp4. Continuous spin on purpose; the fade-between-angles version is a separate <code>3_</code> script.'],
       ['2b','ANI','current','2b_ANI_HERO_REVEAL_AA01.py',true,
-        'Hero-reveal shot: single monotonic zoom into a camera/Studio\'s own framing, with optional vertical crane, HDRI rotation, brightness ramp, and synced Model Set playback. Orbit/arc was removed (Rodrigues degenerates when the axis aligns with the camera-to-object direction). Ground-setter and <code>getAnimationInfo()</code> shape are probed on this build.'],
+        'Hero-reveal shot: a single zoom into a camera or Studio framing, with optional crane, HDRI rotation, brightness ramp and Model Set playback. Ground-setter and animation API probed on this build.'],
       ['2b','ANI','current','2b_ANI_CUTAWAY_REVEAL_AA01.py',true,
-        'Cutaway / cross-section reveal. Sweeps a clip plane through an assembly\'s bounding box over a frame sequence, camera static &mdash; contrast to hero-reveal\'s dolly. Reuses the same Studios-vs-Cameras selection and manifest logging. Clip-plane &amp; bbox APIs unconfirmed &mdash; probes candidates, degrades to unclipped with a warning.'],
+        'Cutaway reveal: sweeps a clip plane through an assembly bounding box with the camera static. Clip-plane and bbox APIs unconfirmed, degrades to unclipped with a warning.'],
       ['2b','ANI','current','2b_ANI_ASSEMBLY_PROCEDURAL_AA01.py',true,
-        'Assembly reveal, procedural modes. Parts converge into authored final positions with the camera static &mdash; four modes: <code>scatter_settle</code>, <code>staggered_build</code>, <code>spiral_converge</code>, <code>ghost_fade</code>. Motion is relative per-frame transform deltas that sum to zero by the final frame (the only confirmed per-node mutator). Composition, sizing, and opacity are all probed defensively. Sub-assembly build is a follow-on.'],
+        'Assembly reveal: parts converge into their final positions, camera static, in four modes (scatter, staggered build, spiral, ghost fade). Sub-assembly build is a follow-on.'],
       ['3','PRC','current','3_PRC_CONTACT_SHEET_AA01.py',true,
-        'Standalone HTML contact sheet from a batch\'s rendered output (plain Python 3, not a <code>lux</code> script). Scans an output folder for stills and turntable videos, groups them by part, writes one <code>contact_sheet.html</code>.'],
+        'Standalone HTML contact sheet from a batch output, plain Python. Scans for stills and turntable videos, groups them by part, writes one <code>contact_sheet.html</code>.'],
       ['3','PRC','current','3_PRC_FADE_REEL_AA01.py',true,
-        'Multi-angle fade reel &mdash; a "turntable fade" built from fixed stills instead of a continuous 360&deg; spin. Standalone; groups a batch\'s stills by part and writes one self-contained HTML per part that crossfades on a pure-CSS <code>@keyframes</code> loop &mdash; no ffmpeg, no dependencies.'],
+        'Multi-angle fade reel: a turntable fade from fixed stills instead of a spin. Writes one self-contained HTML per part with a pure-CSS crossfade, no ffmpeg.'],
       ['4','CHK','current','4_CHK_AUDIT_AA01.py',true,
-        'Naming-compliance + render-completeness audit. Validates every <code>.py</code> filename against <code>{PREFIX}_{AREA}_{NAME}_{REV}.py</code> (skipping <code>archive/</code>), and cross-checks every <code>*_manifest.csv</code> output path against disk &mdash; flagging missing files and failed/skipped statuses separately.'],
+        'Naming and completeness audit: checks every filename against the naming convention and cross-checks each <code>*_manifest.csv</code> path against disk, flagging missing files and failed statuses.'],
 
       ['2a','BAT','archive','batch_turntable.py',true,
         'Raw-camera-only predecessor of <code>2a_BAT_TURNTABLE</code>.'],
@@ -300,7 +298,7 @@
         'Raw-camera-only predecessor of <code>2a_BAT_STD_VIEW</code>.'],
 
       ['2b','ANI','locked','2ANI_SCATTERANIMATION_AQ.py',false,
-        'Scatter tech reference for the planned particle / assembly-scatter script &mdash; exists elsewhere.'],
+        'Scatter tech reference for the planned particle script; lives elsewhere.'],
     ];
 
     /* Last-touched date + time, from git (last commit that changed each file).
@@ -349,29 +347,29 @@
 
     /* supporting layer — backs the pipeline rather than running in it */
     var SUPPORT = [
-      { code: 'DOC', title: 'Docs', blurb: 'The planning layer &mdash; inventory, backlog, and the reasoning behind it.', items: [
-        ['PICKUP.md', true, '<strong>READ FIRST</strong> when picking the KeyShot work back up &mdash; live state, the KeyShot test queue, next phases, design-doc index, hard constraints (ASCII/no-f-strings), and the confirmed ground-truth so nothing gets re-derived.'],
-        ['SCRIPT_STOCK.md', true, 'At-a-glance inventory + prioritized backlog. Source of truth for script status &mdash; update it, don\'t replace it.'],
-        ['RESEARCH_CREO_KEYSHOT.md', true, 'The research and reasoning behind the backlog: bridge choice (STEP vs live plugin), stage gaps, forum-grounded import pain points, and (2026-07-15) the synthesised AUTO/PRO launcher layer.'],
-        ['scripts/research/RENDER_PIPELINE_ARCHITECTURE.md', true, 'Source doc RPA-7B2E4D &mdash; the AUTO/PRO/EXPERT launcher architecture: one stage spine, two front doors, full filesystem + lifecycle layout.'],
-        ['scripts/research/RENDER_PIPELINE_RESEARCH.md', true, 'Source doc RPR-3F9C1A &mdash; launcher design research: preset modes, the hard QC gate, and the 5-tier bbox scale classification (2 mm &rarr; 70 m).'],
-        ['scripts/research/MASKED_WEAR_RESEARCH.md', true, 'MWR-9C4E21 &mdash; masked/targeted wear for the material generator: edge-only scratches (Curvature), cavity grime (Occlusion), occasional fingerprints (roughness). Mask the effect, not a label &mdash; <code>lux</code> has no label API.'],
-        ['scripts/research/MATERIAL_DIVERSITY_DESIGN.md', true, 'MDD-4B7A9F &mdash; deep design exploration (Fable): scriptable surface is ~90 nodes not 16; MaterialSpec recipe architecture (family &times; finish &times; wear-story) on 3 buses; roughness-blend via Color Composite; ranked bump-masking plan-Bs; a 13-item probe pack + 6-phase roadmap.'],
-        ['scripts/research/RENDER_ANIM_REVIEW.md', true, 'RAR-6E1F3B &mdash; deep review (Fable) of the 5 render/animation scripts. Found real bugs: the 3 <code>2b_ANI_*</code> scripts don\'t load (f-strings/non-ASCII), <code>getStudio</code> called before <code>setActiveStudio</code> (can render zero images on KS11), assembly motion inverted, cutaway clip-plane API doesn\'t exist. Proposes a RenderSpec preset system, an L3 shared module, verify-render-wrote dependability, a 6-phase roadmap + 13-probe pack.']
+      { code: 'DOC', title: 'Docs', blurb: 'Inventory, backlog, and planning notes.', items: [
+        ['PICKUP.md', true, '<strong>READ FIRST</strong> when picking the KeyShot work back up: live state, test queue, next phases, design-doc index, and hard constraints (ASCII/no-f-strings).'],
+        ['SCRIPT_STOCK.md', true, 'Inventory and prioritised backlog, the source of truth for script status. Update it, do not replace it.'],
+        ['RESEARCH_CREO_KEYSHOT.md', true, 'The research behind the backlog: STEP vs live-plugin bridge, stage gaps, import pain points, and the AUTO/PRO launcher layer.'],
+        ['scripts/research/RENDER_PIPELINE_ARCHITECTURE.md', true, 'RPA-7B2E4D: the AUTO/PRO/EXPERT launcher architecture, one stage spine with two front doors, plus filesystem and lifecycle layout.'],
+        ['scripts/research/RENDER_PIPELINE_RESEARCH.md', true, 'RPR-3F9C1A: launcher design research, preset modes, the hard QC gate, and the 5-tier bbox scale classification (2 mm to 70 m).'],
+        ['scripts/research/MASKED_WEAR_RESEARCH.md', true, 'MWR-9C4E21: masked wear for the material generator (edge scratches, cavity grime, fingerprints). Mask the effect, not a label; <code>lux</code> has no label API.'],
+        ['scripts/research/MATERIAL_DIVERSITY_DESIGN.md', true, 'MDD-4B7A9F: deep design exploration. Scriptable surface is ~90 nodes not 16; a MaterialSpec recipe (family, finish, wear) on 3 buses, plus a 13-probe pack and 6-phase roadmap.'],
+        ['scripts/research/RENDER_ANIM_REVIEW.md', true, 'RAR-6E1F3B: review of the 5 render/animation scripts. Found real bugs (3 scripts do not load, getStudio used before setActiveStudio, inverted assembly motion, missing clip-plane API) and proposes a RenderSpec system, shared module, and 6-phase roadmap.']
       ]},
-      { code: 'WEB', title: 'Pages', blurb: 'The discovery layer for humans &mdash; not consumed by any script.', items: [
-        ['index.html', true, 'KeyShot hub &mdash; tile grid of areas, Scripts is the first live one.'],
-        ['scripts.html', false, 'This page &mdash; the filterable script inventory, backlog, and conventions.']
+      { code: 'WEB', title: 'Pages', blurb: 'Pages for humans, not used by any script.', items: [
+        ['index.html', true, 'KeyShot hub: tile grid of areas, Scripts is the first live one.'],
+        ['scripts.html', false, 'This page: the filterable script inventory, backlog and conventions.']
       ]},
-      { code: 'ARC', title: 'Archive', blurb: 'Superseded scripts kept for reference, explicitly out of the active pipeline.', items: [
+      { code: 'ARC', title: 'Archive', blurb: 'Superseded scripts kept for reference, out of the active pipeline.', items: [
         ['scripts/archive/batch_turntable.py', true, 'Raw-camera predecessor of <code>2a_BAT_TURNTABLE</code>.'],
         ['scripts/archive/batch_import_and_render_all_views.py', true, 'Raw-camera predecessor of <code>2a_BAT_STD_VIEW</code>.']
       ]},
-      { code: 'REF', title: 'Referenced elsewhere', blurb: 'Scripts named in the inventory that live outside this repo &mdash; tracked so they\'re not lost.', items: [
+      { code: 'REF', title: 'Referenced elsewhere', blurb: 'Scripts named in the inventory but living outside this repo.', items: [
         ['2ANI_SCATTERANIMATION_AQ.py', false, 'Scatter tech reference for the planned particle script.']
       ]},
-      { code: 'DISC', title: 'Discipline', blurb: 'Cross-cutting conventions the whole pipeline follows &mdash; see the full conventions panel below.', items: [
-        ['{PREFIX}_{AREA}_{NAME}_{REV}.py', false, 'The filename convention every script obeys &mdash; stage prefix, 3-letter area, short name, revision.'],
+      { code: 'DISC', title: 'Discipline', blurb: 'Conventions the whole pipeline follows; see the panel below.', items: [
+        ['{PREFIX}_{AREA}_{NAME}_{REV}.py', false, 'The filename convention every script obeys: stage prefix, 3-letter area, short name, revision.'],
         ['Confirmed vs. experimental', false, 'Every script\'s header states what\'s verified against KeyShot\'s scripting reference vs. probed defensively on this build.']
       ]}
     ];
@@ -466,7 +464,7 @@
       var views = { stage: document.getElementById('view-stage'), type: document.getElementById('view-type') };
       var hint = document.getElementById('switch-hint');
       var HINTS = {
-        stage: 'Six zones, one per pipeline phase &mdash; the order a batch runs in.',
+        stage: 'Six zones, one per pipeline phase, in run order.',
         type:  'The runnable <b>pipeline</b> vs. the <b>docs, pages, archive &amp; discipline</b> that back it.'
       };
       function set(view) {
@@ -483,24 +481,24 @@
     <section>
       <h2>Backlog<span class="rule"></span></h2>
       <ul class="backlog">
-        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Hand-staged one-off reveal (particles, rain) &mdash; design stage</span></li>
-        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Assembly reveal, Creo-driven &mdash; animate an authored explode state; depends on verifying explode data survives the plugin import</span></li>
-        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Assembly reveal, procedural modes &mdash; scatter/settle, staggered build, spiral converge, ghost fade-in <em>&mdash; done, see pipeline</em> (sub-assembly build remains a follow-on)</span></li>
-        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Cutaway / cross-section reveal <em>&mdash; done, see pipeline</em></span></li>
-        <li><span class="pri">P1</span><span class="idea"><span class="stage">1 &middot;</span> Material-name lookup table (Creo &rarr; KeyShot) <em>&mdash; done, see pipeline</em></span></li>
-        <li><span class="pri">P1</span><span class="idea"><span class="stage">&mdash; &middot;</span> Shared module (L3) &mdash; de-duplicate Studio resolution, manifest, framing/padding &amp; classify out of the ~4 scripts that copy it; the unblocker for the launcher &amp; scale classifier</span></li>
-        <li><span class="pri">P1</span><span class="idea"><span class="stage">&mdash; &middot;</span> <code>RUN_ALL.py</code> launcher &mdash; one spine, two doors (AUTO headless / PRO dialog): import &rarr; classify tier &rarr; preflight hard-gate &rarr; stage router &rarr; contact sheet</span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">&mdash; &middot;</span> <code>watch.py</code> orchestrator (out-of-KeyShot) &mdash; hot-folder watch, resolve mode from subfolder, move-on-success lifecycle</span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> 5-tier bbox-diagonal scale classification (2 mm &rarr; 70 m, ~35,000:1) &mdash; per-tier overrides; needs a calibration pass over real parts</span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">3 &middot;</span> Multi-angle fade reel &mdash; crossfade between Studios/cameras; consumes stills from the turntable/std-view batches <em>&mdash; done, see pipeline</em></span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">3 &middot;</span> BOM-driven manifest (opt-in) &mdash; BOM access method still TBD</span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">2b &middot;</span> Dynamic BOM callouts on assembly renders &mdash; depends on the BOM manifest above</span></li>
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Hand-staged one-off reveal (particles, rain): design stage</span></li>
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Assembly reveal, Creo-driven: animate an authored explode state; depends on verifying explode data survives the plugin import</span></li>
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Assembly reveal, procedural modes: scatter/settle, staggered build, spiral converge, ghost fade-in <em>(done, see pipeline)</em> (sub-assembly build remains a follow-on)</span></li>
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Cutaway / cross-section reveal <em>(done, see pipeline)</em></span></li>
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">1 &middot;</span> Material-name lookup table (Creo &rarr; KeyShot) <em>(done, see pipeline)</em></span></li>
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">- &middot;</span> Shared module (L3): de-duplicate Studio resolution, manifest, framing/padding &amp; classify out of the ~4 scripts that copy it; the unblocker for the launcher &amp; scale classifier</span></li>
+        <li><span class="pri">P1</span><span class="idea"><span class="stage">- &middot;</span> <code>RUN_ALL.py</code> launcher: one spine, two doors (AUTO headless / PRO dialog): import &rarr; classify tier &rarr; preflight hard-gate &rarr; stage router &rarr; contact sheet</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">- &middot;</span> <code>watch.py</code> orchestrator (out-of-KeyShot): hot-folder watch, resolve mode from subfolder, move-on-success lifecycle</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> 5-tier bbox-diagonal scale classification (2 mm &rarr; 70 m, ~35,000:1): per-tier overrides; needs a calibration pass over real parts</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">3 &middot;</span> Multi-angle fade reel: crossfade between Studios/cameras; consumes stills from the turntable/std-view batches <em>(done, see pipeline)</em></span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">3 &middot;</span> BOM-driven manifest (opt-in): BOM access method still TBD</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">2b &middot;</span> Dynamic BOM callouts on assembly renders: depends on the BOM manifest above</span></li>
         <li><span class="pri">P2</span><span class="idea"><span class="stage">1 &middot;</span> Studio/camera-rig template library</span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> STEP-file preflight (units, filename hygiene, material hints) <em>&mdash; done, see pipeline</em></span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> Trial-import geometry/appearance health check <em>&mdash; done, see pipeline</em> (the original "pre-import validator", split into 3)</span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> Orientation / up-axis sanity check <em>&mdash; done, see pipeline</em></span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">4 &middot;</span> Naming-compliance + render-completeness audit <em>&mdash; done, see pipeline</em></span></li>
-        <li><span class="pri">P3</span><span class="idea"><span class="stage">&mdash; &middot;</span> Archive superseded batch scripts <em>&mdash; done</em></span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> STEP-file preflight (units, filename hygiene, material hints) <em>(done, see pipeline)</em></span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> Trial-import geometry/appearance health check <em>(done, see pipeline)</em> (the original "pre-import validator", split into 3)</span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> Orientation / up-axis sanity check <em>(done, see pipeline)</em></span></li>
+        <li><span class="pri">P2</span><span class="idea"><span class="stage">4 &middot;</span> Naming-compliance + render-completeness audit <em>(done, see pipeline)</em></span></li>
+        <li><span class="pri">P3</span><span class="idea"><span class="stage">- &middot;</span> Archive superseded batch scripts <em>(done)</em></span></li>
       </ul>
     </section>
 
@@ -511,9 +509,9 @@
         <li>PREFIX: <code>0_</code> pre-check &middot; <code>1_</code> pre-render/helper &middot;
           <code>2a_</code> batch render &middot; <code>2b_</code> animation &middot;
           <code>3_</code> post-process &middot; <code>4_</code> post-check</li>
-        <li>AREA: 3-letter code &mdash; <code>BAT</code>, <code>ANI</code>, <code>HLP</code>,
+        <li>AREA: 3-letter code: <code>BAT</code>, <code>ANI</code>, <code>HLP</code>,
           <code>PRC</code>, <code>VAL</code>, <code>CHK</code>&hellip;</li>
-        <li>REV: <code>XX01</code> &mdash; letter steps for a breaking change, number steps for a routine one</li>
+        <li>REV: <code>XX01</code>: letter steps for a breaking change, number steps for a routine one</li>
         <li>Python 3.10+, <code>lux</code> / <code>luxmath</code> modules</li>
         <li>Headless CLI runs anything marked <code>HEADLESS COMPLIANT</code>; still needs a machine with a licensed KeyShot install</li>
         <li>Studios (camera + environment + image style) preferred over raw Cameras</li>
