@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Parametric Generators</title>
+<title>Parametric Assets</title>
 <style>
   :root {
     --bg: #0a0f16;
@@ -209,9 +209,16 @@
   .status-line { font-size: 12px; color: var(--muted); min-height: 14px; margin-top: 8px; }
 
   footer.note {
-    margin-top: 26px; font-size: 12px; color: var(--muted); line-height: 1.7;
+    margin-top: 26px; font-size: 12px; color: var(--muted); line-height: 1.6;
     border-top: 1px solid var(--line); padding-top: 14px; max-width: 74ch;
   }
+  footer.note ul.note-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+  footer.note ul.note-list li { padding-left: 18px; position: relative; }
+  footer.note ul.note-list li::before {
+    content: "\25B8"; position: absolute; left: 0; top: 0; color: var(--c-accent);
+  }
+  footer.note .k { color: var(--text); }
+  footer.note .k::after { content: " \2192"; color: var(--muted); }
 </style>
 <script src="../../assets/theme.js"></script>
 <script src="../../assets/reveal.js"></script>
@@ -1394,7 +1401,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     main.innerHTML = "";
     const head = document.createElement("div");
     head.className = "page-head";
-    head.innerHTML = `<h1>Parametric Generators</h1><p>Procedural generators for the rendering and overlay pipeline. Each tile is a standalone tool.</p>`;
+    head.innerHTML = `<h1>Parametric Assets</h1><p>Procedural generators for the rendering and overlay pipeline. Each tile is a standalone tool.</p>`;
     main.appendChild(head);
 
     const grid = document.createElement("div");
@@ -1408,6 +1415,13 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
       grid.appendChild(card);
     });
 
+    // Render Labels lives in its own file — link out to it.
+    const labelCard = document.createElement("button");
+    labelCard.className = "card active";
+    labelCard.innerHTML = `<div class="tag">Active</div><h2>Render Labels</h2><p>Placeable decals (fingerprints, scuffs, machining marks) with opacity, bump and spec maps.</p>`;
+    labelCard.addEventListener("click", () => { window.location.href = "../label-generator/index.html"; });
+    grid.appendChild(labelCard);
+
     const placeholder = document.createElement("div");
     placeholder.className = "card planned";
     placeholder.innerHTML = `<div class="tag">Reserved</div><h2>Next tool slot</h2><p>New tools appear here as they're added.</p>`;
@@ -1420,7 +1434,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
   function setCrumbs(items) {
     const el = document.getElementById("crumbs");
     el.innerHTML = "";
-    const all = [{ label: "Parametric Generators", hash: "" }].concat(items);
+    const all = [{ label: "Parametric Assets", hash: "" }].concat(items);
     all.forEach((item, i) => {
       const isLast = i === all.length - 1;
       if (isLast) {
@@ -1492,7 +1506,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     main.appendChild(buildPageHead(
       "Select a Type",
       "Families of overlay. Pick one to see its variants.",
-      { label: "Parametric Generators", hash: "" }
+      { label: "Parametric Assets", hash: "" }
     ));
 
     const grid = document.createElement("div");
@@ -2641,7 +2655,7 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     main.appendChild(buildPageHead(
       "Texture & Bump Map Generator",
       "Procedural grayscale texture and bump previews, driven by a few seeded generation criteria. Hit Play for a live, seamless-looping animation of any pattern — each has its own motion. Export a single static PNG, or the full animated loop as a numbered frame sequence.",
-      { label: "Parametric Generators", hash: "" }
+      { label: "Parametric Assets", hash: "" }
     ));
 
     const state = {
@@ -3330,7 +3344,13 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
 
     const foot = document.createElement("footer");
     foot.className = "note";
-    foot.innerHTML = `The Height/Bump Map export is the actual grayscale data — usable directly in a bump/height texture slot. The Preview Render is a simulated relief shading of that same data so you can judge depth and light direction before exporting; it is not itself a texture map. The Normal Map export is a tangent-space RGB normal map derived from the same height data via a Sobel filter (strength from Bump Strength) — the channel a render engine typically wants over a height map for surface detail. Export Frame Sequence renders the animated height map across one full loop as a numbered PNG sequence (opens in a new tab) — the deliverable a render engine wants for an animated bump channel.`;
+    foot.innerHTML =
+      '<ul class="note-list">' +
+      '<li><span class="k">Height / Bump Map</span> the actual grayscale height data. Drops straight into a bump / height slot.</li>' +
+      '<li><span class="k">Preview Render</span> simulated relief shading of that data to judge depth and light. Not a texture map itself.</li>' +
+      '<li><span class="k">Normal Map</span> tangent-space RGB from the height via a Sobel filter (strength = Bump Strength). What most engines want over a height map.</li>' +
+      '<li><span class="k">Frame Sequence</span> the animated height map across one loop as numbered PNGs (new tab). For an animated bump channel.</li>' +
+      '</ul>';
     main.appendChild(foot);
 
     // --- Tile Preview (display-only QA view, feature backlog #1): when on,
