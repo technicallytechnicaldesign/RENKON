@@ -363,18 +363,25 @@
     return data;
   }
 
-  /* ---------- 1. FINGERPRINT (group "Contact") ---------- */
+  /* ---------- 1. FINGERPRINT (group "Contact") ----------
+     Ridge flow is a zero-pole model: a CORE (ridges recurve around it) plus a
+     DELTA (the triangular meeting point) drive a swirl field, so ridges form
+     real loop / whorl flow instead of concentric bullseye rings. The Loop param
+     scales the swirl weight (0 -> gentle arches, 1 -> tight whorl). Distortion
+     warps the ridges and smears the soft residue haze that sits behind them. */
   const Fingerprint = {
     id: "fingerprint",
     name: "Fingerprint",
     group: "Contact",
     params: [
-      { key: "ridgeDensity",  label: "Ridge Density",  min: 6,  max: 40, step: 1,    default: 20 },
-      { key: "ridgeContrast", label: "Ridge Contrast", min: 0.3, max: 3, step: 0.05, default: 1.4 },
-      { key: "smudge",        label: "Smudge",         min: 0,  max: 1,  step: 0.01, default: 0.25 },
-      { key: "pressure",      label: "Pressure",       min: 0.1, max: 1, step: 0.01, default: 0.6 },
-      { key: "rotation",      label: "Rotation",       min: 0,  max: 360, step: 1,   default: 0 },
-      { key: "partial",       label: "Partial",        min: 0,  max: 0.85, step: 0.01, default: 0 }
+      { key: "ridgeDensity",  label: "Ridge Density",  min: 6,   max: 40,   step: 1,    default: 22 },
+      { key: "ridgeContrast", label: "Ridge Contrast", min: 0.3, max: 3,    step: 0.05, default: 1.5 },
+      { key: "loop",          label: "Loop / Whorl",   min: 0,   max: 1,    step: 0.01, default: 0.6 },
+      { key: "smudge",        label: "Smudge",         min: 0,   max: 1,    step: 0.01, default: 0.25 },
+      { key: "pressure",      label: "Pressure",       min: 0.1, max: 1,    step: 0.01, default: 0.6 },
+      { key: "distortion",    label: "Distortion",     min: 0,   max: 1,    step: 0.01, default: 0.3 },
+      { key: "rotation",      label: "Rotation",       min: 0,   max: 360,  step: 1,    default: 0 },
+      { key: "partial",       label: "Partial",        min: 0,   max: 0.85, step: 0.01, default: 0 }
     ],
     _build(p, size) {
       const seedNum = hashSeed(p.seed + "|fp");
@@ -383,17 +390,29 @@
       const cy = size * (0.44 + 0.12 * r());
       const rot = p.rotation * Math.PI / 180;
       const cosR = Math.cos(rot), sinR = Math.sin(rot);
-      const ea = 1.0 + 0.45 * r();          // elliptical aspect (whorl squash)
-      const eb = 1.0 / ea;
-      const whorl = (r() < 0.5 ? 1 : -1) * (0.5 + 0.7 * r());
-      const warpAmt = size * 0.05;
+      const printR = size * 0.44;
+
+      // mild oval so the print isn't a perfect-circle bullseye
+      const aspect = 1.06 + 0.22 * r();
+      // core sits just above centre; delta below and to one side (squashed print space)
+      const coreX = (r() - 0.5) * printR * 0.30;
+      const coreY = -printR * (0.10 + 0.16 * r()) * aspect;
+      const deltaSide = r() < 0.5 ? 1 : -1;
+      const deltaX = deltaSide * printR * (0.30 + 0.22 * r());
+      const deltaY = printR * (0.34 + 0.24 * r()) * aspect;
+      // INTEGER swirl weight: the atan2 branch cut then jumps by a whole multiple
+      // of 2*PI, so sin() stays continuous and no seam line runs into the core.
+      const swirlMul = Math.round(1 + 5 * p.loop);
+      const density = p.ridgeDensity * 0.020;
+
+      const warpAmt = size * (0.015 + 0.11 * p.distortion);
       const warpA = makeFbm(size, size, size / 6, r);
       const warpB = makeFbm(size, size, size / 6, r);
-      const fine  = makeFbm(size, size, size / 34, r);
-      const coarse = makeNoise(size, size, size / 3.2, r); // smudge break mask
-      const density = p.ridgeDensity * 0.09;
-      const printR = size * 0.44;
-      const effContrast = p.ridgeContrast * (1 - 0.7 * p.smudge);
+      const fine  = makeFbm(size, size, size / 30, r);
+      const coarse = makeNoise(size, size, size / 3.2, r);   // smudge break mask
+      const hazeWarp = makeFbm(size, size, size / 3.4, r);
+      const hazeFld  = makeFbm(size, size, size / 2.3, r);
+      const effContrast = p.ridgeContrast * (1 - 0.6 * p.smudge);
 
       // partial cut
       const cutAng = r() * Math.PI * 2;
@@ -401,29 +420,37 @@
       const cutSoft = size * 0.06;
       const cutPos = printR * (1 - 2 * p.partial);
 
-      const ink = new Float32Array(size * size);       // deposited residue [0..1]
+      const ink = new Float32Array(size * size);       // deposited ridge residue [0..1]
       const relief = new Float32Array(size * size);    // ridge signal centred at 0.5
+      const haze = new Float32Array(size * size);      // soft blur behind the ridges
+      const hazeSmear = 0.10 + 0.9 * p.distortion;
 
       for (let y = 0; y < size; y++) {
         for (let x = 0; x < size; x++) {
           const i = y * size + x;
-          const px = x - cx, py = y - cy;
-          // rotate around core
-          const rx = px * cosR - py * sinR;
-          const ry = px * sinR + py * cosR;
-          // domain warp
+          const dxc = x - cx, dyc = y - cy;
+          // rotate into print space
+          const rx = dxc * cosR - dyc * sinR;
+          const ry = dxc * sinR + dyc * cosR;
+          // domain warp -> organic ridge wobble (grows with distortion)
           const wx = rx + (warpA(x, y) - 0.5) * warpAmt;
           const wy = ry + (warpB(x, y) - 0.5) * warpAmt;
-          const ed = Math.sqrt((wx * ea) * (wx * ea) + (wy * eb) * (wy * eb));
-          const theta = Math.atan2(wy, wx);
-          const phase = ed * density + theta * whorl * 3 + (fine(x, y) - 0.5) * 3.2;
+
+          // zero-pole swirl: spiral around the core, bent by the delta
+          // (evaluated in the oval-squashed print space, uniformly, so the
+          // integer-swirl seamlessness is preserved)
+          const syp = wy * aspect;
+          const cxr = wx - coreX, cyr = syp - coreY;
+          const dxr = wx - deltaX, dyr = syp - deltaY;
+          const dCore = Math.sqrt(cxr * cxr + cyr * cyr);
+          const swirl = Math.atan2(cyr, cxr) - Math.atan2(dyr, dxr);
+          const phase = density * dCore + swirlMul * swirl + (fine(x, y) - 0.5) * 2.2;
           const s = 0.5 + 0.5 * Math.sin(phase);       // 0..1 ridge/valley
-          // sharpen ridges into lines
-          let ridge = clamp01((s - 0.5) * effContrast + 0.5);
+          const ridge = clamp01((s - 0.5) * effContrast + 0.5);
 
           // print extent (soft radial edge of the whole print)
-          const dCore = Math.sqrt(px * px + py * py);
-          const extent = smoothstep(printR, printR * 0.55, dCore);
+          const dCenter = Math.sqrt(dxc * dxc + dyc * dyc);
+          const extent = smoothstep(printR, printR * 0.5, dCenter);
 
           // smudge: break ridges where the coarse field is low
           const broken = 1 - p.smudge * 0.9 * (1 - coarse(x, y));
@@ -431,26 +458,35 @@
           // partial: crop to one side of a noisy cut line
           let partialMask = 1;
           if (p.partial > 0) {
-            const proj = px * cutCos + py * cutSin + (fine(x, y) - 0.5) * size * 0.07;
+            const proj = dxc * cutCos + dyc * cutSin + (fine(x, y) - 0.5) * size * 0.07;
             partialMask = smoothstep(cutPos - cutSoft, cutPos + cutSoft, proj);
           }
 
           const cover = extent * broken * partialMask;
           // ink lands on the ridge crests (thin lines), faint
-          const ridgeLine = smoothstep(0.5, 0.85, ridge);
+          const ridgeLine = smoothstep(0.48, 0.82, ridge);
           ink[i] = ridgeLine * cover;
           relief[i] = 0.5 + (s - 0.5) * cover;          // smooth ridge relief for bump
+
+          // behind-haze: warped low-freq residue (the smeary blur under the ridges);
+          // distortion smears / warps it more.
+          const hx = x + (hazeWarp(x, y) - 0.5) * size * 0.30 * hazeSmear;
+          const hy = y + (hazeWarp(y, x) - 0.5) * size * 0.30 * hazeSmear;
+          haze[i] = clamp01(extent * partialMask * (0.30 + 0.85 * hazeFld(hx, hy)));
         }
       }
-      return { ink, relief, size, pressure: p.pressure };
+      return { ink, relief, haze, size, pressure: p.pressure, distortion: p.distortion };
     },
     drawColor(ctx, p, rng, size) {
       const f = cachedField(this, p, size, () => this._build(p, size));
       const img = ctx.createImageData(size, size);
       const d = img.data;
-      const aMax = 0.12 + 0.55 * f.pressure;            // oily residue is faint
+      const inkMax  = 0.16 + 0.60 * f.pressure;         // crisp ridge residue
+      const hazeMax = (0.04 + 0.18 * f.pressure) * (0.35 + 0.65 * f.distortion);
       for (let i = 0; i < f.ink.length; i++) {
-        const a = clamp01(f.ink[i] * aMax);
+        const aInk = f.ink[i] * inkMax;
+        const aHaze = f.haze[i] * hazeMax;
+        const a = clamp01(1 - (1 - aInk) * (1 - aHaze));  // ridges over soft blur
         const j = i * 4;
         // warm dark oily tone
         d[j] = 46; d[j + 1] = 38; d[j + 2] = 32;
@@ -473,9 +509,9 @@
       const f = cachedField(this, p, size, () => this._build(p, size));
       const img = sctx.createImageData(size, size);
       const d = img.data;
-      // ridges carry a slight oily sheen (shinier) over a neutral base
+      // ridges carry a slight oily sheen (shinier); hazy residue reads a touch duller
       for (let i = 0; i < f.ink.length; i++) {
-        const v = Math.round(clamp01(0.5 + f.ink[i] * 0.4) * 255);
+        const v = Math.round(clamp01(0.5 + f.ink[i] * 0.4 - f.haze[i] * 0.12) * 255);
         const j = i * 4;
         d[j] = v; d[j + 1] = v; d[j + 2] = v; d[j + 3] = 255;
       }
@@ -483,18 +519,25 @@
     }
   };
 
-  /* ---------- 2. SCUFF / EDGE-RUB (group "Wear") ---------- */
+  /* ---------- 2. SCUFF / EDGE-RUB (group "Wear") ----------
+     Streaks are wavy, variable-thickness strokes (drawn segment-by-segment so
+     each tapers thick-in-the-middle / thin-at-the-ends and wanders off-axis) for
+     a hand-abraded read instead of ruler-straight lines. Distortion warps the
+     soft abrasion haze behind the streaks. */
   const Scuff = {
     id: "scuff",
     name: "Scuff / Edge-rub",
     group: "Wear",
     params: [
-      { key: "direction",     label: "Direction",     min: 0,  max: 360, step: 1,   default: 20 },
-      { key: "streakDensity", label: "Streak Density", min: 0, max: 1,   step: 0.01, default: 0.55 },
-      { key: "streakLength",  label: "Streak Length",  min: 0, max: 1,   step: 0.01, default: 0.4 },
-      { key: "patchSize",     label: "Patch Size",     min: 0.1, max: 1, step: 0.01, default: 0.55 },
-      { key: "intensity",     label: "Intensity",      min: 0.1, max: 1, step: 0.01, default: 0.7 },
-      { key: "roughBias",     label: "Rough Bias",     min: 0, max: 1,   step: 0.01, default: 0.6 }
+      { key: "direction",     label: "Direction",      min: 0,   max: 360, step: 1,    default: 20 },
+      { key: "streakDensity", label: "Streak Density", min: 0,   max: 1,   step: 0.01, default: 0.55 },
+      { key: "streakLength",  label: "Streak Length",  min: 0,   max: 1,   step: 0.01, default: 0.4 },
+      { key: "waviness",      label: "Waviness",       min: 0,   max: 1,   step: 0.01, default: 0.35 },
+      { key: "thickness",     label: "Thickness",      min: 0.1, max: 1,   step: 0.01, default: 0.5 },
+      { key: "patchSize",     label: "Patch Size",     min: 0.1, max: 1,   step: 0.01, default: 0.55 },
+      { key: "intensity",     label: "Intensity",      min: 0.1, max: 1,   step: 0.01, default: 0.7 },
+      { key: "distortion",    label: "Distortion",     min: 0,   max: 1,   step: 0.01, default: 0.3 },
+      { key: "roughBias",     label: "Rough Bias",     min: 0,   max: 1,   step: 0.01, default: 0.6 }
     ],
     _build(p, size) {
       const seedNum = hashSeed(p.seed + "|scuff");
@@ -503,61 +546,89 @@
       const cy = size * (0.4 + 0.2 * r());
       const patchR = size * (0.16 + 0.32 * p.patchSize);
       const edgeNoise = makeNoise(size, size, size / 5.5, r);
+      const hazeWarp = makeFbm(size, size, size / 3.0, r);
+      const hazeFld  = makeFbm(size, size, size / 2.2, r);
 
-      // patch mask (soft-edged, noisy — the placeable scuff zone)
+      // patch mask (soft-edged, noisy — the placeable scuff zone) + a warped
+      // abrasion haze cloud behind it (distortion smears / warps the cloud)
       const mask = new Float32Array(size * size);
+      const haze = new Float32Array(size * size);
+      const hazeSmear = 0.12 + 0.9 * p.distortion;
       for (let y = 0; y < size; y++) {
         for (let x = 0; x < size; x++) {
+          const i = y * size + x;
           const dx = x - cx, dy = y - cy;
           const d = Math.sqrt(dx * dx + dy * dy);
           const rr = patchR * (0.7 + 0.55 * edgeNoise(x, y));
-          mask[y * size + x] = smoothstep(rr, rr * 0.45, d);
+          const m = smoothstep(rr, rr * 0.45, d);
+          mask[i] = m;
+          const hx = x + (hazeWarp(x, y) - 0.5) * size * 0.28 * hazeSmear;
+          const hy = y + (hazeWarp(y, x) - 0.5) * size * 0.28 * hazeSmear;
+          haze[i] = clamp01(m * (0.35 + 0.85 * hazeFld(hx, hy)));
         }
       }
 
-      // streaks: draw many short directional lines onto a temp canvas
+      // streaks: wavy, variable-thickness strokes inside the patch disc
       const sc = document.createElement("canvas");
       sc.width = size; sc.height = size;
       const sctx = sc.getContext("2d");
       sctx.clearRect(0, 0, size, size);
       sctx.lineCap = "round";
+      sctx.strokeStyle = "#ffffff";
       const dir = p.direction * Math.PI / 180;
       const nStreaks = Math.round((80 + 900 * p.streakDensity) * (patchR / (size * 0.5)));
-      const lenBase = size * (0.015 + 0.13 * p.streakLength);
+      const lenBase = size * (0.02 + 0.15 * p.streakLength);
+      const widthBase = 0.5 + 2.6 * p.thickness;
+      const SEG = 9;
       for (let k = 0; k < nStreaks; k++) {
         // random point inside the patch disc
         const ang = r() * Math.PI * 2;
         const rad = patchR * Math.sqrt(r()) * 1.05;
-        const sx = cx + Math.cos(ang) * rad;
-        const sy = cy + Math.sin(ang) * rad;
+        const ox = cx + Math.cos(ang) * rad;
+        const oy = cy + Math.sin(ang) * rad;
         const len = lenBase * (0.4 + 1.2 * r());
-        const a = dir + (r() - 0.5) * 0.6;
-        const hx = Math.cos(a) * len * 0.5, hy = Math.sin(a) * len * 0.5;
-        sctx.strokeStyle = "#ffffff";
+        const a = dir + (r() - 0.5) * 0.5;
+        const ax = Math.cos(a), ay = Math.sin(a);       // along the streak
+        const nx = -ay, ny = ax;                         // perpendicular
+        const wavAmp = len * p.waviness * (0.12 + 0.5 * r());
+        const wavPhase = r() * Math.PI * 2;
+        const wavFreq = 1 + 2.5 * r();
+        const w0 = widthBase * (0.5 + 1.0 * r());
         sctx.globalAlpha = clamp01(p.intensity * (0.12 + 0.55 * r()));
-        sctx.lineWidth = 0.5 + 1.2 * r();
-        sctx.beginPath();
-        sctx.moveTo(sx - hx, sy - hy);
-        sctx.lineTo(sx + hx, sy + hy);
-        sctx.stroke();
+        let prevX = null, prevY = null;
+        for (let sN = 0; sN <= SEG; sN++) {
+          const t = sN / SEG;                            // 0..1 along the streak
+          const along = (t - 0.5) * len;
+          const off = Math.sin(wavPhase + t * Math.PI * 2 * wavFreq) * wavAmp;
+          const X = ox + ax * along + nx * off;
+          const Y = oy + ay * along + ny * off;
+          if (prevX !== null) {
+            const taper = Math.sin(t * Math.PI);         // 0 at ends, 1 mid -> tapered
+            sctx.lineWidth = Math.max(0.35, w0 * (0.2 + 0.95 * taper));
+            sctx.beginPath();
+            sctx.moveTo(prevX, prevY);
+            sctx.lineTo(X, Y);
+            sctx.stroke();
+          }
+          prevX = X; prevY = Y;
+        }
       }
       const sImg = sctx.getImageData(0, 0, size, size).data;
       const streak = new Float32Array(size * size);
       for (let i = 0; i < streak.length; i++) {
-        // premultiplied white * alpha -> use alpha channel as streak strength,
-        // masked so streaks only live inside the patch
+        // use the alpha channel as streak strength, masked to the patch
         streak[i] = (sImg[i * 4 + 3] / 255) * clamp01(mask[i] * 1.4);
       }
 
-      return { mask, streak, size, intensity: p.intensity, roughBias: p.roughBias };
+      return { mask, haze, streak, size, intensity: p.intensity, roughBias: p.roughBias };
     },
     drawColor(ctx, p, rng, size) {
       const f = cachedField(this, p, size, () => this._build(p, size));
       const img = ctx.createImageData(size, size);
       const d = img.data;
       for (let i = 0; i < f.mask.length; i++) {
-        const haze = f.mask[i] * f.intensity * 0.45;    // faint abrasion haze
-        const a = clamp01(haze + f.streak[i]);           // streaks add opacity
+        const hazeA = f.haze[i] * f.intensity * 0.42;   // warped abrasion haze
+        const a = clamp01(hazeA + f.streak[i]);          // streaks add opacity
         const bright = 190 + Math.round(f.streak[i] * 55);
         const j = i * 4;
         d[j] = bright; d[j + 1] = bright; d[j + 2] = Math.min(255, bright + 6);
@@ -583,7 +654,7 @@
       const d = img.data;
       // scuffed zone reads ROUGHER (darker); streaks scuff it further
       for (let i = 0; i < f.mask.length; i++) {
-        const rough = f.mask[i] * (0.35 + 0.55 * f.roughBias) + f.streak[i] * 0.3;
+        const rough = f.haze[i] * (0.35 + 0.55 * f.roughBias) + f.streak[i] * 0.3;
         const v = Math.round(clamp01(1 - rough) * 255);
         const j = i * 4;
         d[j] = v; d[j + 1] = v; d[j + 2] = v; d[j + 3] = 255;
