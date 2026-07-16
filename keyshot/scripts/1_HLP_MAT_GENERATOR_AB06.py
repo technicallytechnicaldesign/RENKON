@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # AUTHOR claude-subagent
-# REV AB05
+# REV AB06
 # HEADLESS COMPLIANT
 # Procedural material *variant* generator, rebuilt as a spec-driven
 # sample -> validate -> compile pipeline (design MDD-4B7A9F, Phase 1). A dialog
@@ -14,6 +14,48 @@
 # AA02. Each build is auto-named MAT-<TYPE>-<WEAR>-<FINISH>-<hex>. Sits in the
 # 1_ helper stage as the material-*authoring* member of the MAT family, alongside
 # 1_HLP_MAT_PREFLIGHT (coverage QC) and 1_HLP_MAT_LOOKUP (Creo -> KeyShot map).
+#
+# WHAT'S NEW vs AB05 (AB06 = OPTIONAL IMAGE-LABEL CHANNELS -- the experimental
+# SCRIPTED, material-graph EMULATION of a label (design option B). True KeyShot
+# *Labels* are NOT exposed to scripting, so a "label" here is image-map texture
+# nodes wired into the base material's own channels, surface/UV-mapped (Center On:
+# Part + Scale) rather than a placed decal. This COMPLEMENTS -- does not replace --
+# the UI-authored label template (guide 04_DOCS/labels-guide.html + the demo assets
+# in 03_OUTPUT/labels/). It is the experimental path, so it is heavily defensive and
+# carries a thorough CONFIRM-AT-RENDER list; the human render loop is the API probe.
+# EVERY new node/param/path is UNPROBED -> getattr/find_param/try-except, logs
+# [warn]/[info], and the plain material ALWAYS still builds if labels can't wire.
+#   NEW 1. OPTIONS. enable_labels (default False) + three channel paths
+#      (label_opacity_path / label_bump_path / label_spec_path; defaults point at the
+#      demo spec-plate set in 03_OUTPUT/labels/spec-plate/; an EMPTY path skips that
+#      channel) + label_scale (0.1-10), label_bump_strength (0-3), label_spec_strength
+#      (0-3). All threaded into spec['label'], clamped in validate_spec, echoed in the
+#      build summary + emit_spec (the whole spec is JSON-dumped).
+#   NEW 2. SELF-PROBING IMAGE-MAP HELPER. make_image_map(graph, path, label, scale)
+#      resolves an image/texture-map node type by getattr over a CANDIDATES list
+#      (SHADER_TYPE_TEXTURE_MAP / IMAGE_MAP / IMAGE / BITMAP / TEXTURE -- first that
+#      exists; none -> "[warn] no image-map node type on this build -- labels skipped").
+#      It then DEBUG-dumps ALL the node's params (dump_node) so the render log reveals
+#      the real API, sets the file path defensively over several candidate param names,
+#      and places it via set_center_on_part + Scale.
+#   NEW 3. THREE CHANNELS, RISK-ORDERED (apply_image_label). Bump (LOW RISK) -- the
+#      label bump image-map is APPENDED to bump_sources BEFORE combine_bump_sources, so
+#      it rides the proven bump bus (scaled by label_bump_strength if a bump-height
+#      param exists). Spec (LOW RISK) -- the label spec image-map is APPENDED to
+#      rough_sources BEFORE the roughness bus, so it composites (Lighten) with the other
+#      roughness sources (strength applied where a strength/contrast param exists).
+#      Colour overlay (HIGHER RISK, done LAST + fully guarded) -- a Color Composite
+#      (blend Normal) composites the label COLOUR (source) over the base colour
+#      (background), with the label ALPHA best-effort wired into clipping_mask, then the
+#      composite drives the BASE COLOUR input. CRITICAL: the label alpha is NEVER wired
+#      into the base opacity/transparency input (that would make the whole PART
+#      transparent where the label isn't) -- the graphic lands on base COLOUR via the
+#      masked composite. If the composite can't be built the colour overlay is skipped
+#      with "[info] label colour overlay skipped -- bump/spec still applied" (bump+spec
+#      alone already read as an embossed/worn label). build_material was restructured so
+#      labels contribute to the SAME bump/roughness combines; wire_audit still runs.
+# Everything else (part-size scaling, families, buses, masking, placement, spec
+# pipeline, and all AB01-AB05 fixes) is AB05's logic, extended -- not rewritten.
 #
 # WHAT'S NEW vs AB04 (AB05 = PART-SIZE-AWARE TEXTURE SCALING. AB04 and earlier
 # were NOT part-size aware: no bounding-box query anywhere, and 'Center On'
@@ -173,8 +215,8 @@
 # MDD-4B7A9F (scripts/research/MATERIAL_DIVERSITY_DESIGN.md).
 
 """
-KeyShot Procedural Material Generator -- REV AB05 (spec-driven, multi-family,
-part-size aware)
+KeyShot Procedural Material Generator -- REV AB06 (spec-driven, multi-family,
+part-size aware, optional emulated image-label)
 ============================================================================
 
 Pivoted (AA02) from a fixed recipe into a variant generator, then (AB01)
@@ -275,6 +317,32 @@ CONFIRM AT RENDER (AB05 -- part-size-aware scaling; all degrade non-fatally):
     perfectly round (Distortion ~0.4, Distortion Scale part-relative). Watch for
     "[warn] no parameter matching 'distortion'" / "'distortion scale'".
 
+CONFIRM AT RENDER (AB06 -- optional emulated image-label; OFF unless you set
+enable_labels; the defaults point at the demo spec-plate set; all UNPROBED, all
+degrade non-fatally -- watch the console):
+  * IMAGE-MAP NODE TYPE: make_image_map prints "[info] image-map node for <label>
+    resolved via lux.<CONSTANT>" -- NOTE WHICH SHADER_TYPE_* constant took
+    (TEXTURE_MAP / IMAGE_MAP / IMAGE / BITMAP / TEXTURE). If none exist it logs
+    "[warn] no image-map node type on this build -- labels skipped" and the plain
+    material still builds. Right after, it DEBUG-dumps ALL the node's params -- read
+    that dump to learn the real file-path + bump/strength param display names.
+  * FILE-PATH PARAM: watch for "[warn] no parameter matching 'image/file/...'" --
+    if the path didn't set, the node shows no texture; note the real display name
+    from the dump so a follow-up rev can lock it. Confirm the demo PNG actually
+    appears on the surface.
+  * COLOUR OVERLAY LANDED vs FELL BACK: expect either "[info] label colour overlay
+    LANDED -- masked label colour composited over base colour" OR "[info] label
+    colour overlay skipped -- ... bump/spec still applied". If it fell back, the
+    Composite Source/Background inputs or the base colour input differ on this build
+    -- capture the Composite param dump. Bump+spec alone still read as an embossed/
+    worn label.
+  * PART NOT TRANSPARENT: the label ALPHA drives the composite's clipping_mask ONLY,
+    never the base opacity/transparency input. Confirm the PART is fully opaque
+    everywhere OUTSIDE the label graphic (a see-through part = the alpha leaked into
+    opacity -- report it, that is the one thing this design specifically avoids).
+  * SCALE / CENTER ON: the label maps Center On: Part with Scale = label_scale
+    (default 1.0). If it tiles or sits wrong, adjust label_scale (0.1-10).
+
 Masking / targeted wear (opt-in, off by default):
   Scratches-to-edges (Curvature mask) and Spots-to-cavities (Occlusion mask).
   The mask texture is mapped onto the bump layer's bump-height, so bump strength
@@ -308,7 +376,34 @@ PT_SHADERBUMP = getattr(lux, "PARAMETER_TYPE_SHADERBUMP", None)
 
 DEBUG = True  # prints real parameters for each node as it's created
 
-GENERATOR_REV = "AB05"
+GENERATOR_REV = "AB06"
+
+# --------------------------------------------------------------------------
+# Image-label (emulated) constants (AB06)
+# --------------------------------------------------------------------------
+# True KeyShot Labels are NOT exposed to scripting, so the "label" here is an
+# image-map texture node wired into the base material's own channels (bump, spec/
+# roughness, and a masked colour overlay), surface/UV-mapped via Center On: Part +
+# Scale. The image/texture-map node's lux SHADER_TYPE_* constant is UNPROBED on this
+# build -- make_image_map resolves the FIRST that exists over this candidate list
+# and DEBUG-dumps the created node so the render log reveals the real API. If NONE
+# exist, labels are skipped and the plain material still builds.
+IMAGE_MAP_CANDIDATES = [
+    "SHADER_TYPE_TEXTURE_MAP", "SHADER_TYPE_IMAGE_MAP", "SHADER_TYPE_IMAGE",
+    "SHADER_TYPE_BITMAP", "SHADER_TYPE_TEXTURE",
+]
+# Candidate lux constants for a plain colour node (the composite's Background side
+# in the colour overlay). UNPROBED -> tried in order; if none exist the overlay
+# falls back to setting the Composite's Background colour VALUE directly.
+COLOR_NODE_CANDIDATES = [
+    "SHADER_TYPE_COLOR", "SHADER_TYPE_SOLID_COLOR", "SHADER_TYPE_COLOR_MAP",
+    "SHADER_TYPE_COLORMAP", "SHADER_TYPE_CONSTANT_COLOR",
+]
+# Demo spec-plate label set (03_OUTPUT/labels/spec-plate/) -- the DEFAULT_OPTIONS
+# label paths. Forward slashes (Windows accepts them and they avoid backslash-escape
+# hazards like \U in a plain, f-string-free ASCII source). An empty path skips that
+# channel.
+LABEL_DEMO_DIR = "C:/Users/gamin/OneDrive/Desktop/CLAUDE/PROJECTS/RENKON/03_OUTPUT/labels/spec-plate"
 
 # --------------------------------------------------------------------------
 # Part-size-aware texture scaling (AB05)
@@ -560,6 +655,16 @@ DEFAULT_OPTIONS = {
     # a non-empty word, not "". _apply_seed treats auto/random/none as no seed.
     "random_seed": "auto",
     "name_filter": "",
+    # AB06: optional emulated image-label (OFF by default). enable_labels gates the
+    # whole feature; each channel path is independent (empty = skip that channel).
+    # Defaults point at the demo spec-plate set in 03_OUTPUT/labels/spec-plate/.
+    "enable_labels": False,
+    "label_opacity_path": LABEL_DEMO_DIR + "/spec-plate_opacity.png",
+    "label_bump_path": LABEL_DEMO_DIR + "/spec-plate_bump.png",
+    "label_spec_path": LABEL_DEMO_DIR + "/spec-plate_spec.png",
+    "label_scale": 1.0,
+    "label_bump_strength": 1.0,
+    "label_spec_strength": 1.0,
 }
 
 
@@ -883,13 +988,38 @@ def get_options():
     values.append((lux.DIALOG_LABEL, "-- application --"))
     values.append(("name_filter", lux.DIALOG_TEXT, "Apply to parts matching (ALL = every part):",
                     "ALL"))
+    # AB06: optional emulated image-label (opt-in). Placed AFTER the application
+    # section. enable_labels gates it; each channel path is independent (leave a
+    # path blank to skip that channel). Defaults point at the demo spec-plate set.
+    values.append((lux.DIALOG_LABEL, "-- image label (experimental, emulated -- opt-in) --"))
+    values.append(("enable_labels", lux.DIALOG_CHECK,
+                    "Add an emulated image label (bump + spec + masked colour)",
+                    DEFAULT_OPTIONS["enable_labels"]))
+    values.append(("label_opacity_path", lux.DIALOG_TEXT,
+                    "Label colour/opacity PNG (blank = skip colour overlay):",
+                    DEFAULT_OPTIONS["label_opacity_path"]))
+    values.append(("label_bump_path", lux.DIALOG_TEXT,
+                    "Label bump PNG (blank = skip bump):",
+                    DEFAULT_OPTIONS["label_bump_path"]))
+    values.append(("label_spec_path", lux.DIALOG_TEXT,
+                    "Label spec/roughness PNG (blank = skip spec):",
+                    DEFAULT_OPTIONS["label_spec_path"]))
+    values.append(("label_scale", lux.DIALOG_DOUBLE,
+                    "Label scale (x):", DEFAULT_OPTIONS["label_scale"], (0.1, 10.0)))
+    values.append(("label_bump_strength", lux.DIALOG_DOUBLE,
+                    "Label bump strength:", DEFAULT_OPTIONS["label_bump_strength"], (0.0, 3.0)))
+    values.append(("label_spec_strength", lux.DIALOG_DOUBLE,
+                    "Label spec strength:", DEFAULT_OPTIONS["label_spec_strength"], (0.0, 3.0)))
 
     opts = lux.getInputDialog(
-        title="Procedural Material Generator (AB05)",
+        title="Procedural Material Generator (AB06)",
         desc="Tick the layers you want, pick a base + wear + finish, and click OK. "
              "(AB05: part-size-aware texture scaling -- enter your Part size in mm "
              "for correct feature sizes, or leave 0 to auto-measure. Textures now "
-             "map Center On: Part, not the whole model.)",
+             "map Center On: Part, not the whole model. AB06: optional emulated "
+             "image label -- tick 'Add an emulated image label' to wire the label "
+             "PNGs into the material's bump/spec/colour channels; defaults point at "
+             "the demo spec-plate set. Leave it off for a plain material.)",
         values=values,
         id="procedural_material_generator_dialog",
     )
@@ -1847,6 +1977,244 @@ def add_color_gradient(graph, base_node, base_color):
 
 
 # --------------------------------------------------------------------------
+# Image-label (emulated) -- AB06. Self-probing image-map node + the three-channel
+# apply (bump + spec via the proven buses, then a guarded masked colour overlay).
+# EVERY node/param/path is UNPROBED -> getattr/find_param/try-except; a miss logs
+# and the plain material still builds. The human render loop is the API probe, so
+# the created image-map node is DEBUG-dumped (dump_node) to reveal the real API.
+# --------------------------------------------------------------------------
+
+def make_image_map(graph, path, label, label_scale=1.0):
+    """Create an image/texture-map node pointed at `path`, self-probing the node
+    type by getattr over IMAGE_MAP_CANDIDATES (first that exists). Returns the node,
+    or None if no image-map node type exists on this build (labels are then skipped)
+    or the path is empty. DEBUG-dumps ALL of the node's params so the render log
+    reveals the real API (file-path + bump/strength display names), sets the file
+    path defensively over several candidate names, and places it via
+    set_center_on_part + Scale. Fully non-fatal."""
+    if not path:
+        return None
+    shader_type = None
+    resolved_attr = None
+    for attr in IMAGE_MAP_CANDIDATES:
+        st = getattr(lux, attr, None)
+        if st is not None:
+            shader_type = st
+            resolved_attr = attr
+            break
+    if shader_type is None:
+        print("  [warn] no image-map node type on this build -- labels skipped "
+              "(tried {0})".format(", ".join(IMAGE_MAP_CANDIDATES)))
+        return None
+    try:
+        n = graph.newNode(shader_type)
+    except Exception as e:
+        print("  [warn] couldn't create image-map node for {0} ({1}): {2} -- skipping".format(
+            label, resolved_attr, e))
+        return None
+    print("  [info] image-map node for {0} resolved via lux.{1}".format(label, resolved_attr))
+    # DEBUG-dump ALL params (unconditional -- this node is the API probe).
+    dump_node(n, "Image Map ({0}) [{1}]".format(label, resolved_attr))
+    # Set the file path defensively (the real display name is UNPROBED).
+    ok = set_display(n, ["image", "file", "filename", "path", "texture map", "map",
+                         "image file"], path)
+    if not ok:
+        print("  [warn] label '{0}': couldn't set the image file path -- the node "
+              "won't show the texture; confirm the path param display name from the "
+              "dump above".format(label))
+    # Placement: map to the PART (not the whole model) + apply the label scale.
+    set_center_on_part(n)
+    set_display(n, ["scale"], label_scale)
+    return n
+
+
+def _make_colour_node(graph, base_color):
+    """Best-effort plain-colour node (the colour overlay's Background side), set to
+    `base_color`. Resolves the node type over COLOR_NODE_CANDIDATES; returns the
+    node or None. Non-fatal -- the caller falls back to setting the Composite's
+    Background colour value directly when this returns None."""
+    shader_type = None
+    resolved_attr = None
+    for attr in COLOR_NODE_CANDIDATES:
+        st = getattr(lux, attr, None)
+        if st is not None:
+            shader_type = st
+            resolved_attr = attr
+            break
+    if shader_type is None:
+        return None
+    try:
+        n = graph.newNode(shader_type)
+    except Exception as e:
+        print("  [info] label overlay: couldn't create a colour node ({0}): {1}".format(
+            resolved_attr, e))
+        return None
+    # Match the colour input by NAME with no type filter: a colour input can be the
+    # type-14 connection kind (not PT_COLOR/13), and filtering by PT_COLOR would miss
+    # it -- the same lesson as the base-colour wiring in build_material.
+    set_display(n, ["color", "colour", "diffuse"], base_color)
+    return n
+
+
+def _apply_label_colour_overlay(graph, base_node, base_color, opacity_path, label_scale):
+    """HIGHER-RISK colour channel (done LAST + fully guarded). Composite the label
+    COLOUR (source) over the base colour (background) via a Color Composite (blend
+    Normal), with the label ALPHA best-effort wired into the Composite's PURE
+    clipping_mask, then drive the BASE COLOUR input with the composite.
+
+    CRITICAL: the label alpha is wired ONLY into clipping_mask, NEVER into the base
+    opacity/transparency input -- wiring alpha into opacity would make the whole PART
+    transparent where the label isn't. The graphic lands on base COLOUR via the mask.
+
+    Any failure logs "[info] label colour overlay skipped -- bump/spec still applied"
+    and returns without touching the (already-wired) bump/spec channels."""
+    label_node = make_image_map(graph, opacity_path, "label colour", label_scale)
+    if label_node is None:
+        print("  [info] label colour overlay skipped -- no image-map node; bump/spec still applied")
+        return
+    comp = try_new_node(graph, "SHADER_TYPE_COLOR_COMPOSITE", "Color Composite (label overlay)")
+    if comp is None:
+        print("  [info] label colour overlay skipped -- Color Composite unavailable; bump/spec still applied")
+        return
+    src_name, bg_name = _composite_inputs(comp)
+    if not src_name or not bg_name:
+        print("  [info] label colour overlay skipped -- Composite Source/Background inputs "
+              "not found (see dump); bump/spec still applied")
+        try:
+            graph.removeNode(comp)
+        except Exception:
+            pass
+        return
+    # source = label image node.
+    safe_edge(graph, source=label_node, target=comp, param=src_name, label="label overlay source")
+    # background = base colour: prefer a plain colour node, else set the Background
+    # colour VALUE directly (a type-14 input carries a settable colour value too).
+    bg_ok = False
+    colour_node = _make_colour_node(graph, base_color)
+    if colour_node is not None:
+        bg_ok = safe_edge(graph, source=colour_node, target=comp, param=bg_name,
+                          label="label overlay background")
+    if not bg_ok:
+        # Background is a type-14 connection input that also carries a settable
+        # colour VALUE -- match by name, no PT_COLOR (type-13) filter.
+        bg_ok = set_display(comp, ["background", "base", "bottom"], base_color)
+    if not bg_ok:
+        # Without a base-colour background the composite would blacken every
+        # non-label area of the part -- refuse the overlay rather than wreck the base.
+        print("  [info] label colour overlay skipped -- couldn't set the base colour as the "
+              "composite background (would blacken non-label areas); bump/spec still applied")
+        try:
+            graph.removeNode(comp)
+        except Exception:
+            pass
+        return
+    # Blend mode Normal (label sits on top where the mask is white; base shows through
+    # where it's black). Normal is index 0 in KeyShot's documented blend list.
+    set_blend_mode(comp, "Normal", 0)
+    # Label ALPHA -> clipping_mask (PURE type-14 input). Best-effort: wire the label
+    # image node into the mask so the composite only shows the label where alpha is
+    # opaque. This is the ONLY place the alpha is used -- never base opacity.
+    cm = find_param(comp, ["clipping mask", "clip mask", "mask"])
+    if cm is not None:
+        ok_mask = safe_edge(graph, source=label_node, target=comp, param=cm.getName(),
+                            label="label alpha -> clipping_mask")
+        if not ok_mask:
+            print("  [info] label overlay: alpha not wired into clipping_mask -- the label's "
+                  "own alpha may still apply; base opacity is untouched")
+    else:
+        print("  [info] label overlay: no clipping_mask input on this Composite -- the label's "
+              "own alpha may still apply; base opacity is untouched")
+    # Drive the BASE COLOUR input with the composite.
+    p = find_param(base_node, ["color", "diffuse", "base color"])
+    if p is None:
+        print("  [info] label colour overlay skipped -- base has no colour input to drive; "
+              "bump/spec still applied")
+        try:
+            graph.removeNode(comp)
+        except Exception:
+            pass
+        return
+    ok = safe_edge(graph, source=comp, target=base_node, param=p.getName(),
+                   label="label composite -> base.color")
+    if ok:
+        print("  [info] label colour overlay LANDED -- masked label colour composited over "
+              "base colour (blend Normal, alpha -> clipping_mask, base opacity untouched)")
+    else:
+        print("  [info] label colour overlay skipped -- couldn't wire composite into base "
+              "colour; bump/spec still applied")
+        try:
+            graph.removeNode(comp)
+        except Exception:
+            pass
+
+
+def apply_image_label(graph, base_node, base_color, label, bump_sources, rough_sources):
+    """AB06 emulated image-label. Contributes an image-map node to the bump bus and
+    the roughness bus (by APPENDING to the passed `bump_sources` / `rough_sources`
+    lists BEFORE either bus is combined), then does the higher-risk masked colour
+    overlay LAST. `label` is the validated spec['label'] dict. Fully non-fatal:
+    every channel is independent and guarded, and the plain material still builds if
+    any channel can't wire. An empty channel path skips that channel."""
+    opacity_path = label.get("opacity_path", "") or ""
+    bump_path = label.get("bump_path", "") or ""
+    spec_path = label.get("spec_path", "") or ""
+    label_scale = as_float(label.get("scale"), 1.0)
+    bump_strength = as_float(label.get("bump_strength"), 1.0)
+    spec_strength = as_float(label.get("spec_strength"), 1.0)
+
+    # 1. BUMP channel (LOW RISK -- rides the proven bump bus). Append BEFORE
+    #    combine_bump_sources so the label bump combines with the other bump layers.
+    if bump_path:
+        bnode = make_image_map(graph, bump_path, "label bump", label_scale)
+        if bnode is not None:
+            bh = find_param(bnode, ["bump height", "height"])
+            if bh is not None and not bh.isPure():
+                cur = None
+                try:
+                    cur = bh.getValue()
+                except Exception:
+                    cur = None
+                base_h = cur if (isinstance(cur, (int, float)) and not isinstance(cur, bool)
+                                 and cur) else 1.0
+                set_display(bnode, ["bump height", "height"], base_h * bump_strength)
+                print("  [info] label bump -> bump bus (strength {0})".format(bump_strength))
+            else:
+                print("  [info] label bump has no bump-height param -- wired as-is "
+                      "(strength ignored)")
+            bump_sources.append(bnode)
+        else:
+            print("  [info] label bump channel skipped -- no image-map node")
+
+    # 2. SPEC channel (LOW RISK -- rides the roughness bus, composites via Lighten).
+    #    Append BEFORE the roughness bus builds.
+    if spec_path:
+        snode = make_image_map(graph, spec_path, "label spec", label_scale)
+        if snode is not None:
+            applied = False
+            for kw in (["contrast"], ["strength"], ["gain"]):
+                p = find_param(snode, kw)
+                if p is not None and not p.isPure():
+                    set_display(snode, kw, spec_strength)
+                    applied = True
+                    break
+            if applied:
+                print("  [info] label spec -> roughness bus (strength {0})".format(spec_strength))
+            else:
+                print("  [info] label spec has no strength/contrast param -- wired as-is")
+            rough_sources.append(snode)
+        else:
+            print("  [info] label spec channel skipped -- no image-map node")
+
+    # 3. COLOUR overlay (HIGHER RISK -- LAST, fully guarded). Does NOT touch the
+    #    already-appended bump/spec channels if it fails.
+    if opacity_path:
+        try:
+            _apply_label_colour_overlay(graph, base_node, base_color, opacity_path, label_scale)
+        except Exception as e:
+            print("  [info] label colour overlay skipped ({0}) -- bump/spec still applied".format(e))
+
+
+# --------------------------------------------------------------------------
 # Post-build wire audit (MDD-4B7A9F sec 7) -- optional/defensive
 # --------------------------------------------------------------------------
 
@@ -1983,6 +2351,21 @@ def sample_spec(opts):
         "application": {
             "name_filter": name_filter,
         },
+        # AB06: emulated image-label config. Captured whether or not enabled so the
+        # emitted spec fully reproduces the build. An empty channel path skips that
+        # channel. Clamped in validate_spec.
+        "label": {
+            "enabled": bool(opts.get("enable_labels", DEFAULT_OPTIONS["enable_labels"])),
+            "opacity_path": opts.get("label_opacity_path",
+                                     DEFAULT_OPTIONS["label_opacity_path"]) or "",
+            "bump_path": opts.get("label_bump_path", DEFAULT_OPTIONS["label_bump_path"]) or "",
+            "spec_path": opts.get("label_spec_path", DEFAULT_OPTIONS["label_spec_path"]) or "",
+            "scale": as_float(opts.get("label_scale"), DEFAULT_OPTIONS["label_scale"]),
+            "bump_strength": as_float(opts.get("label_bump_strength"),
+                                      DEFAULT_OPTIONS["label_bump_strength"]),
+            "spec_strength": as_float(opts.get("label_spec_strength"),
+                                      DEFAULT_OPTIONS["label_spec_strength"]),
+        },
     }
     return spec
 
@@ -2060,6 +2443,19 @@ def validate_spec(spec):
         sbh = -0.012
     finish["scratch_bump_height"] = -clamp01(abs(sbh))
 
+    # AB06: sanity-check + clamp the emulated image-label block (defensive -- all
+    # optional + coerced). Paths coerced to strings (non-strings dropped to empty ->
+    # that channel is skipped); scale [0.1,10.0]; strengths [0,3]. Kept on the spec
+    # so the emitted spec stays reproducible.
+    label = spec.setdefault("label", {})
+    label["enabled"] = bool(label.get("enabled", False))
+    for k in ("opacity_path", "bump_path", "spec_path"):
+        v = label.get(k, "")
+        label[k] = v if isinstance(v, str) else ""
+    label["scale"] = clampf(as_float(label.get("scale"), 1.0), 0.1, 10.0)
+    label["bump_strength"] = clampf(as_float(label.get("bump_strength"), 1.0), 0.0, 3.0)
+    label["spec_strength"] = clampf(as_float(label.get("spec_strength"), 1.0), 0.0, 3.0)
+
     active_loud = sum(1 for k in LOUD_BUMP_FEATURES if features.get(k))
     spec["derived"] = {
         "active_loud_count": active_loud,
@@ -2093,6 +2489,9 @@ def build_material(spec):
     features = spec["features"]
     masks = spec["masks"]
     derived = spec.get("derived", {})
+    # AB06: emulated image-label config (a dict; enabled gates the whole feature).
+    label = spec.get("label", {}) or {}
+    labels_on = bool(label.get("enabled"))
 
     material_type = meta["material_type"]
     wear_level = meta["wear_level"]
@@ -2153,6 +2552,14 @@ def build_material(spec):
           "cellular {5}, spots {6} mm (Center On: Part)".format(
               part_size, size_source, tex_scales["scratches"], tex_scales["fine_noise"],
               tex_scales["fractal"], tex_scales["cellular"], tex_scales["spots"]))
+    if labels_on:
+        print("  Labels: ENABLED (emulated) -- opacity={0}, bump={1}, spec={2}; "
+              "scale={3}, bump_strength={4}, spec_strength={5}".format(
+                  repr(label.get("opacity_path", "")), repr(label.get("bump_path", "")),
+                  repr(label.get("spec_path", "")), label.get("scale"),
+                  label.get("bump_strength"), label.get("spec_strength")))
+    else:
+        print("  Labels: disabled (set enable_labels to wire an emulated image label)")
 
     # --- PER-FAMILY WEAR-LAYER GATING (AB04) --------------------------------
     # Intersect the user's chosen features with the family's allowed set BEFORE
@@ -2265,16 +2672,8 @@ def build_material(spec):
         randomize_placement(cell_node, placement_rng, "cellular", tex_scales["cellular"])
         bump_sources.append(cell_node)
 
-    combined_bump = combine_bump_sources(graph, bump_sources)
-    if combined_bump is not None:
-        base_bump_slots = connection_param_names(base_node, PT_SHADERBUMP)
-        if base_bump_slots:
-            safe_edge(graph, source=combined_bump, target=base_node, param=base_bump_slots[0],
-                      label="combined bump -> base.bump")
-        else:
-            print("  [warn] base material has no bump input")
-
-    # --- ROUGHNESS BUS: multi-source, composited via Lighten ----------------
+    # --- ROUGHNESS SOURCES (assembled BEFORE the bump combine so AB06 labels can
+    #     contribute to BOTH buses in one apply_image_label pass) ----------------
     # AA02 wired a single roughness driver ("first wins"): scratches took
     # priority (matte streaks are what make them read on glossy metal), else
     # fractal, else occlusion. The bus now composites ALL active sources into
@@ -2300,6 +2699,29 @@ def build_material(spec):
             # the crevice-grime source varies per material instead of being global.
             randomize_placement(oc, placement_rng, "occlusion")
             rough_sources.append(oc)
+
+    # --- AB06 IMAGE LABEL (emulated) ----------------------------------------
+    # Contributes a bump image-map to bump_sources and a spec image-map to
+    # rough_sources BEFORE either bus is combined (so the label rides the proven
+    # buses), then does the higher-risk masked colour overlay LAST. All UNPROBED +
+    # guarded: if any channel can't wire, the plain material still builds. Runs only
+    # when enable_labels is set.
+    if labels_on:
+        apply_image_label(graph, base_node, base_color, label, bump_sources, rough_sources)
+
+    # --- BUMP BUS: combine all bump-domain layers (incl. the label bump) into
+    #     one bump input -------------------------------------------------------
+    combined_bump = combine_bump_sources(graph, bump_sources)
+    if combined_bump is not None:
+        base_bump_slots = connection_param_names(base_node, PT_SHADERBUMP)
+        if base_bump_slots:
+            safe_edge(graph, source=combined_bump, target=base_node, param=base_bump_slots[0],
+                      label="combined bump -> base.bump")
+        else:
+            print("  [warn] base material has no bump input")
+
+    # --- ROUGHNESS BUS: composite all roughness sources (incl. the label spec)
+    #     into the one roughness input via Lighten ------------------------------
     rough_mode = build_roughness_bus(graph, base_node, rough_sources)
     print("  Roughness bus: {0} source(s) -> mode '{1}'".format(len(rough_sources), rough_mode))
 

@@ -1,11 +1,11 @@
 # PICKUP -- KeyShot workstream handoff
 
 **Updated:** 2026-07-16. **Everything below is committed + pushed to `origin/main`
-EXCEPT the material generator `AB05` (part-size-aware scaling), which is written +
-load-safe on disk but NOT yet committed** -- review the diff, then commit + push
-(AB04 stays on disk pending recycle). This is the "read this first when you pick
-the KeyShot work back up" doc. Keep it current in place (like the repo's own
-CLAUDE.md status convention).
+EXCEPT the material generators `AB05` (part-size-aware scaling) and `AB06` (optional
+emulated image-label), which are written + load-safe on disk but NOT yet committed**
+-- review the diff, then commit + push (AB05/AB04 stay on disk pending recycle). This
+is the "read this first when you pick the KeyShot work back up" doc. Keep it current
+in place (like the repo's own CLAUDE.md status convention).
 
 ---
 
@@ -14,8 +14,28 @@ CLAUDE.md status convention).
 Two KeyShot workstreams are mid-build, each driven by a deep Fable design review
 and built/reviewed by Opus:
 
-1. **Material generator** (`1_HLP_MAT_GENERATOR`) -- works. `AB05` is the current
-   **candidate under render-validation** -- **PART-SIZE-AWARE TEXTURE SCALING**.
+1. **Material generator** (`1_HLP_MAT_GENERATOR`) -- works. `AB06` is the current
+   **candidate under render-validation** -- **OPTIONAL EMULATED IMAGE-LABEL** (OFF by
+   default), on AB05's part-size-aware rev. True KeyShot *Labels* are NOT exposed to
+   scripting, so a "label" here is the material-graph EMULATION (design option B):
+   image-map texture nodes wired into the base material's own channels, surface/UV-
+   mapped (Center On: Part + Scale) -- it COMPLEMENTS, not replaces, the UI-authored
+   label template (`04_DOCS/labels-guide.html` + the demo assets in `03_OUTPUT/labels/`).
+   Heavily defensive + a thorough CONFIRM-AT-RENDER list; the human render loop is the
+   API probe. (1) options `enable_labels` + `label_opacity_path`/`label_bump_path`/
+   `label_spec_path` (defaults = the demo spec-plate set; empty path skips that channel)
+   + `label_scale`/`label_bump_strength`/`label_spec_strength`, all in `spec['label']`,
+   clamped, echoed in emit_spec. (2) `make_image_map` self-probes the image-map node
+   type over `SHADER_TYPE_TEXTURE_MAP/IMAGE_MAP/IMAGE/BITMAP/TEXTURE` and DEBUG-dumps the
+   created node so the render log reveals the real API. (3) `apply_image_label` wires
+   three channels risk-ordered: bump -> the bump bus, spec -> the roughness bus (both
+   LOW RISK, reusing the proven buses), then a guarded masked colour overlay onto the
+   base colour via a Color Composite (blend Normal, label alpha -> `clipping_mask`) --
+   the alpha is NEVER wired into base opacity (that would make the whole part
+   transparent where the label isn't), and if the composite can't build it skips with
+   bump/spec still applied. ALL new nodes/params/paths UNPROBED -> getattr/find_param
+   guarded, always builds; load-safe 19/19. `AB05` is the superseded prior candidate --
+   **PART-SIZE-AWARE TEXTURE SCALING**.
    AB04 and earlier were NOT part-size aware: no bounding-box query anywhere, and
    `Center On` (texture_space) was NEVER set -> KeyShot defaulted to *Center On:
    Model* and every procedural texture mapped to the whole ~6700-unit MODEL, so on
@@ -45,9 +65,10 @@ and built/reviewed by Opus:
    `FAMILY_ALLOWED_LAYERS` per-family wear-layer gating so clear glass never gets
    grime/pitting (glass + thin film drop spots/cellular/occlusion/colour-gradient).
    ALL new constants + param names UNPROBED -> getattr/find_param guarded, always
-   builds. `AB04` is kept on disk pending recycle (its prior candidates AB01-AB03
-   were already recycled -- only AA02/AB04/AB05 remain on disk); `AA02` is the
-   stable fallback. Vision docs: **MDD-4B7A9F**, **AB04_FAMILIES_SPEC**.
+   builds. `AB05`/`AB04` are kept on disk pending recycle (their prior candidates
+   AB01-AB03 were already recycled -- only AA02/AB04/AB05/AB06 remain on disk);
+   `AA02` is the stable fallback. Vision docs: **MDD-4B7A9F**, **AB04_FAMILIES_SPEC**,
+   and the label guide `04_DOCS/labels-guide.html`.
 2. **Render/animation scripts** (`2a_BAT_*`, `2b_ANI_*`) -- **Phase 1 shipped**
    (load-safety + reliability). The 3 animation scripts now *load for the first
    time*. Review + roadmap doc: **RAR-6E1F3B**.
@@ -84,16 +105,43 @@ Paste console output back so the design docs can be updated to Rev 2.
    in the Scripting Console. 13 probes; turns MDD-4B7A9F's assumptions into
    facts (label slot / masked-bump / new node params / blend-mode format / ...).
    Delete the `MATGRAPH_PROBE` material afterwards. -> feeds MDD-4B7A9F Rev 2.
-2. **AB05 material generator** -- `git pull`, render a **Brass or Chrome** part
+2. **AB06 material generator** -- `git pull`, render a **Brass or Chrome** part
    (Scratches + Fractal both on). **Enter the real Part size in mm in the dialog**
    (e.g. 40) -- or leave 0 to let it auto-measure / default to 50. Confirm: colour
    comes through, a **glossy metal with subtle roughness variation + recessed matte
    scratch streaks** (NOT flat). Console should show a `SPEC {...}` line (with
    `finish`, `meta.placement_seed`, `meta.family`, `base.extra`, and now a
    `scale` block: `part_size_mm` + `source` + `resolved`) + a wire-audit. If
-   good -> retire AA02, AB05 is canonical, then recycle AB04 (RNK-0062).
-   **AB05 PART-SIZE-AWARE SCALING -- the headline change (all UNPROBED, watch the
-   console):**
+   good -> retire AA02, AB06 is canonical, then recycle AB05/AB04 (RNK-0062).
+   **AB06 EMULATED IMAGE-LABEL -- the headline change (OFF by default, all UNPROBED,
+   watch the console). First: leave `enable_labels` OFF and confirm a normal build is
+   unchanged (regression). Then set `enable_labels` ON -- the defaults point at the demo
+   spec-plate set in `03_OUTPUT/labels/spec-plate/`:**
+   - **Image-map node type** -- the console prints `[info] image-map node for <label>
+     resolved via lux.<CONSTANT>`; NOTE WHICH of TEXTURE_MAP/IMAGE_MAP/IMAGE/BITMAP/
+     TEXTURE took. If none exist -> `[warn] no image-map node type on this build --
+     labels skipped` and the plain material still builds. Right after each is a FULL
+     param DUMP of the created node -- **paste those dumps** so the real file-path /
+     bump-height / strength display names can be locked in a follow-up rev.
+   - **File path lands** -- watch for `[warn] ... couldn't set the image file path` (the
+     path param display name differs on this build -- read it off the dump). Confirm the
+     demo PNG actually appears on the surface.
+   - **Colour overlay** -- expect `[info] label colour overlay LANDED -- masked label
+     colour composited over base colour` OR the fallback `[info] label colour overlay
+     skipped -- ... bump/spec still applied` (capture the Color Composite dump if it fell
+     back -- Source/Background inputs differ). Bump+spec alone already read as an
+     embossed/worn label.
+   - **PART NOT TRANSPARENT** (the one thing this design specifically avoids) -- the label
+     ALPHA drives the composite's `clipping_mask` ONLY, never base opacity. Confirm the
+     part is fully OPAQUE everywhere outside the label graphic; a see-through part means
+     the alpha leaked into opacity -- report it.
+   - **Buses** -- with a label bump PNG set, the label rides the bump bus; with a label
+     spec PNG set, `Roughness bus: N source(s)` should tick up by one (it composites via
+     Lighten). Scale/Center On: Part apply to the label too (adjust `label_scale` 0.1-10
+     if it tiles or sits wrong).
+   - Remember the demo asset **triple** already exists: `spec-plate_opacity.png`,
+     `_bump.png`, `_spec.png`. An empty path in any channel field skips that channel.
+   **AB05 PART-SIZE-AWARE SCALING -- inherited (all UNPROBED, watch the console):**
    - **Center On: Part** -- every tiling texture should now read *Center On: Part*
      in the panel, NOT Model. Watch for `[info] couldn't confirm 'Center On' = Part`
      (the enum int differs on this build -- note which of string/1/0 took) or
@@ -194,7 +242,8 @@ probe-dependent phases; design-for is fine, depend-on is not.
 
 | File | State |
 |---|---|
-| `1_HLP_MAT_GENERATOR_AB05.py` | **candidate** (NOT yet committed) -- part-size-aware texture scaling on AB04: `resolve_part_size` (entered `part_size_mm` > measured via UNPROBED bbox APIs > default 50), `SCALE_FRACTIONS` (part-relative tiling Scales replacing hardcoded absolutes), `set_center_on_part` (Center On: Part enum, was defaulting to Model -> textures mapped to the whole ~6700-unit model), the Spots-Scale-never-set fix (giant blobs), and Spots distortion; `spec['scale']` captured for reproducibility. All new APIs/params UNPROBED, guarded, always builds; load-safe 19/19. Render-validate then supersede AB04 + AA02 |
+| `1_HLP_MAT_GENERATOR_AB06.py` | **candidate** (NOT yet committed) -- optional emulated image-label on AB05 (OFF by default). Material-graph EMULATION of a label (design option B): image-map nodes wired into the base material's channels, surface/UV-mapped, complementing the UI-authored label template. `enable_labels` + `label_opacity_path`/`label_bump_path`/`label_spec_path` (defaults = demo spec-plate set; empty skips a channel) + `label_scale`/`label_bump_strength`/`label_spec_strength` in `spec['label']`. `make_image_map` self-probes the node type over `SHADER_TYPE_TEXTURE_MAP/IMAGE_MAP/IMAGE/BITMAP/TEXTURE` + DEBUG-dumps it (API probe). `apply_image_label` wires bump -> bump bus, spec -> roughness bus (LOW RISK), then a guarded masked colour overlay onto base colour (Color Composite, blend Normal, alpha -> `clipping_mask`, NEVER base opacity). All UNPROBED, guarded, always builds; load-safe 19/19. Render-validate then supersede AB05 + AA02 |
+| `1_HLP_MAT_GENERATOR_AB05.py` | superseded prior candidate (NOT yet committed) -- part-size-aware texture scaling on AB04: `resolve_part_size` (entered `part_size_mm` > measured via UNPROBED bbox APIs > default 50), `SCALE_FRACTIONS` (part-relative tiling Scales replacing hardcoded absolutes), `set_center_on_part` (Center On: Part enum, was defaulting to Model -> textures mapped to the whole ~6700-unit model), the Spots-Scale-never-set fix (giant blobs), and Spots distortion; `spec['scale']` captured for reproducibility. All new APIs/params UNPROBED, guarded, always builds; load-safe. Superseded by AB06 (emulated image-label); kept on disk pending recycle once AB06 is render-confirmed |
 | `1_HLP_MAT_GENERATOR_AB04.py` | superseded prior candidate -- four new shader families (anisotropic metal, dielectric glass clear+frosted, thin film) via a per-row `extra` dict + family-aware base-param pass + per-family wear-layer gating (per `AB04_FAMILIES_SPEC.md`). All new constants/params UNPROBED, guarded, always builds. Kept on disk until AB05 confirmed, then recycle |
 | `1_HLP_MAT_GENERATOR_AA02.py` | stable fallback (kept until AB05 confirmed) |
 | `0_CHK_MATGRAPH_PROBE_AA01.py` | material probe pack -- run it |
