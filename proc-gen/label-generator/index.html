@@ -360,6 +360,41 @@
     return data;
   }
 
+  /* ---- shared channel writers for the "Process" finish generators ----
+     Each finish generator's _build returns { relief (0.5 = flat surface),
+     cover (soft-edged placement mask = alpha), ... }. These three helpers turn
+     that into the RGBA / height / spec images the same way for every finish, so
+     adding a machining mark is just a _build plus a base tint and a gloss curve.
+     relief is scaled by cover inside _build; spec is blended back to neutral 0.5
+     outside the covered zone so the decal only affects where it lands. */
+  function _byte(v) { return v < 0 ? 0 : v > 255 ? 255 : v | 0; }
+  function reliefColor(ctx, f, size, base, shadeK, opac) {
+    const img = ctx.createImageData(size, size), d = img.data;
+    for (let i = 0; i < f.relief.length; i++) {
+      const sh = (f.relief[i] - 0.5) * shadeK, j = i * 4;
+      d[j] = _byte(base[0] + sh); d[j + 1] = _byte(base[1] + sh); d[j + 2] = _byte(base[2] + sh);
+      d[j + 3] = Math.round(clamp01(f.cover[i]) * opac * 255);
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+  function reliefHeight(ctx, f, size) {
+    const img = ctx.createImageData(size, size), d = img.data;
+    for (let i = 0; i < f.relief.length; i++) {
+      const v = Math.round(clamp01(f.relief[i]) * 255), j = i * 4;
+      d[j] = d[j + 1] = d[j + 2] = v; d[j + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+  function reliefSpec(ctx, f, size, gloss) {
+    const img = ctx.createImageData(size, size), d = img.data;
+    for (let i = 0; i < f.relief.length; i++) {
+      const t = gloss(f.relief[i], i);
+      const v = Math.round(clamp01(0.5 + (t - 0.5) * clamp01(f.cover[i])) * 255), j = i * 4;
+      d[j] = d[j + 1] = d[j + 2] = v; d[j + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
   /* ---------- 1. FINGERPRINT (group "Contact") ----------
      Ridge flow is a zero-pole model: a CORE (ridges recurve around it) plus a
      DELTA (the triangular meeting point) drive a swirl field, so ridges form
@@ -660,7 +695,255 @@
     }
   };
 
-  const GENERATORS = [Fingerprint, Scuff];
+  /* ---------- 3. TURNED / LATHE (group "Process") ----------
+     Concentric feed grooves from a facing pass: a sine ring field whose radius is
+     modulated by a slow spiral (feed helix) and a periodic angular chatter (the
+     tool ringing against the work), for lathe feed lines instead of clean rings. */
+  const Turned = {
+    id: "turned", name: "Turned (Lathe)", group: "Process",
+    params: [
+      { key: "feedPitch",   label: "Feed Pitch",   min: 0.02,max: 1,  step: 0.01, default: 0.3 },
+      { key: "grooveDepth", label: "Groove Depth", min: 0.1, max: 1,  step: 0.01, default: 0.55 },
+      { key: "spiral",      label: "Spiral",       min: 0,   max: 1,  step: 0.01, default: 0.3 },
+      { key: "chatter",     label: "Chatter",      min: 0,   max: 1,  step: 0.01, default: 0.25 },
+      { key: "centerOff",   label: "Center Off",   min: 0,   max: 1,  step: 0.01, default: 0.15 },
+      { key: "coverage",    label: "Coverage",     min: 0.15,max: 1,  step: 0.01, default: 0.38 },
+      { key: "distortion",  label: "Distortion",   min: 0,   max: 1,  step: 0.01, default: 0.2 }
+    ],
+    _build(p, size) {
+      const r = mulberry32(hashSeed(p.seed + "|turn"));
+      const cx = size * (0.5 + (r() - 0.5) * 0.6 * p.centerOff);
+      const cy = size * (0.5 + (r() - 0.5) * 0.6 * p.centerOff);
+      const patchR = size * (0.28 + 0.62 * p.coverage);
+      const edgeN = makeNoise(size, size, size / 5, r);
+      const pitch = size * (0.006 + 0.06 * p.feedPitch);
+      const freq = Math.PI * 2 / pitch;
+      // integer spiral arms: the atan2 branch cut then jumps a whole multiple of
+      // 2*PI so sin() stays continuous and no seam runs out from the centre.
+      const spiralK = Math.round(p.spiral * 8);
+      const chatAmp = p.chatter * 0.6;
+      const chatFreq = Math.round(6 + 40 * r());
+      const warp = makeFbm(size, size, size / 6, r);
+      const warpAmt = size * (0.004 + 0.05 * p.distortion);
+      const fine = makeFbm(size, size, size / 40, r);
+      const relief = new Float32Array(size * size);
+      const cover = new Float32Array(size * size);
+      for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+        const i = y * size + x;
+        const wx = x + (warp(x, y) - 0.5) * warpAmt, wy = y + (warp(y, x) - 0.5) * warpAmt;
+        const dx = wx - cx, dy = wy - cy;
+        const dist = Math.hypot(dx, dy), aa = Math.atan2(dy, dx);
+        const chat = chatAmp * pitch * Math.sin(aa * chatFreq);
+        const phase = (dist + chat) * freq + spiralK * aa + (fine(x, y) - 0.5) * 1.2;
+        const groove = 0.5 + 0.5 * Math.sin(phase);
+        const dc = Math.hypot(x - cx, y - cy);
+        const cv = smoothstep(patchR * (0.85 + 0.4 * edgeN(x, y)), patchR * 0.5, dc);
+        cover[i] = cv;
+        relief[i] = 0.5 + (groove - 0.5) * p.grooveDepth * 0.85 * cv;
+      }
+      return { relief, cover, size };
+    },
+    drawColor(ctx, p, rng, size) { reliefColor(ctx, cachedField(this, p, size, () => this._build(p, size)), size, [148, 150, 154], 300, 1); },
+    drawHeight(hctx, p, rng, size) { reliefHeight(hctx, cachedField(this, p, size, () => this._build(p, size)), size); },
+    drawSpec(sctx, p, rng, size) { reliefSpec(sctx, cachedField(this, p, size, () => this._build(p, size)), size, rl => 0.58 + (rl - 0.5) * 0.5); }
+  };
+
+  /* ---------- 4. CAST SURFACE (group "Process") ----------
+     As-cast sand texture: two-scale grain over slow mould lumps, scattered
+     blowhole pits pressed in as round depressions, and an optional parting-line
+     seam raised as a thin flash ridge across the face. Reads matte all over. */
+  const Cast = {
+    id: "cast", name: "Cast Surface", group: "Process",
+    params: [
+      { key: "grain",      label: "Grain",        min: 0.1, max: 1,  step: 0.01, default: 0.5 },
+      { key: "coarse",     label: "Coarseness",   min: 0,   max: 1,  step: 0.01, default: 0.5 },
+      { key: "pits",       label: "Pits",         min: 0,   max: 1,  step: 0.01, default: 0.4 },
+      { key: "seam",       label: "Parting Seam", min: 0,   max: 1,  step: 0.01, default: 0 },
+      { key: "coverage",   label: "Coverage",     min: 0.15,max: 1,  step: 0.01, default: 0.4 },
+      { key: "distortion", label: "Distortion",   min: 0,   max: 1,  step: 0.01, default: 0.4 }
+    ],
+    _build(p, size) {
+      const r = mulberry32(hashSeed(p.seed + "|cast"));
+      const cx = size * 0.5, cy = size * 0.5;
+      const patchR = size * (0.28 + 0.62 * p.coverage);
+      const edgeN = makeNoise(size, size, size / 5, r);
+      const gCell = size / (8 + 34 * p.grain);
+      const grainA = makeFbm(size, size, gCell, r);
+      const grainB = makeNoise(size, size, gCell / 2.3, r);
+      const lump = makeFbm(size, size, size / (2.2 + 3 * p.coarse), r);
+      const nPits = Math.round(p.pits * p.pits * 1400 * (patchR / (size * 0.5)));
+      const pitX = new Float32Array(nPits), pitY = new Float32Array(nPits), pitR = new Float32Array(nPits);
+      for (let k = 0; k < nPits; k++) {
+        const a = r() * Math.PI * 2, rad = patchR * Math.sqrt(r());
+        pitX[k] = cx + Math.cos(a) * rad; pitY[k] = cy + Math.sin(a) * rad;
+        pitR[k] = size * (0.004 + 0.02 * r() * r());
+      }
+      const seamAng = r() * Math.PI, seamCos = Math.cos(seamAng), seamSin = Math.sin(seamAng);
+      const seamWarp = makeFbm(size, size, size / 8, r);
+      const relief = new Float32Array(size * size);
+      const cover = new Float32Array(size * size);
+      for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+        const i = y * size + x;
+        const g = grainA(x, y) * 0.6 + grainB(x, y) * 0.4;
+        const lm = lump(x, y);
+        let h = 0.5 + (g - 0.5) * 0.5 * (0.4 + 0.6 * p.grain) + (lm - 0.5) * 0.25;
+        if (p.seam > 0) {
+          const proj = (x - cx) * seamCos + (y - cy) * seamSin + (seamWarp(x, y) - 0.5) * size * 0.05;
+          h += smoothstep(size * 0.02, 0, Math.abs(proj)) * p.seam * 0.35;
+        }
+        const dc = Math.hypot(x - cx, y - cy);
+        const cv = smoothstep(patchR * (0.9 + 0.35 * edgeN(x, y)), patchR * 0.55, dc);
+        cover[i] = cv;
+        relief[i] = 0.5 + (h - 0.5) * cv;
+      }
+      for (let k = 0; k < nPits; k++) {
+        const px = pitX[k], py = pitY[k], pr = pitR[k];
+        const x0 = Math.max(0, Math.floor(px - pr - 1)), x1 = Math.min(size - 1, Math.ceil(px + pr + 1));
+        const y0 = Math.max(0, Math.floor(py - pr - 1)), y1 = Math.min(size - 1, Math.ceil(py + pr + 1));
+        for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+          const dd = Math.hypot(x - px, y - py);
+          if (dd < pr) {
+            const i = y * size + x, prof = Math.cos(dd / pr * Math.PI * 0.5);
+            relief[i] -= prof * prof * 0.22 * cover[i];
+          }
+        }
+      }
+      return { relief, cover, size };
+    },
+    drawColor(ctx, p, rng, size) { reliefColor(ctx, cachedField(this, p, size, () => this._build(p, size)), size, [138, 135, 130], 240, 1); },
+    drawHeight(hctx, p, rng, size) { reliefHeight(hctx, cachedField(this, p, size, () => this._build(p, size)), size); },
+    drawSpec(sctx, p, rng, size) { reliefSpec(sctx, cachedField(this, p, size, () => this._build(p, size)), size, rl => 0.3 + (rl - 0.5) * 0.25); }
+  };
+
+  /* ---------- 5. GROUND / BRUSHED (group "Process") ----------
+     Surface grinding / belt finish: dense fine grooves running across the grain
+     direction (two beating sine sets plus a fine tooth field), patchy sheen along
+     the grain, and an optional crosshatch second pass for a honed / cross-lapped
+     read. Anisotropic — grooves read rougher across the lay. */
+  const Ground = {
+    id: "ground", name: "Ground / Brushed", group: "Process",
+    params: [
+      { key: "direction",  label: "Direction",  min: 0,    max: 180,step: 1,    default: 90 },
+      { key: "grit",       label: "Grit",       min: 0.1,  max: 1,  step: 0.01, default: 0.6 },
+      { key: "depth",      label: "Depth",      min: 0.05, max: 1,  step: 0.01, default: 0.4 },
+      { key: "crosshatch", label: "Crosshatch", min: 0,    max: 1,  step: 0.01, default: 0 },
+      { key: "coverage",   label: "Coverage",   min: 0.15, max: 1,  step: 0.01, default: 0.4 },
+      { key: "distortion", label: "Distortion", min: 0,    max: 1,  step: 0.01, default: 0.2 }
+    ],
+    _build(p, size) {
+      const r = mulberry32(hashSeed(p.seed + "|grind"));
+      const cx = size * 0.5, cy = size * 0.5;
+      const patchR = size * (0.28 + 0.62 * p.coverage);
+      const edgeN = makeNoise(size, size, size / 5, r);
+      const ang = p.direction * Math.PI / 180, ca = Math.cos(ang), sa = Math.sin(ang);
+      const xAng = ang + Math.PI / 2, cx2 = Math.cos(xAng), sx2 = Math.sin(xAng);
+      const grFreq = (18 + 300 * p.grit) / size * Math.PI * 2;
+      const phaseF = makeFbm(size, size, size / 4, r);
+      const patchF = makeNoise(size, size, size / 7, r);
+      const gritF = makeFbm(size, size, size / 50, r);
+      function streak(v, x, y) {
+        const ph = phaseF(x, y) * 6.0 * (0.4 + p.distortion);
+        const g1 = Math.sin(v * grFreq + ph);
+        const g2 = Math.sin(v * grFreq * 2.3 + ph * 1.7) * 0.4;
+        const grit = (gritF(x, y) - 0.5) * 1.4;
+        return (g1 + g2) * 0.5 + grit * 0.5;
+      }
+      const relief = new Float32Array(size * size);
+      const cover = new Float32Array(size * size);
+      for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+        const i = y * size + x;
+        const v = -(x - cx) * sa + (y - cy) * ca;
+        let s = streak(v, x, y) * (0.6 + 0.6 * patchF(x, y));
+        if (p.crosshatch > 0) {
+          const v2 = -(x - cx) * sx2 + (y - cy) * cx2;
+          s = s * (1 - 0.5 * p.crosshatch) + streak(v2, y, x) * (0.6 + 0.6 * patchF(y, x)) * p.crosshatch;
+        }
+        const dc = Math.hypot(x - cx, y - cy);
+        const cv = smoothstep(patchR * (0.9 + 0.35 * edgeN(x, y)), patchR * 0.55, dc);
+        cover[i] = cv;
+        relief[i] = 0.5 + s * 0.5 * p.depth * cv;
+      }
+      return { relief, cover, size };
+    },
+    drawColor(ctx, p, rng, size) { reliefColor(ctx, cachedField(this, p, size, () => this._build(p, size)), size, [152, 154, 158], 320, 1); },
+    drawHeight(hctx, p, rng, size) { reliefHeight(hctx, cachedField(this, p, size, () => this._build(p, size)), size); },
+    drawSpec(sctx, p, rng, size) { reliefSpec(sctx, cachedField(this, p, size, () => this._build(p, size)), size, rl => 0.55 + (rl - 0.5) * 0.65); }
+  };
+
+  /* ---------- 6. SPARK-ERODE / BLAST (group "Process") ----------
+     Overlapping round craters over a fine micro-grain floor. Uniformity morphs
+     the surface between the two processes: low = spark-erosion (random sizes,
+     positions, overlapping bowls), high = shot-peen / bead-blast (grid-placed,
+     even-sized dimples). Each crater is a cosine bowl with a slight raised rim.
+     Reads very matte. */
+  const Erode = {
+    id: "erode", name: "Spark-Erode / Blast", group: "Process",
+    params: [
+      { key: "density",    label: "Crater Density", min: 0.1, max: 1, step: 0.01, default: 0.6 },
+      { key: "craterSize", label: "Crater Size",    min: 0.1, max: 1, step: 0.01, default: 0.4 },
+      { key: "depth",      label: "Depth",          min: 0.1, max: 1, step: 0.01, default: 0.5 },
+      { key: "uniformity", label: "Uniformity",     min: 0,   max: 1, step: 0.01, default: 0.4 },
+      { key: "coverage",   label: "Coverage",       min: 0.15,max: 1, step: 0.01, default: 0.4 },
+      { key: "distortion", label: "Distortion",     min: 0,   max: 1, step: 0.01, default: 0.3 }
+    ],
+    _build(p, size) {
+      const r = mulberry32(hashSeed(p.seed + "|edm"));
+      const cx = size * 0.5, cy = size * 0.5;
+      const patchR = size * (0.28 + 0.62 * p.coverage);
+      const edgeN = makeNoise(size, size, size / 5, r);
+      const micro = makeFbm(size, size, size / 60, r);
+      const baseR = size * (0.01 + 0.05 * p.craterSize);
+      const relief = new Float32Array(size * size);
+      const cover = new Float32Array(size * size);
+      // deepest crater wins (floor = min of bowls) so overlap dimples the flat
+      // surface instead of stacking additively down to solid black; rim = the
+      // slight raised lip around each bowl, kept as a separate max.
+      const floorA = new Float32Array(size * size).fill(0.5);
+      const rimA = new Float32Array(size * size);
+      const nC = Math.round((300 + 3400 * p.density) * (patchR / (size * 0.5)) * (patchR / (size * 0.5)));
+      const cols = Math.max(1, Math.ceil(Math.sqrt(nC)));
+      for (let k = 0; k < nC; k++) {
+        let px, py;
+        if (p.uniformity > 0.05 && r() < p.uniformity) {
+          const gx = k % cols, gy = Math.floor(k / cols);
+          px = cx - patchR + (gx + r()) * (2 * patchR / cols);
+          py = cy - patchR + (gy + r()) * (2 * patchR / cols);
+        } else {
+          const a = r() * Math.PI * 2, rad = patchR * Math.sqrt(r());
+          px = cx + Math.cos(a) * rad; py = cy + Math.sin(a) * rad;
+        }
+        const sz = baseR * (1 - p.uniformity * 0.5) * (0.4 + 1.4 * r());
+        const dep = p.depth * 0.45 * (0.5 + 0.8 * r());
+        const x0 = Math.max(0, Math.floor(px - sz - 2)), x1 = Math.min(size - 1, Math.ceil(px + sz + 2));
+        const y0 = Math.max(0, Math.floor(py - sz - 2)), y1 = Math.min(size - 1, Math.ceil(py + sz + 2));
+        for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+          const dd = Math.hypot(x - px, y - py);
+          if (dd < sz * 1.3) {
+            const i = y * size + x, t = dd / sz;
+            if (t < 1) {
+              const bowl = 0.5 - (Math.cos(t * Math.PI) * 0.5 + 0.5) * dep;
+              if (bowl < floorA[i]) floorA[i] = bowl;
+            } else {
+              const rim = (1.3 - t) / 0.3 * 0.18 * dep;
+              if (rim > rimA[i]) rimA[i] = rim;
+            }
+          }
+        }
+      }
+      for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+        const i = y * size + x, dc = Math.hypot(x - cx, y - cy);
+        const cv = smoothstep(patchR * (0.9 + 0.35 * edgeN(x, y)), patchR * 0.55, dc);
+        cover[i] = cv;
+        relief[i] = 0.5 + ((floorA[i] - 0.5) + rimA[i] + (micro(x, y) - 0.5) * 0.12) * cv;
+      }
+      return { relief, cover, size };
+    },
+    drawColor(ctx, p, rng, size) { reliefColor(ctx, cachedField(this, p, size, () => this._build(p, size)), size, [146, 146, 148], 260, 1); },
+    drawHeight(hctx, p, rng, size) { reliefHeight(hctx, cachedField(this, p, size, () => this._build(p, size)), size); },
+    drawSpec(sctx, p, rng, size) { reliefSpec(sctx, cachedField(this, p, size, () => this._build(p, size)), size, rl => 0.26 + (rl - 0.5) * 0.18); }
+  };
+
+  const GENERATORS = [Fingerprint, Scuff, Turned, Cast, Ground, Erode];
   const GEN_BY_ID = {};
   GENERATORS.forEach(g => GEN_BY_ID[g.id] = g);
 
