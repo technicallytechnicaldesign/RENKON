@@ -11,9 +11,11 @@ current in place (like the repo's own CLAUDE.md status convention).
 Two KeyShot workstreams are mid-build, each driven by a deep Fable design review
 and built/reviewed by Opus:
 
-1. **Material generator** (`1_HLP_MAT_GENERATOR`) -- works. `AB01` is a
-   spec-refactor **candidate under render-validation**; `AA02` is the stable
-   fallback. Vision doc: **MDD-4B7A9F**.
+1. **Material generator** (`1_HLP_MAT_GENERATOR`) -- works. `AB02` is the current
+   **candidate under render-validation** (routing fix + Finish axis + seeded
+   anti-repetition placement, on AB01's spec-refactor); `AB01` is the superseded
+   prior candidate (kept on disk pending recycle); `AA02` is the stable fallback.
+   Vision doc: **MDD-4B7A9F**.
 2. **Render/animation scripts** (`2a_BAT_*`, `2b_ANI_*`) -- **Phase 1 shipped**
    (load-safety + reliability). The 3 animation scripts now *load for the first
    time*. Review + roadmap doc: **RAR-6E1F3B**.
@@ -50,13 +52,23 @@ Paste console output back so the design docs can be updated to Rev 2.
    in the Scripting Console. 13 probes; turns MDD-4B7A9F's assumptions into
    facts (label slot / masked-bump / new node params / blend-mode format / ...).
    Delete the `MATGRAPH_PROBE` material afterwards. -> feeds MDD-4B7A9F Rev 2.
-2. **AB01 material generator** -- `git pull`, render a **Brass or Chrome** part
+2. **AB02 material generator** -- `git pull`, render a **Brass or Chrome** part
    (Scratches + Fractal both on). Confirm: colour comes through, a **glossy metal
    with subtle roughness variation + recessed matte scratch streaks** (NOT flat).
    Console should show `Roughness bus: N source(s) -> mode 'composite'` + a
-   `SPEC {...}` line + a wire-audit. If good -> retire AA02, AB01 is canonical
-   (RNK-0062). Watch for `[info] scratches->edges: bump-height not mappable`
-   (means material edge-masking needs plan B).
+   `SPEC {...}` line (now with `finish` + `meta.placement_seed`) + a wire-audit.
+   If good -> retire AA02, AB02 is canonical, then recycle AB01 (RNK-0062).
+   **AB02-specific CONFIRM-AT-RENDER checks** (all degrade non-fatally, watch the
+   console): (a) **Scratches "Scale"** param name -- expect no `[warn] no parameter
+   matching 'scale'` on the Scratches node; if you see it, the tiling-scale display
+   name differs on this build. (b) **Placement param names are UNPROBED** -- expect
+   `[info] placement: offset/rotation/scale not settable here` lines UNLESS the
+   real display names match `translate/offset/position/move`, `rotation/rotate/angle`,
+   `scale/size`; note which land so the ranges/names can be locked in. (c) The
+   routing fix means **Directional Noise and Noise are now set independently** --
+   eyeball that a Worn/Heavy finish actually reads more chaotic than Brushed.
+   Still watch for `[info] scratches->edges: bump-height not mappable` (means
+   material edge-masking needs plan B).
 3. **The 3 animation scripts now LOAD** -- run `2b_ANI_HERO_REVEAL`,
    `2b_ANI_CUTAWAY_REVEAL`, `2b_ANI_ASSEMBLY_PROCEDURAL`. EXPECTED-but-not-yet-fixed
    (don't be alarmed): **assembly parts EXPLODE outward instead of settling**
@@ -91,8 +103,9 @@ probe-dependent phases; design-for is fine, depend-on is not.
 
 | File | State |
 |---|---|
-| `1_HLP_MAT_GENERATOR_AB01.py` | **candidate** -- Phase-1 spec-refactor (3 buses, roughness blending). Render-validate then supersede AA02 |
-| `1_HLP_MAT_GENERATOR_AA02.py` | stable fallback (kept until AB01 confirmed) |
+| `1_HLP_MAT_GENERATOR_AB02.py` | **candidate** -- routing fix (find_param exact-match) + Finish axis + Scratches Scale + seeded anti-repetition placement, on AB01's 3-bus spec-refactor. Render-validate then supersede AA02 |
+| `1_HLP_MAT_GENERATOR_AB01.py` | superseded prior candidate (spec-refactor + roughness blending); kept on disk until AB02 confirmed, then recycle |
+| `1_HLP_MAT_GENERATOR_AA02.py` | stable fallback (kept until AB02 confirmed) |
 | `0_CHK_MATGRAPH_PROBE_AA01.py` | material probe pack -- run it |
 | `0_VAL_LOAD_SAFETY_AA01.py` | dev/CI guard (AST + ASCII); run before commits |
 | `2a_BAT_STD_VIEW_AA01.py`, `2a_BAT_TURNTABLE_AA01.py` | Phase-1 fixed (reliable, load-safe) |

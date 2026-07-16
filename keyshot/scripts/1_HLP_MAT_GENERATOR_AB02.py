@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # AUTHOR claude-subagent
-# REV AB01
+# REV AB02
 # HEADLESS COMPLIANT
 # Procedural material *variant* generator, rebuilt as a spec-driven
 # sample -> validate -> compile pipeline (design MDD-4B7A9F, Phase 1). A dialog
@@ -10,24 +10,39 @@
 # bus. Same 12-material palette, same feature layers (fine noise, scratches,
 # spots, cellular, rounded edges, fractal/occlusion roughness, colour gradient),
 # same masking toggles, wear level, seed, and dialog UX as AA02. Each build is
-# auto-named MAT-<TYPE>-<WEAR>-<hex>. Sits in the 1_ helper stage as the
-# material-*authoring* member of the MAT family, alongside 1_HLP_MAT_PREFLIGHT
-# (coverage QC) and 1_HLP_MAT_LOOKUP (Creo -> KeyShot name mapping).
+# auto-named MAT-<TYPE>-<WEAR>-<FINISH>-<hex>. Sits in the 1_ helper stage as
+# the material-*authoring* member of the MAT family, alongside
+# 1_HLP_MAT_PREFLIGHT (coverage QC) and 1_HLP_MAT_LOOKUP (Creo -> KeyShot map).
 #
-# WHAT'S NEW vs AA02 (Phase 1 only):
-#   * The build is organised around a JSON-serialisable MaterialSpec dict
-#     (no dataclasses -- KeyShot's interpreter predates them). sample_spec()
-#     builds it, validate_spec() sanity-checks it, build_material() compiles it,
-#     and the final spec is echoed to the console for reproducibility.
-#   * MULTI-SOURCE ROUGHNESS BLENDING (the one genuinely new capability): where
-#     AA02 wired a single roughness driver ("first wins"), the roughness bus now
-#     composites scratches + fractal + occlusion into the single roughness input
-#     via Color Composite using blend mode Lighten (per-pixel max). The blend-
-#     mode setter is defensive (int-enum OR string), and if the Composite chain
-#     can't be built on this build it DEGRADES to AA02's single-driver behaviour
-#     -- the material always builds.
-# Everything else (helpers, layer builders, masking, apply) is AA02's logic,
-# re-orchestrated by the compiler rather than rewritten.
+# WHAT'S NEW vs AB01 (three targeted changes -- see MDD-4B7A9F / RNK-0054):
+#   1. PARAMETER-ROUTING FIX (root-cause). find_param() now prefers an EXACT
+#      (case-insensitive) display-name match across ALL params before falling
+#      back to the old substring scan. This kills the "noise" vs "Directional
+#      Noise" substring collision (AB01 set Directional Noise, then "noise"
+#      re-matched it and clobbered it to 0.3 while the real Noise stayed 0). The
+#      fix is order-independent and strictly hardens every existing setter
+#      (Bump Height, Size, Density, Scale, ...). ptype filtering is unchanged.
+#   2. FINISH PRESET AXIS (character), ORTHOGONAL to Wear (amount). Wear governs
+#      how MUCH degradation (bump amplitude, density, size, loud-layer count);
+#      Finish governs the CHARACTER of the scratch/brush surface (directional
+#      noise, chaotic noise, subdivision levels, scratch groove-depth baseline).
+#      Pristine/Brushed/Worn/Heavy. A brushed finish is brushed at any wear.
+#      Also: an explicit Scratches "Scale" control (tiling scale, KeyShot default
+#      ~5mm, never set before) so Density (count) is clearly separate from Scale.
+#   3. ANTI-REPETITION: seeded per-material texture PLACEMENT. KeyShot procedural
+#      textures are deterministic + world-aligned, so every build tiled
+#      IDENTICALLY (reads as fake/too-perfect even with noise). A dedicated,
+#      captured placement seed drives a small random offset / rotation / scale-
+#      jitter on each procedural texture node (Scratches, Fine Noise, Spots,
+#      Fractal Noise, Cellular). Runs for EVERY build; reproducible via
+#      spec["meta"]["placement_seed"].
+# Everything else (helpers, layer builders, masking, roughness compositing,
+# apply) is AB01's logic, re-orchestrated -- not rewritten.
+#
+# WHAT WAS NEW in AB01 (kept): JSON-serialisable MaterialSpec (sample -> validate
+# -> compile), and MULTI-SOURCE ROUGHNESS BLENDING (scratches + fractal +
+# occlusion composited into the single roughness input via Color Composite /
+# Lighten, degrading to AA02's single-driver behaviour if the chain can't build).
 #
 # !! KEYSHOT PYTHON CONSTRAINT -- READ BEFORE EDITING !!
 # KeyShot's embedded interpreter here predates f-strings (Python < 3.6) and its
@@ -48,26 +63,33 @@
 # MDD-4B7A9F (scripts/research/MATERIAL_DIVERSITY_DESIGN.md).
 
 """
-KeyShot Procedural Material Generator -- REV AB01 (spec-driven)
+KeyShot Procedural Material Generator -- REV AB02 (spec-driven)
 ==============================================================
 
 Pivoted (AA02) from a fixed recipe into a variant generator, then (AB01)
-re-architected from a flat option dict + hardcoded build path into a
-sample -> validate -> compile pipeline around a first-class MaterialSpec:
+re-architected into a sample -> validate -> compile pipeline around a first-class
+MaterialSpec, then (AB02) hardened the param routing and added a Finish axis +
+seeded anti-repetition placement:
 
     options (dialog or DEFAULT_OPTIONS)
-        -> sample_spec()     build the MaterialSpec dict
+        -> sample_spec()     build the MaterialSpec dict (captures finish +
+                             placement_seed)
         -> validate_spec()   clamp / sanity-check / derive damping
-        -> build_material()  compile the spec: base node + 3 buses
+        -> build_material()  compile the spec: base node + 3 buses + placement
         -> emit_spec()       echo the spec to console (reproducibility)
         -> apply_material_to_parts()
 
 The three buses (design MDD-4B7A9F sec 3.3/4):
   * bump bus       -- N bump-domain layers chained via Bump Add (as AA02).
   * roughness bus  -- N roughness sources composited into ONE roughness input
-                       via Color Composite / Lighten (NEW). Falls back to
-                       AA02's single-driver behaviour if compositing fails.
+                       via Color Composite / Lighten. Falls back to AA02's
+                       single-driver behaviour if compositing fails.
   * colour bus     -- base colour + optional Colour Gradient driver (as AA02).
+
+Two orthogonal preset axes:
+  * Wear   -- how MUCH degradation (amplitude / coverage).
+  * Finish -- the CHARACTER of the scratch/brush surface (dir-noise, noise,
+              subdivision levels, scratch groove-depth baseline).
 
 Run inside the KeyShot Scripting Console, or via `keyshot -script` headless
 (dialog auto-skips headless -> DEFAULT_OPTIONS is used instead).
@@ -83,6 +105,12 @@ Experimental (constant name is a reasonable guess, not confirmed to exist
 in every KeyShot version) -- these use getattr() and skip cleanly with a
 console warning if unavailable, rather than crashing:
   Cellular, Color Gradient
+
+UNPROBED on this build (CONFIRM AT RENDER -- treated as runtime-discovered,
+absence is non-fatal):
+  * Scratches "Scale" param name (change 2) -- assumed display name "Scale".
+  * Texture placement param names (change 3) -- offset / rotation / scale.
+    Best-effort; every miss logs an [info] and the build continues.
 
 Masking / targeted wear (opt-in, off by default):
   Scratches-to-edges (Curvature mask) and Spots-to-cavities (Occlusion mask).
@@ -117,7 +145,7 @@ PT_SHADERBUMP = getattr(lux, "PARAMETER_TYPE_SHADERBUMP", None)
 
 DEBUG = True  # prints real parameters for each node as it's created
 
-GENERATOR_REV = "AB01"
+GENERATOR_REV = "AB02"
 
 # --------------------------------------------------------------------------
 # Material type presets
@@ -153,6 +181,25 @@ WEAR_PRESETS = {"Pristine": 0.3, "Light Wear": 1.0, "Moderate Wear": 2.5, "Heavy
 WEAR_ORDER = list(WEAR_PRESETS.keys())
 WEAR_ABBR = {"Pristine": "PRI", "Light Wear": "LGT", "Moderate Wear": "MOD", "Heavy Wear": "HVY"}
 
+# Finish presets -- the CHARACTER of the scratch/brush surface (change 2),
+# ORTHOGONAL to Wear. Wear scales amplitude/coverage; Finish sets directional
+# noise, chaotic noise, subdivision levels, and the scratch groove-depth
+# BASELINE. A brushed finish is brushed at any wear amount, so these values are
+# sourced DIRECTLY (not wear-scaled) in add_scratches_bump. The scratch bump
+# BASELINE is negative (a groove cut into the surface); build_material still
+# multiplies it by the wear/damping amplitude and re-clamps.
+#   tuple = (directional_noise, noise, levels, scratch_bump_height baseline)
+FINISH_PRESETS = {
+    "Pristine": (0.1, 0.0, 1, -0.008),
+    "Brushed":  (0.5, 0.1, 2, -0.012),
+    "Worn":     (0.8, 0.3, 3, -0.018),
+    "Heavy":    (1.0, 0.6, 4, -0.025),
+}
+FINISH_ORDER = ["Pristine", "Brushed", "Worn", "Heavy"]
+# 3-letter codes kept distinct from WEAR_ABBR (Heavy -> HEV, not HVY) so a name
+# like MAT-ALU-HVY-HEV-... never reads ambiguously.
+FINISH_ABBR = {"Pristine": "PRS", "Brushed": "BRU", "Worn": "WRN", "Heavy": "HEV"}
+
 # Subtle base amplitudes at Light Wear (1.0x) -- learned last round that
 # these read as much stronger visually than the raw [0,1] numbers suggest.
 BASE = {
@@ -162,9 +209,13 @@ BASE = {
     "scratch_bump_height": 0.02,
     "scratch_density":     0.12,
     "scratch_size":        0.04,
-    "scratch_dir_noise":   0.6,
-    "scratch_noise":       0.3,
-    "scratch_levels":      2,
+    # Scratches "Scale" -- the tiling scale of the scratch field (KeyShot default
+    # ~5mm). AB01 and earlier never set this, so Density (count) and Scale were
+    # conflated. Set explicitly now (change 2) so they are clearly separate axes.
+    "scratch_scale":       5.0,
+    "scratch_dir_noise":   0.6,   # fallback only -- Finish now supplies dir_noise
+    "scratch_noise":       0.3,   # fallback only -- Finish now supplies noise
+    "scratch_levels":      2,     # fallback only -- Finish now supplies levels
     "edge_amount":         0.02,
     "spots_bump_height":   0.02,
     "spots_density":       0.08,
@@ -223,6 +274,9 @@ DEFAULT_OPTIONS = {
     "name_prefix": "MAT",
     "material_type": "Aluminum (brushed metal)",
     "wear_level": "Light Wear",
+    # Finish default. "Brushed" is the safe middle. The human may prefer "Worn"
+    # as the default (they want more distortion) -- change this ONE word to swap.
+    "finish": "Brushed",
     "wear_multiplier": 1.0,
     "add_fine_noise": True,
     "add_scratches": True,
@@ -265,10 +319,13 @@ def resolve_filter(value, sentinel="ALL"):
     return None if (not v or v.upper() == sentinel) else v
 
 
-def resolve_material_name(prefix, material_type, wear_level):
+def resolve_material_name(prefix, material_type, wear_level, finish_level=None):
     base = (prefix or "MAT").strip().upper().replace(" ", "_") or "MAT"
     type_code = TYPE_ABBR.get(material_type, "GEN")
     wear_code = WEAR_ABBR.get(wear_level, "GEN")
+    if finish_level is not None:
+        finish_code = FINISH_ABBR.get(finish_level, "GEN")
+        return "{0}-{1}-{2}-{3}-{4}".format(base, type_code, wear_code, finish_code, random_suffix())
     return "{0}-{1}-{2}-{3}".format(base, type_code, wear_code, random_suffix())
 
 
@@ -318,6 +375,24 @@ def _apply_seed(opts):
     return seed
 
 
+def derive_placement_seed(seed):
+    """Pick the per-build texture-placement seed (change 3). If the human gave a
+    real feature seed, derive the placement seed deterministically from it (so a
+    seeded build tiles identically on replay) but on a DISTINCT stream from the
+    feature RNG; otherwise draw a fresh random int. Either way the chosen int is
+    captured into spec['meta']['placement_seed'] so ANY build is reproducible
+    from the emitted spec. Kept independent of _name_rng (names must vary even
+    when the look is seeded).
+
+    Note: seeding a Random with a STRING is stable across runs (Python's
+    version-2 seeding hashes str/bytes via sha512); seeding with an arbitrary
+    object would fall through to hash() and be process-randomised -- hence the
+    explicit "placement|"+str(seed) string key."""
+    if seed is not None:
+        return random.Random("placement|" + str(seed)).randint(0, 2147483647)
+    return random.Random().randint(0, 2147483647)
+
+
 # --------------------------------------------------------------------------
 # Options dialog (GUI only -- auto-skipped in headless mode)
 # --------------------------------------------------------------------------
@@ -337,6 +412,10 @@ def get_options():
          MATERIAL_TYPE_ORDER.index(DEFAULT_OPTIONS["material_type"]), MATERIAL_TYPE_ORDER),
         ("wear_level", lux.DIALOG_ITEM, "Wear level:",
          WEAR_ORDER.index(DEFAULT_OPTIONS["wear_level"]), WEAR_ORDER),
+        # Finish axis (change 2) -- character, orthogonal to Wear. Same
+        # index-default + norm_item normalisation as material_type/wear_level.
+        ("finish", lux.DIALOG_ITEM, "Finish (surface character):",
+         FINISH_ORDER.index(DEFAULT_OPTIONS["finish"]), FINISH_ORDER),
         ("wear_multiplier", lux.DIALOG_DOUBLE, "Wear fine-tune (x):",
          DEFAULT_OPTIONS["wear_multiplier"], (0.0, 3.0)),
         (lux.DIALOG_LABEL, "-- surface detail --"),
@@ -365,8 +444,8 @@ def get_options():
                     "ALL"))
 
     opts = lux.getInputDialog(
-        title="Procedural Material Generator (AB01)",
-        desc="Tick the layers you want, pick a base + wear level, and click OK.",
+        title="Procedural Material Generator (AB02)",
+        desc="Tick the layers you want, pick a base + wear + finish, and click OK.",
         values=values,
         id="procedural_material_generator_dialog",
     )
@@ -398,11 +477,12 @@ def get_options():
 
     opts["material_type"] = norm_item(opts.get("material_type"), MATERIAL_TYPE_ORDER)
     opts["wear_level"] = norm_item(opts.get("wear_level"), WEAR_ORDER)
+    opts["finish"] = norm_item(opts.get("finish"), FINISH_ORDER)
     return opts
 
 
 # --------------------------------------------------------------------------
-# Node/parameter helpers (all non-fatal) -- unchanged from AA02
+# Node/parameter helpers (all non-fatal)
 # --------------------------------------------------------------------------
 
 def dump_node(node, label=""):
@@ -453,12 +533,34 @@ def resolve_shader(shader_attr):
 
 
 def find_param(node, keywords, ptype=None):
+    """Find a parameter by display name. Change 1 (AB02, root-cause fix): prefer
+    an EXACT (case-insensitive) display-name match across ALL params FIRST, then
+    fall back to the original substring scan. This kills the substring collision
+    where a short keyword like "noise" matched "Directional Noise" (and clobbered
+    it) before the real "Noise" param was ever reached. The two passes are
+    order-independent per keyword, so every existing setter is strictly hardened.
+    ptype filtering behaviour is identical to before: a display match whose type
+    doesn't pass the filter is skipped (the scan continues), not returned."""
     if isinstance(keywords, str):
         keywords = [keywords]
+    try:
+        params = node.getParameters()
+    except Exception:
+        return None
+    # Pass 1 -- EXACT display-name match (case-insensitive, whitespace-trimmed).
     for kw in keywords:
-        kw = kw.lower()
-        for p in node.getParameters():
-            if kw in p.getDisplayName().lower():
+        kwx = kw.strip().lower()
+        for p in params:
+            if p.getDisplayName().strip().lower() == kwx:
+                if ptype is None or p.getType() == ptype:
+                    return p
+    # Pass 2 -- substring fallback (the original AB01 behaviour), so multi-word
+    # keyword lists like ["bump height", "height", "amount"] still resolve when
+    # no exact match exists on this node.
+    for kw in keywords:
+        kwx = kw.lower()
+        for p in params:
+            if kwx in p.getDisplayName().lower():
                 if ptype is None or p.getType() == ptype:
                     return p
     return None
@@ -530,6 +632,91 @@ def wire_scalar_driver(graph, texture_node, base_node, keywords, label):
     if not ok:
         print("  [info] {0} driver skipped -- static default still applies".format(label))
     return ok
+
+
+# --------------------------------------------------------------------------
+# Anti-repetition: seeded per-material texture placement (change 3)
+# --------------------------------------------------------------------------
+# KeyShot procedural textures are deterministic and world-aligned, so without
+# per-material placement every build tiles IDENTICALLY and reads as fake / too-
+# perfect even with noise on. randomize_placement() applies a small random
+# offset / rotation / scale-jitter to each procedural texture node.
+#
+# !! UNPROBED PARAM NAMES -- CONFIRM AT RENDER !!
+# The KeyShot placement param display names are NOT confirmed on this build.
+# They are treated as runtime-discovered (via find_param, same as every other
+# param here). Every lookup + set is best-effort: a miss logs an [info] and the
+# build continues. Ranges below are conservative assumptions to confirm in the
+# human's render loop:
+#   * offset / translate: each component random in [-1.0, 1.0] (node's own
+#     units; kept small so a material never slides wildly off-feature).
+#   * rotation: random in [0, 360] degrees.
+#   * scale: existing value multiplied by a factor in [1-scale_jitter,
+#     1+scale_jitter]; if the value can't be read, a small absolute in [0.9, 1.1].
+
+
+def _try_set_placement(param, value, what):
+    """Best-effort setValue for a placement param. Non-fatal: any failure logs an
+    [info] and returns False -- the build continues with the node's default."""
+    try:
+        param.setValue(value)
+        return True
+    except Exception as e:
+        print("  [info] placement: {0} not settable here ({1})".format(what, e))
+        return False
+
+
+def randomize_placement(node, rng, scale_jitter=0.15):
+    """Apply per-material randomised placement to one procedural texture node,
+    drawing from `rng` (a Random seeded off the captured placement_seed, so this
+    is reproducible). Runs for EVERY build (killing global repetition is the whole
+    point). Fully defensive -- see the module note above; placement param names
+    are UNPROBED and any miss is a logged [info], never fatal."""
+    if node is None:
+        return
+    # -- offset / translate (x, y, z) --
+    try:
+        p = find_param(node, ["translate", "offset", "position", "move"])
+        if p is None:
+            print("  [info] placement: offset not settable here (no matching param)")
+        elif p.isPure():
+            print("  [info] placement: offset is connection-only here -- skipped")
+        else:
+            off = (rng.uniform(-1.0, 1.0), rng.uniform(-1.0, 1.0), rng.uniform(-1.0, 1.0))
+            _try_set_placement(p, off, "offset")
+    except Exception as e:
+        print("  [info] placement: offset not settable here ({0})".format(e))
+    # -- rotation --
+    try:
+        p = find_param(node, ["rotation", "rotate", "angle"])
+        if p is None:
+            print("  [info] placement: rotation not settable here (no matching param)")
+        elif p.isPure():
+            print("  [info] placement: rotation is connection-only here -- skipped")
+        else:
+            _try_set_placement(p, rng.uniform(0.0, 360.0), "rotation")
+    except Exception as e:
+        print("  [info] placement: rotation not settable here ({0})".format(e))
+    # -- scale (jitter the existing value; else a small absolute) --
+    try:
+        p = find_param(node, ["scale", "size"])
+        if p is None:
+            print("  [info] placement: scale not settable here (no matching param)")
+        elif p.isPure():
+            print("  [info] placement: scale is connection-only here -- skipped")
+        else:
+            factor = rng.uniform(1.0 - scale_jitter, 1.0 + scale_jitter)
+            cur = None
+            try:
+                cur = p.getValue()
+            except Exception:
+                cur = None
+            if isinstance(cur, (int, float)) and cur:
+                _try_set_placement(p, cur * factor, "scale")
+            else:
+                _try_set_placement(p, rng.uniform(0.9, 1.1), "scale")
+    except Exception as e:
+        print("  [info] placement: scale not settable here ({0})".format(e))
 
 
 # --------------------------------------------------------------------------
@@ -695,7 +882,7 @@ def build_roughness_bus(graph, base_node, sources):
 # Masking (targeted wear) -- Curvature/Occlusion mask onto a bump layer's
 # bump-height. Node ids confirmed (11.0 lux ref); input-slot names discovered
 # at run time; any wiring failure degrades to the unmasked effect so masking
-# can never break the base material. See MWR-9C4E21. (Unchanged from AA02.)
+# can never break the base material. See MWR-9C4E21. (Unchanged from AB01.)
 # --------------------------------------------------------------------------
 
 def add_curvature_mask(graph):
@@ -756,7 +943,7 @@ def mask_bump_layer(graph, effect_node, mask_node, label):
 
 # --------------------------------------------------------------------------
 # Layer builders -- each returns a node (bump-domain / roughness-source) or
-# bool (colour driver). Reused from AA02; the fractal/occlusion roughness
+# bool (colour driver). Reused from AB01; the fractal/occlusion roughness
 # builders are split into node factories so the roughness bus can composite
 # them rather than wiring a single driver.
 # --------------------------------------------------------------------------
@@ -771,17 +958,38 @@ def add_fine_noise_bump(graph):
     return n
 
 
-def add_scratches_bump(graph, wear_mult, base_roughness, damping=1.0):
+def add_scratches_bump(graph, wear_mult, base_roughness, finish, damping=1.0):
+    """Scratches layer. Change 2: the CHARACTER params (directional noise, noise,
+    levels) and the scratch groove-depth BASELINE come DIRECTLY from the Finish
+    tuple (NOT wear-scaled -- a brushed finish is brushed at any wear). The wear
+    amount still scales the groove AMPLITUDE (and density/size coverage). Change 2
+    also sets an explicit Scratches "Scale" (tiling scale) so Density is clearly
+    separate from Scale. `finish` is the validated spec['finish'] dict."""
     n = try_new_node(graph, "SHADER_TYPE_SCRATCHES", "Scratches")
     if n:
-        # NEGATIVE bump height so the scratch cuts INTO the surface (a groove),
-        # decoupled from the colour (which is set for the roughness drive below).
-        set_display(n, ["bump height"], -clamp01(BASE["scratch_bump_height"] * wear_mult * damping))
+        dir_noise = finish.get("dir_noise", BASE["scratch_dir_noise"])
+        noise = finish.get("noise", BASE["scratch_noise"])
+        levels = finish.get("levels", BASE["scratch_levels"])
+        finish_bump = finish.get("scratch_bump_height", -BASE["scratch_bump_height"])
+        # Effective scratch bump = groove BASELINE (from Finish) scaled by the
+        # wear/damping AMPLITUDE, kept NEGATIVE (cuts into the surface) and
+        # magnitude-clamped to [0,1] -- the AB01 negative-bump/clamp convention.
+        eff_bump = -clamp01(abs(finish_bump) * wear_mult * damping)
+        set_display(n, ["bump height"], eff_bump)
+        # Coverage stays WEAR-driven.
         set_display(n, ["density"], clamp01(BASE["scratch_density"] * wear_mult))
         set_display(n, ["size"], clamp01(BASE["scratch_size"] * wear_mult))
-        set_display(n, ["directional noise"], BASE["scratch_dir_noise"])
-        set_display(n, ["noise"], BASE["scratch_noise"])
-        set_display(n, ["levels"], BASE["scratch_levels"])
+        # Character stays FINISH-driven (not wear-scaled). Now that find_param
+        # prefers exact matches (change 1), ["directional noise"] and ["noise"]
+        # resolve to distinct params independently.
+        set_display(n, ["directional noise"], clamp01(dir_noise))
+        set_display(n, ["noise"], clamp01(noise))
+        set_display(n, ["levels"], levels)
+        # Scratches "Scale" -- the tiling scale (KeyShot default ~5mm), SEPARATE
+        # from Density (count) and Size (per-scratch). Never set before AB02.
+        # Defensive: skip-with-warn via set_display if the param is absent.
+        # CONFIRM AT RENDER: the exact display name "Scale" on Scratches.
+        set_display(n, ["scale"], BASE["scratch_scale"])
         # Colours drive ROUGHNESS. KeyShot's convention (confirmed from the v2
         # render, where a bright background flattened everything): brighter
         # texture = ROUGHER. So the scratch line is light -> a matte streak that
@@ -809,7 +1017,10 @@ def add_spots_bump(graph, wear_mult, damping=1.0):
         set_display(n, ["bump height", "height"], clamp01(BASE["spots_bump_height"] * wear_mult * damping))
         set_display(n, ["density"], clamp01(BASE["spots_density"] * wear_mult))
         # Spots has no 'Size' param (per the graph dump) -- 'Radius' is the
-        # per-spot size.
+        # per-spot size. Left as-is (change 2 note): whether Spots exposes a
+        # separate "Scale" distinct from Radius is UNCONFIRMED on this build, so
+        # the Density-vs-Scale split done for Scratches is NOT forced here. The
+        # placement pass (change 3) still jitters whatever scale/size it finds.
         set_display(n, ["radius", "size", "scale"], clamp01(BASE["spots_size"] * wear_mult))
     return n
 
@@ -937,13 +1148,20 @@ def wire_audit(base_node, label="base"):
 def sample_spec(opts):
     """Sampler: turn a flat options dict (from the dialog or DEFAULT_OPTIONS)
     into a MaterialSpec dict. Applies the seed and randomize logic here so the
-    spec captures the concrete feature set that will be built. JSON-serialisable
-    (plain dict/list/str/float/bool/None -- no dataclasses)."""
+    spec captures the concrete feature set that will be built. Also resolves the
+    Finish preset (change 2) and draws the per-build placement seed (change 3)
+    into the spec. JSON-serialisable (plain dict/list/str/float/bool/None -- no
+    dataclasses)."""
     material_type = opts.get("material_type", DEFAULT_OPTIONS["material_type"])
     wear_level = opts.get("wear_level", DEFAULT_OPTIONS["wear_level"])
+    finish_name = opts.get("finish", DEFAULT_OPTIONS["finish"])
     wear_multiplier = float(opts.get("wear_multiplier", 1.0))
 
     seed = _apply_seed(opts)
+    # Placement seed (change 3): derived from the feature seed when one was given
+    # (reproducible), else a fresh random int -- captured below so ANY build can
+    # be reproduced from the emitted spec.
+    placement_seed = derive_placement_seed(seed)
 
     features = {k: bool(opts.get(k, False)) for k in FEATURE_KEYS}
     randomized = bool(opts.get("randomize_features"))
@@ -955,7 +1173,9 @@ def sample_spec(opts):
     mat = MATERIAL_BY_NAME.get(material_type, MATERIAL_BY_NAME[DEFAULT_OPTIONS["material_type"]])
     _, shader_attr, base_color, base_roughness, _ = mat
 
-    name = resolve_material_name(opts.get("name_prefix", ""), material_type, wear_level)
+    fp = FINISH_PRESETS.get(finish_name, FINISH_PRESETS[DEFAULT_OPTIONS["finish"]])
+
+    name = resolve_material_name(opts.get("name_prefix", ""), material_type, wear_level, finish_name)
 
     spec = {
         "meta": {
@@ -963,9 +1183,11 @@ def sample_spec(opts):
             "name_prefix": opts.get("name_prefix", ""),
             "generator_rev": GENERATOR_REV,
             "seed": seed,
+            "placement_seed": placement_seed,
             "randomized": randomized,
             "material_type": material_type,
             "wear_level": wear_level,
+            "finish": finish_name,
         },
         "base": {
             "shader": shader_attr,
@@ -976,6 +1198,13 @@ def sample_spec(opts):
             "level": wear_level,
             "multiplier": wear_multiplier,
             "effective": WEAR_PRESETS.get(wear_level, 1.0) * wear_multiplier,
+        },
+        "finish": {
+            "name": finish_name,
+            "dir_noise": fp[0],
+            "noise": fp[1],
+            "levels": fp[2],
+            "scratch_bump_height": fp[3],
         },
         "features": features,
         "masks": masks,
@@ -1006,6 +1235,22 @@ def validate_spec(spec):
     base["color"] = [clamp01(color[0]), clamp01(color[1]), clamp01(color[2])]
     base["roughness"] = clamp01(base.get("roughness", 0.3))
 
+    # Finish (change 2): clamp dir/noise to [0,1], levels to an int in [1,5],
+    # and the scratch bump BASELINE to a valid negative groove (magnitude [0,1]).
+    finish = spec.setdefault("finish", {})
+    finish["dir_noise"] = clamp01(finish.get("dir_noise", 0.5))
+    finish["noise"] = clamp01(finish.get("noise", 0.1))
+    try:
+        levels = int(finish.get("levels", 2))
+    except (ValueError, TypeError):
+        levels = 2
+    finish["levels"] = max(1, min(5, levels))
+    try:
+        sbh = float(finish.get("scratch_bump_height", -0.012))
+    except (ValueError, TypeError):
+        sbh = -0.012
+    finish["scratch_bump_height"] = -clamp01(abs(sbh))
+
     active_loud = sum(1 for k in LOUD_BUMP_FEATURES if features.get(k))
     spec["derived"] = {
         "active_loud_count": active_loud,
@@ -1035,12 +1280,14 @@ def build_material(spec):
     meta = spec["meta"]
     base = spec["base"]
     wear = spec["wear"]
+    finish = spec.get("finish", {})
     features = spec["features"]
     masks = spec["masks"]
     derived = spec.get("derived", {})
 
     material_type = meta["material_type"]
     wear_level = meta["wear_level"]
+    finish_name = meta.get("finish", DEFAULT_OPTIONS["finish"])
     wear_mult = wear["effective"]
     base_color = (base["color"][0], base["color"][1], base["color"][2])
     base_roughness = base["roughness"]
@@ -1053,10 +1300,25 @@ def build_material(spec):
     if seed is not None:
         print("  Seeded feature RNG with {0} (reproducible in randomize mode)".format(repr(seed)))
 
+    # Placement RNG (change 3): a dedicated Random seeded off the captured
+    # placement_seed, so per-material texture placement is reproducible. If the
+    # spec somehow lacks one, draw + capture it now so the emitted spec stays
+    # honest and the build is still reproducible.
+    placement_seed = meta.get("placement_seed")
+    if placement_seed is None:
+        placement_seed = random.Random().randint(0, 2147483647)
+        meta["placement_seed"] = placement_seed
+    placement_rng = random.Random(placement_seed)
+
     name = meta["name"]
 
     print("lux.isHeadless() = {0}".format(lux.isHeadless()))
-    print("Building '{0}' | type={1} | wear={2} (x{3:.2f})".format(name, material_type, wear_level, wear_mult))
+    print("Building '{0}' | type={1} | wear={2} (x{3:.2f}) | finish={4}".format(
+        name, material_type, wear_level, wear_mult, finish_name))
+    print("  Finish: {0} -- dir_noise={1}, noise={2}, levels={3}, scratch-bump baseline={4}".format(
+        finish_name, finish.get("dir_noise"), finish.get("noise"),
+        finish.get("levels"), finish.get("scratch_bump_height")))
+    print("  Placement seed: {0} (per-build texture placement, reproducible)".format(placement_seed))
     active = [FEATURE_LABELS[k] for k, v in features.items() if v]
     active_str = ", ".join(active) if active else "(none)"
     print("Features: {0}".format(active_str))
@@ -1080,7 +1342,7 @@ def build_material(spec):
             break
         except Exception as e:
             print("  [warn] couldn't create material '{0}': {1} -- trying a new random name".format(name, e))
-            name = resolve_material_name(meta.get("name_prefix", ""), material_type, wear_level)
+            name = resolve_material_name(meta.get("name_prefix", ""), material_type, wear_level, finish_name)
     else:
         raise RuntimeError("Couldn't create a scene material after 5 attempts")
     meta["name"] = name  # keep the emitted spec honest about the final name
@@ -1109,24 +1371,34 @@ def build_material(spec):
     # --- BUMP BUS: bump-domain layers combined into one bump input ----------
     # Masking is applied per-layer here: a masked layer gets a Curvature/
     # Occlusion mask mapped onto its bump-height before it joins the bump chain.
+    # Placement randomisation (change 3) runs on each procedural texture node
+    # right after it is configured -- for EVERY build, driven by placement_rng.
     bump_sources = []
     scratches_node = None  # captured so scratches can also drive the roughness bus
     if features["add_fine_noise"]:
-        bump_sources.append(add_fine_noise_bump(graph))
+        fine_node = add_fine_noise_bump(graph)
+        randomize_placement(fine_node, placement_rng)
+        bump_sources.append(fine_node)
     if features["add_scratches"]:
-        scratches_node = add_scratches_bump(graph, wear_mult, base_roughness, damping)
+        scratches_node = add_scratches_bump(graph, wear_mult, base_roughness, finish, damping)
+        randomize_placement(scratches_node, placement_rng)
         if masks.get("mask_scratches_to_edges"):
             mask_bump_layer(graph, scratches_node, add_curvature_mask(graph), "scratches->edges")
         bump_sources.append(scratches_node)
     if features["add_rounded_edges"]:
+        # Rounded Edges is a geometry-based bump, not a tiling texture -- no
+        # placement randomisation (nothing to de-repeat).
         bump_sources.append(add_rounded_edges_bump(graph, wear_mult, damping))
     if features["add_spots"]:
         sp = add_spots_bump(graph, wear_mult, damping)
+        randomize_placement(sp, placement_rng)
         if masks.get("mask_spots_to_cavities"):
             sp = mask_bump_layer(graph, sp, add_occlusion_mask(graph), "spots->cavities")
         bump_sources.append(sp)
     if features["add_cellular"]:
-        bump_sources.append(add_cellular_bump(graph, wear_mult, damping))
+        cell_node = add_cellular_bump(graph, wear_mult, damping)
+        randomize_placement(cell_node, placement_rng)
+        bump_sources.append(cell_node)
 
     combined_bump = combine_bump_sources(graph, bump_sources)
     if combined_bump is not None:
@@ -1137,7 +1409,7 @@ def build_material(spec):
         else:
             print("  [warn] base material has no bump input")
 
-    # --- ROUGHNESS BUS: multi-source, composited via Lighten (NEW) ----------
+    # --- ROUGHNESS BUS: multi-source, composited via Lighten ----------------
     # AA02 wired a single roughness driver ("first wins"): scratches took
     # priority (matte streaks are what make them read on glossy metal), else
     # fractal, else occlusion. The bus now composites ALL active sources into
@@ -1152,8 +1424,11 @@ def build_material(spec):
     if features["add_fractal_roughness"]:
         fr = make_fractal_roughness_node(graph, base_roughness)
         if fr is not None:
+            randomize_placement(fr, placement_rng)  # Fractal Noise is a tiling texture
             rough_sources.append(fr)
     if features["add_occlusion_roughness"]:
+        # Occlusion is geometry-based (cavity-driven), not a tiling texture -- no
+        # placement randomisation.
         oc = make_occlusion_roughness_node(graph, base_roughness)
         if oc is not None:
             rough_sources.append(oc)
