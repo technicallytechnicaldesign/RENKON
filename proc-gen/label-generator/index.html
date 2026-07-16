@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Label Generator</title>
+<style>
+  :root {
+    --bg: #0a0f16;
+    --panel-bg: #0d1520;
+    --panel-bg-raised: #101a27;
+    --line: #1c2733;
+    --text: #e8e8e0;
+    --muted: #7a7f83;
+
+    --c-structural: #002F67;
+    --c-fluid: #2FA8B0;
+    --c-accent: #E8792E;
+
+    --stage-bg: #060a10;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: "IBM Plex Mono", "Courier New", monospace;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  button, input, select { font-family: inherit; }
+  button { cursor: pointer; border-radius: 0; }
+  button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible {
+    outline: 2px solid var(--c-accent); outline-offset: 2px;
+  }
+
+  #app-header {
+    display: flex; align-items: center; gap: 20px;
+    padding: 14px 28px; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; background: var(--bg); z-index: 10;
+  }
+  #app-header .wordmark { font-size: 14px; letter-spacing: 0.28em; font-weight: 500; text-decoration: none; flex: none; }
+  #app-header .wordmark b { color: var(--c-accent); font-weight: 500; }
+  #app-header .crumbs {
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+    flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #app-header .mark { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; flex: none; }
+
+  #app-main { padding: 22px 28px 40px; max-width: 1600px; margin: 0 auto; }
+  .page-head { margin-bottom: 20px; }
+  .page-head h1 { font-size: 16px; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 6px; font-weight: 500; }
+  .page-head p { color: var(--muted); font-size: 12px; margin: 0; max-width: 74ch; line-height: 1.6; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr) 300px;
+    gap: 1px; background: var(--line); border: 1px solid var(--line);
+  }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+  .col { background: var(--panel-bg); padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+  .section-label {
+    display: block; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text); font-weight: 500; border-bottom: 1px solid var(--line);
+    padding-bottom: 8px; margin: 0 0 4px;
+  }
+
+  /* Library */
+  .lib-group-label { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 8px 0 2px; }
+  .lib-item {
+    background: transparent; border: 1px solid var(--line); color: var(--text);
+    text-align: left; padding: 10px 12px; display: flex; flex-direction: column; gap: 3px;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .lib-item .li-name { font-size: 12px; }
+  .lib-item .li-grp { font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .lib-item:hover { border-color: var(--c-accent); }
+  .lib-item.active { border-color: var(--c-accent); background: var(--panel-bg-raised); }
+  .lib-item.active .li-name { color: var(--c-accent); }
+
+  /* Preset list */
+  .preset-list { display: flex; flex-direction: column; gap: 4px; }
+  .preset-row { display: flex; align-items: center; gap: 6px; }
+  .preset-row .pr-name {
+    flex: 1 1 auto; min-width: 0; background: transparent; border: 1px solid var(--line);
+    color: var(--text); text-align: left; padding: 7px 9px; font-size: 11px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .preset-row .pr-name:hover { border-color: var(--c-accent); color: var(--c-accent); }
+  .preset-empty { font-size: 10px; color: var(--muted); }
+
+  /* Center preview */
+  .tab-row { display: flex; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+  .tab-btn {
+    flex: 1 1 0; background: var(--panel-bg); border: none; color: var(--muted);
+    padding: 9px 6px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--c-accent); background: var(--panel-bg-raised); box-shadow: inset 0 -2px 0 var(--c-accent); }
+
+  .stage {
+    background: var(--stage-bg); border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center; padding: 14px;
+    min-height: 320px;
+  }
+  .stage canvas { width: 100%; max-width: 512px; height: auto; display: block; image-rendering: auto; }
+  /* checkerboard behind the opacity view so the alpha cutout is visible */
+  .stage.checker {
+    background-color: #20272f;
+    background-image:
+      linear-gradient(45deg, #2c343d 25%, transparent 25%, transparent 75%, #2c343d 75%, #2c343d),
+      linear-gradient(45deg, #2c343d 25%, transparent 25%, transparent 75%, #2c343d 75%, #2c343d);
+    background-size: 24px 24px; background-position: 0 0, 12px 12px;
+  }
+  .stage.midgrey { background: #808080; }
+
+  .preview-meta { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; font-size: 10px; color: var(--muted); }
+  .preview-meta .stat b { color: var(--text); font-weight: 500; }
+  .toggle-inline { display: inline-flex; align-items: center; gap: 6px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .toggle-inline input { accent-color: var(--c-accent); width: 15px; height: 15px; }
+
+  /* Right params */
+  .param-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .param-row label { flex: 0 0 96px; font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+  .param-row input[type=range] { flex: 1 1 auto; min-width: 0; accent-color: var(--c-accent); }
+  .param-row input[type=checkbox] { accent-color: var(--c-accent); width: 16px; height: 16px; }
+  .param-row .param-value { flex: 0 0 40px; font-size: 10px; color: var(--text); text-align: right; }
+
+  .field {
+    display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px;
+  }
+  .field label { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .field input[type=text], .field select {
+    background: var(--stage-bg); border: 1px solid var(--line); color: var(--text);
+    padding: 7px 9px; font-size: 12px;
+  }
+  .field input[type=text]:focus-visible { border-color: var(--c-accent); }
+  .seed-row { display: flex; gap: 6px; }
+  .seed-row input { flex: 1 1 auto; min-width: 0; }
+
+  .btn {
+    background: transparent; border: 1px solid var(--line); color: var(--text);
+    font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; padding: 8px 12px;
+  }
+  .btn:hover { border-color: var(--c-accent); color: var(--c-accent); }
+  .btn.primary { border-color: var(--c-accent); color: var(--c-accent); }
+  .btn.primary:hover { background: var(--c-accent); color: var(--bg); }
+  .btn.full { width: 100%; }
+  .btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .status-line { font-size: 11px; color: var(--muted); min-height: 14px; line-height: 1.5; }
+
+  footer.note {
+    margin-top: 26px; font-size: 11px; color: var(--muted); line-height: 1.7;
+    border-top: 1px solid var(--line); padding-top: 14px; max-width: 84ch;
+  }
+  footer.note code { color: var(--c-fluid); }
+</style>
+<script src="../../assets/theme.js"></script>
+<script src="../../assets/reveal.js"></script>
+</head>
+<body>
+  <header id="app-header">
+    <a class="wordmark" href="../../index.html">REN<b>K</b>ON</a>
+    <div class="crumbs">Proc-Gen / Label Generator</div>
+    <div class="mark">DECAL CHANNELS</div>
+  </header>
+  <main id="app-main">
+    <div class="page-head">
+      <h1>Label Generator</h1>
+      <p>Procedural placeable label decals — localized image maps in the KeyShot Label sense.
+         Pick a generator, dial the parameters, and export the opacity / bump / spec (and optional normal)
+         channel set ready to drop into a KeyShot label. Pure browser, seeded &amp; reproducible, no rendering.</p>
+    </div>
+
+    <div class="layout">
+      <!-- LEFT: library + presets -->
+      <div class="col" id="col-lib">
+        <div>
+          <span class="section-label">Library</span>
+          <div id="lib-list"></div>
+        </div>
+        <div>
+          <span class="section-label">Saved Presets</span>
+          <div class="preset-list" id="preset-list"></div>
+        </div>
+      </div>
+
+      <!-- CENTER: preview -->
+      <div class="col" id="col-preview">
+        <div class="tab-row" id="tab-row">
+          <button class="tab-btn active" data-tab="opacity">Opacity</button>
+          <button class="tab-btn" data-tab="bump">Bump</button>
+          <button class="tab-btn" data-tab="spec">Spec</button>
+          <button class="tab-btn" data-tab="normal">Normal</button>
+        </div>
+        <div class="stage checker" id="stage">
+          <canvas id="preview-canvas" width="512" height="512"></canvas>
+        </div>
+        <div class="preview-meta" id="preview-meta">
+          <label class="toggle-inline" id="opacity-bg-toggle-wrap">
+            <input type="checkbox" id="checker-toggle" checked /> Checkerboard alpha
+          </label>
+          <span class="stat" id="stat-channel"></span>
+          <span class="stat" id="stat-alpha"></span>
+        </div>
+      </div>
+
+      <!-- RIGHT: params + globals + export -->
+      <div class="col" id="col-params">
+        <div>
+          <span class="section-label" id="gen-title">Parameters</span>
+          <div id="param-panel"></div>
+        </div>
+
+        <div>
+          <span class="section-label">Seed</span>
+          <div class="field">
+            <div class="seed-row">
+              <input type="text" id="seed-input" spellcheck="false" />
+              <button class="btn" id="randomize-btn" title="Re-roll the seed">Roll</button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <span class="section-label">Channel Globals</span>
+          <div id="global-panel"></div>
+        </div>
+
+        <div>
+          <span class="section-label">Export</span>
+          <div class="field">
+            <label for="basename-input">Base name</label>
+            <input type="text" id="basename-input" spellcheck="false" value="label_01" />
+          </div>
+          <div class="field">
+            <label for="res-select">Resolution</label>
+            <select id="res-select">
+              <option value="1024">1024 &times; 1024</option>
+              <option value="2048">2048 &times; 2048</option>
+            </select>
+          </div>
+          <label class="toggle-inline" style="margin-bottom:10px;">
+            <input type="checkbox" id="include-normal" /> Include normal map in set
+          </label>
+          <div class="btn-row" style="margin-bottom:8px;">
+            <button class="btn" data-export="opacity">Opacity</button>
+            <button class="btn" data-export="bump">Bump</button>
+            <button class="btn" data-export="spec">Spec</button>
+            <button class="btn" data-export="normal">Normal</button>
+          </div>
+          <button class="btn primary full" id="export-set-btn">Export set</button>
+          <button class="btn full" id="save-preset-btn" style="margin-top:6px;">Save preset</button>
+          <div class="status-line" id="status-line"></div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="note">
+      Channels: <code>opacity</code> is the real RGBA cutout (alpha = where the label shows) rendered over the
+      material; <code>bump</code> is the height field with mid-grey 128 = flat (Bump Depth scales contrast around 128);
+      <code>spec</code> drives roughness (white = shinier, black = matte); <code>normal</code> is derived from bump via a
+      Sobel filter. Exports name as <code>&lt;basename&gt;_opacity.png</code> / <code>_bump.png</code> /
+      <code>_spec.png</code> / <code>_normal.png</code> — drop the set into the KeyShot label template's channel slots.
+    </footer>
+  </main>
+
+<canvas id="work-canvas" style="display:none"></canvas>
+
+<script>
+(function () {
+  "use strict";
+
+  /* =========================================================
+     SEEDED RNG  —  hash a seed string -> uint32 -> mulberry32
+     (mirrors the sibling parametric-generators tool)
+     ========================================================= */
+  function hashSeed(str) {
+    // xfnv-1a
+    str = String(str);
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 0x01000193);
+    }
+    return h >>> 0;
+  }
+  function mulberry32(seed) {
+    let s = seed >>> 0;
+    return function () {
+      s |= 0; s = (s + 0x6D2B79F5) | 0;
+      let t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function randomSeedString() {
+    return Math.floor(Math.random() * 0xffffffff).toString(36).toUpperCase().padStart(6, "0");
+  }
+
+  /* =========================================================
+     VALUE-NOISE FIELD  (smooth bilinear, from the sibling tool)
+     Returns a sampler(x,y) in [0,1].
+     ========================================================= */
+  function makeNoise(w, h, cellSize, rng) {
+    const cols = Math.ceil(w / cellSize) + 2, rows = Math.ceil(h / cellSize) + 2;
+    const grid = new Float32Array(cols * rows);
+    for (let i = 0; i < grid.length; i++) grid[i] = rng();
+    const smooth = t => t * t * (3 - 2 * t);
+    return function (x, y) {
+      const gx = x / cellSize, gy = y / cellSize;
+      let x0 = Math.floor(gx), y0 = Math.floor(gy);
+      if (x0 < 0) x0 = 0; if (y0 < 0) y0 = 0;
+      if (x0 > cols - 2) x0 = cols - 2; if (y0 > rows - 2) y0 = rows - 2;
+      const sx = smooth(gx - x0), sy = smooth(gy - y0);
+      const v00 = grid[y0 * cols + x0], v10 = grid[y0 * cols + x0 + 1];
+      const v01 = grid[(y0 + 1) * cols + x0], v11 = grid[(y0 + 1) * cols + x0 + 1];
+      const top = v00 + (v10 - v00) * sx;
+      const bot = v01 + (v11 - v01) * sx;
+      return top + (bot - top) * sy;
+    };
+  }
+  // fractal sum of two octaves for organic warp
+  function makeFbm(w, h, cell, rng) {
+    const a = makeNoise(w, h, cell, rng);
+    const b = makeNoise(w, h, cell / 2, rng);
+    return (x, y) => a(x, y) * 0.65 + b(x, y) * 0.35;
+  }
+
+  function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+  function smoothstep(e0, e1, x) {
+    let t = (x - e0) / (e1 - e0);
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    return t * t * (3 - 2 * t);
+  }
+
+  /* =========================================================
+     GENERATOR REGISTRY
+
+     A generator is a self-contained object:
+       { id, name, group, params:[{key,label,min,max,step,default}],
+         drawColor(ctx, p, rng, size),   // paints RGBA; ALPHA = cutout
+         drawHeight(hctx, p, rng, size), // paints greyscale HEIGHT (128 = flat)
+         drawSpec(sctx, p, rng, size)    // optional greyscale spec (white=shinier)
+       }
+
+     Adding a new generator (paint, grime, ...) is a drop-in: push another
+     object onto GENERATORS with these methods. The framework derives the
+     export channels (opacity / bump / spec / normal) from whatever the three
+     draw* methods paint — no other wiring required.
+
+     Both generators below compute one shared per-pixel field (cached) so the
+     colour / height / spec channels stay pixel-aligned across draw calls.
+     ========================================================= */
+
+  const _fieldCache = { key: null, data: null };
+  function cachedField(gen, p, size, build) {
+    const key = gen.id + "|" + size + "|" + JSON.stringify(p);
+    if (_fieldCache.key === key) return _fieldCache.data;
+    const data = build();
+    _fieldCache.key = key; _fieldCache.data = data;
+    return data;
+  }
+
+  /* ---------- 1. FINGERPRINT (group "Contact") ---------- */
+  const Fingerprint = {
+    id: "fingerprint",
+    name: "Fingerprint",
+    group: "Contact",
+    params: [
+      { key: "ridgeDensity",  label: "Ridge Density",  min: 6,  max: 40, step: 1,    default: 20 },
+      { key: "ridgeContrast", label: "Ridge Contrast", min: 0.3, max: 3, step: 0.05, default: 1.4 },
+      { key: "smudge",        label: "Smudge",         min: 0,  max: 1,  step: 0.01, default: 0.25 },
+      { key: "pressure",      label: "Pressure",       min: 0.1, max: 1, step: 0.01, default: 0.6 },
+      { key: "rotation",      label: "Rotation",       min: 0,  max: 360, step: 1,   default: 0 },
+      { key: "partial",       label: "Partial",        min: 0,  max: 0.85, step: 0.01, default: 0 }
+    ],
+    _build(p, size) {
+      const seedNum = hashSeed(p.seed + "|fp");
+      const r = mulberry32(seedNum);
+      const cx = size * (0.44 + 0.12 * r());
+      const cy = size * (0.44 + 0.12 * r());
+      const rot = p.rotation * Math.PI / 180;
+      const cosR = Math.cos(rot), sinR = Math.sin(rot);
+      const ea = 1.0 + 0.45 * r();          // elliptical aspect (whorl squash)
+      const eb = 1.0 / ea;
+      const whorl = (r() < 0.5 ? 1 : -1) * (0.5 + 0.7 * r());
+      const warpAmt = size * 0.05;
+      const warpA = makeFbm(size, size, size / 6, r);
+      const warpB = makeFbm(size, size, size / 6, r);
+      const fine  = makeFbm(size, size, size / 34, r);
+      const coarse = makeNoise(size, size, size / 3.2, r); // smudge break mask
+      const density = p.ridgeDensity * 0.09;
+      const printR = size * 0.44;
+      const effContrast = p.ridgeContrast * (1 - 0.7 * p.smudge);
+
+      // partial cut
+      const cutAng = r() * Math.PI * 2;
+      const cutCos = Math.cos(cutAng), cutSin = Math.sin(cutAng);
+      const cutSoft = size * 0.06;
+      const cutPos = printR * (1 - 2 * p.partial);
+
+      const ink = new Float32Array(size * size);       // deposited residue [0..1]
+      const relief = new Float32Array(size * size);    // ridge signal centred at 0.5
+
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const i = y * size + x;
+          const px = x - cx, py = y - cy;
+          // rotate around core
+          const rx = px * cosR - py * sinR;
+          const ry = px * sinR + py * cosR;
+          // domain warp
+          const wx = rx + (warpA(x, y) - 0.5) * warpAmt;
+          const wy = ry + (warpB(x, y) - 0.5) * warpAmt;
+          const ed = Math.sqrt((wx * ea) * (wx * ea) + (wy * eb) * (wy * eb));
+          const theta = Math.atan2(wy, wx);
+          const phase = ed * density + theta * whorl * 3 + (fine(x, y) - 0.5) * 3.2;
+          const s = 0.5 + 0.5 * Math.sin(phase);       // 0..1 ridge/valley
+          // sharpen ridges into lines
+          let ridge = clamp01((s - 0.5) * effContrast + 0.5);
+
+          // print extent (soft radial edge of the whole print)
+          const dCore = Math.sqrt(px * px + py * py);
+          const extent = smoothstep(printR, printR * 0.55, dCore);
+
+          // smudge: break ridges where the coarse field is low
+          const broken = 1 - p.smudge * 0.9 * (1 - coarse(x, y));
+
+          // partial: crop to one side of a noisy cut line
+          let partialMask = 1;
+          if (p.partial > 0) {
+            const proj = px * cutCos + py * cutSin + (fine(x, y) - 0.5) * size * 0.07;
+            partialMask = smoothstep(cutPos - cutSoft, cutPos + cutSoft, proj);
+          }
+
+          const cover = extent * broken * partialMask;
+          // ink lands on the ridge crests (thin lines), faint
+          const ridgeLine = smoothstep(0.5, 0.85, ridge);
+          ink[i] = ridgeLine * cover;
+          relief[i] = 0.5 + (s - 0.5) * cover;          // smooth ridge relief for bump
+        }
+      }
+      return { ink, relief, size, pressure: p.pressure };
+    },
+    drawColor(ctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const img = ctx.createImageData(size, size);
+      const d = img.data;
+      const aMax = 0.12 + 0.55 * f.pressure;            // oily residue is faint
+      for (let i = 0; i < f.ink.length; i++) {
+        const a = clamp01(f.ink[i] * aMax);
+        const j = i * 4;
+        // warm dark oily tone
+        d[j] = 46; d[j + 1] = 38; d[j + 2] = 32;
+        d[j + 3] = Math.round(a * 255);
+      }
+      ctx.putImageData(img, 0, 0);
+    },
+    drawHeight(hctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const img = hctx.createImageData(size, size);
+      const d = img.data;
+      for (let i = 0; i < f.relief.length; i++) {
+        const v = Math.round(clamp01(f.relief[i]) * 255);
+        const j = i * 4;
+        d[j] = v; d[j + 1] = v; d[j + 2] = v; d[j + 3] = 255;
+      }
+      hctx.putImageData(img, 0, 0);
+    },
+    drawSpec(sctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const img = sctx.createImageData(size, size);
+      const d = img.data;
+      // ridges carry a slight oily sheen (shinier) over a neutral base
+      for (let i = 0; i < f.ink.length; i++) {
+        const v = Math.round(clamp01(0.5 + f.ink[i] * 0.4) * 255);
+        const j = i * 4;
+        d[j] = v; d[j + 1] = v; d[j + 2] = v; d[j + 3] = 255;
+      }
+      sctx.putImageData(img, 0, 0);
+    }
+  };
+
+  /* ---------- 2. SCUFF / EDGE-RUB (group "Wear") ---------- */
+  const Scuff = {
+    id: "scuff",
+    name: "Scuff / Edge-rub",
+    group: "Wear",
+    params: [
+      { key: "direction",     label: "Direction",     min: 0,  max: 360, step: 1,   default: 20 },
+      { key: "streakDensity", label: "Streak Density", min: 0, max: 1,   step: 0.01, default: 0.55 },
+      { key: "streakLength",  label: "Streak Length",  min: 0, max: 1,   step: 0.01, default: 0.4 },
+      { key: "patchSize",     label: "Patch Size",     min: 0.1, max: 1, step: 0.01, default: 0.55 },
+      { key: "intensity",     label: "Intensity",      min: 0.1, max: 1, step: 0.01, default: 0.7 },
+      { key: "roughBias",     label: "Rough Bias",     min: 0, max: 1,   step: 0.01, default: 0.6 }
+    ],
+    _build(p, size) {
+      const seedNum = hashSeed(p.seed + "|scuff");
+      const r = mulberry32(seedNum);
+      const cx = size * (0.4 + 0.2 * r());
+      const cy = size * (0.4 + 0.2 * r());
+      const patchR = size * (0.16 + 0.32 * p.patchSize);
+      const edgeNoise = makeNoise(size, size, size / 5.5, r);
+
+      // patch mask (soft-edged, noisy — the placeable scuff zone)
+      const mask = new Float32Array(size * size);
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const dx = x - cx, dy = y - cy;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          const rr = patchR * (0.7 + 0.55 * edgeNoise(x, y));
+          mask[y * size + x] = smoothstep(rr, rr * 0.45, d);
+        }
+      }
+
+      // streaks: draw many short directional lines onto a temp canvas
+      const sc = document.createElement("canvas");
+      sc.width = size; sc.height = size;
+      const sctx = sc.getContext("2d");
+      sctx.clearRect(0, 0, size, size);
+      sctx.lineCap = "round";
+      const dir = p.direction * Math.PI / 180;
+      const nStreaks = Math.round((80 + 900 * p.streakDensity) * (patchR / (size * 0.5)));
+      const lenBase = size * (0.015 + 0.13 * p.streakLength);
+      for (let k = 0; k < nStreaks; k++) {
+        // random point inside the patch disc
+        const ang = r() * Math.PI * 2;
+        const rad = patchR * Math.sqrt(r()) * 1.05;
+        const sx = cx + Math.cos(ang) * rad;
+        const sy = cy + Math.sin(ang) * rad;
+        const len = lenBase * (0.4 + 1.2 * r());
+        const a = dir + (r() - 0.5) * 0.6;
+        const hx = Math.cos(a) * len * 0.5, hy = Math.sin(a) * len * 0.5;
+        sctx.strokeStyle = "#ffffff";
+        sctx.globalAlpha = clamp01(p.intensity * (0.12 + 0.55 * r()));
+        sctx.lineWidth = 0.5 + 1.2 * r();
+        sctx.beginPath();
+        sctx.moveTo(sx - hx, sy - hy);
+        sctx.lineTo(sx + hx, sy + hy);
+        sctx.stroke();
+      }
+      const sImg = sctx.getImageData(0, 0, size, size).data;
+      const streak = new Float32Array(size * size);
+      for (let i = 0; i < streak.length; i++) {
+        // premultiplied white * alpha -> use alpha channel as streak strength,
+        // masked so streaks only live inside the patch
+        streak[i] = (sImg[i * 4 + 3] / 255) * clamp01(mask[i] * 1.4);
+      }
+
+      return { mask, streak, size, intensity: p.intensity, roughBias: p.roughBias };
+    },
+    drawColor(ctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const img = ctx.createImageData(size, size);
+      const d = img.data;
+      for (let i = 0; i < f.mask.length; i++) {
+        const haze = f.mask[i] * f.intensity * 0.45;    // faint abrasion haze
+        const a = clamp01(haze + f.streak[i]);           // streaks add opacity
+        const bright = 190 + Math.round(f.streak[i] * 55);
+        const j = i * 4;
+        d[j] = bright; d[j + 1] = bright; d[j + 2] = Math.min(255, bright + 6);
+        d[j + 3] = Math.round(a * 255);
+      }
+      ctx.putImageData(img, 0, 0);
+    },
+    drawHeight(hctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const img = hctx.createImageData(size, size);
+      const d = img.data;
+      // streak lines are the relief; flat (128) elsewhere
+      for (let i = 0; i < f.streak.length; i++) {
+        const v = Math.round(clamp01(0.5 + (f.streak[i] - 0.12) * 0.55) * 255);
+        const j = i * 4;
+        d[j] = v; d[j + 1] = v; d[j + 2] = v; d[j + 3] = 255;
+      }
+      hctx.putImageData(img, 0, 0);
+    },
+    drawSpec(sctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const img = sctx.createImageData(size, size);
+      const d = img.data;
+      // scuffed zone reads ROUGHER (darker); streaks scuff it further
+      for (let i = 0; i < f.mask.length; i++) {
+        const rough = f.mask[i] * (0.35 + 0.55 * f.roughBias) + f.streak[i] * 0.3;
+        const v = Math.round(clamp01(1 - rough) * 255);
+        const j = i * 4;
+        d[j] = v; d[j + 1] = v; d[j + 2] = v; d[j + 3] = 255;
+      }
+      sctx.putImageData(img, 0, 0);
+    }
+  };
+
+  const GENERATORS = [Fingerprint, Scuff];
+  const GEN_BY_ID = {};
+  GENERATORS.forEach(g => GEN_BY_ID[g.id] = g);
+
+  /* =========================================================
+     CHANNEL DERIVATION ENGINE
+     Runs the active generator's draw* methods, then derives the
+     four export channels from what they paint.
+     ========================================================= */
+  function newCanvas(size) {
+    const c = document.createElement("canvas");
+    c.width = size; c.height = size;
+    return c;
+  }
+  function greyFromCanvas(ctx, size) {
+    const d = ctx.getImageData(0, 0, size, size).data;
+    const out = new Float32Array(size * size);
+    for (let i = 0; i < out.length; i++) out[i] = d[i * 4] / 255; // R channel
+    return out;
+  }
+
+  // Sobel height->normal (from the sibling tool). Wraps toroidally.
+  function heightToNormalMap(data, size, strength) {
+    const out = new Uint8ClampedArray(size * size * 4);
+    const at = (x, y) => data[((y + size) % size) * size + ((x + size) % size)];
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const l = at(x - 1, y), rr = at(x + 1, y), u = at(x, y - 1), dn = at(x, y + 1);
+        const dx = (l - rr) * strength, dy = (u - dn) * strength;
+        const len = Math.sqrt(dx * dx + dy * dy + 1);
+        const idx = (y * size + x) * 4;
+        out[idx]     = Math.round((dx / len * 0.5 + 0.5) * 255);
+        out[idx + 1] = Math.round((dy / len * 0.5 + 0.5) * 255);
+        out[idx + 2] = Math.round((1 / len * 0.5 + 0.5) * 255);
+        out[idx + 3] = 255;
+      }
+    }
+    return out;
+  }
+
+  // Produces the full channel set at `size`.
+  function computeChannels(gen, params, globals, size) {
+    const rngSeed = hashSeed(params.seed);
+
+    // --- opacity: the RGBA cutout ---
+    const colorCanvas = newCanvas(size);
+    const cctx = colorCanvas.getContext("2d");
+    cctx.clearRect(0, 0, size, size);
+    gen.drawColor(cctx, params, mulberry32(rngSeed), size);
+    const colorImage = cctx.getImageData(0, 0, size, size);
+
+    // --- height -> bump ---
+    const hCanvas = newCanvas(size);
+    const hctx = hCanvas.getContext("2d");
+    gen.drawHeight(hctx, params, mulberry32(rngSeed), size);
+    const height = greyFromCanvas(hctx, size);
+
+    const depth = globals.bumpDepth;
+    const bump = new Float32Array(size * size);
+    for (let i = 0; i < bump.length; i++) {
+      let v = clamp01((height[i] - 0.5) * depth + 0.5); // mid-grey 128 = flat
+      if (globals.invertBump) v = 1 - v;
+      bump[i] = v;
+    }
+
+    // --- spec ---
+    let specRaw;
+    if (typeof gen.drawSpec === "function") {
+      const sCanvas = newCanvas(size);
+      const sctx = sCanvas.getContext("2d");
+      gen.drawSpec(sctx, params, mulberry32(rngSeed), size);
+      specRaw = greyFromCanvas(sctx, size);
+    } else {
+      // derive from coverage (alpha) + height when a generator has no spec:
+      // covered + raised -> shinier; matte base elsewhere.
+      specRaw = new Float32Array(size * size);
+      const cd = colorImage.data;
+      for (let i = 0; i < specRaw.length; i++) {
+        const cov = cd[i * 4 + 3] / 255;
+        specRaw[i] = clamp01(0.4 + cov * 0.3 + (height[i] - 0.5) * 0.4);
+      }
+    }
+    const specStrength = globals.specStrength;
+    const spec = new Float32Array(size * size);
+    for (let i = 0; i < spec.length; i++) spec[i] = clamp01(specRaw[i] * specStrength);
+
+    // --- normal (from bump) ---
+    const normal = heightToNormalMap(bump, size, 2.2 * depth);
+
+    return { size, colorImage, bump, spec, normal };
+  }
+
+  // paint a Float32 grey field to a canvas (opaque)
+  function paintGrey(canvas, data, size) {
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    const img = ctx.createImageData(size, size);
+    for (let i = 0; i < data.length; i++) {
+      const v = Math.round(data[i] * 255);
+      img.data[i * 4] = v; img.data[i * 4 + 1] = v; img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+  function paintRGBA(canvas, imageData, size) {
+    canvas.width = size; canvas.height = size;
+    canvas.getContext("2d").putImageData(imageData, 0, 0);
+  }
+  function paintNormal(canvas, normal, size) {
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    const img = ctx.createImageData(size, size);
+    img.data.set(normal);
+    ctx.putImageData(img, 0, 0);
+  }
+
+  /* =========================================================
+     STATE
+     ========================================================= */
+  const PREVIEW_SIZE = 512;
+  const GLOBAL_DEFS = [
+    { key: "bumpDepth",   label: "Bump Depth",    min: 0.2, max: 4, step: 0.05, default: 1.4, type: "range" },
+    { key: "specStrength", label: "Spec Strength", min: 0,  max: 2, step: 0.02, default: 1.0, type: "range" },
+    { key: "invertBump",  label: "Invert Bump",   type: "check", default: false }
+  ];
+
+  const state = {
+    genId: GENERATORS[0].id,
+    params: {},        // per-current-generator param values
+    seed: randomSeedString(),
+    globals: {},
+    tab: "opacity",
+    checker: true,
+    includeNormal: false,
+    basename: "label_01"
+  };
+  function resetParamsFor(gen) {
+    state.params = {};
+    gen.params.forEach(pd => state.params[pd.key] = pd.default);
+  }
+  GLOBAL_DEFS.forEach(g => state.globals[g.key] = g.default);
+  resetParamsFor(GEN_BY_ID[state.genId]);
+
+  // combined param object handed to generators (params + seed)
+  function activeParams() {
+    return Object.assign({ seed: state.seed }, state.params);
+  }
+
+  let lastChannels = null; // cached preview channels
+
+  /* =========================================================
+     DOM refs
+     ========================================================= */
+  const libList = document.getElementById("lib-list");
+  const presetList = document.getElementById("preset-list");
+  const paramPanel = document.getElementById("param-panel");
+  const globalPanel = document.getElementById("global-panel");
+  const genTitle = document.getElementById("gen-title");
+  const seedInput = document.getElementById("seed-input");
+  const basenameInput = document.getElementById("basename-input");
+  const resSelect = document.getElementById("res-select");
+  const stage = document.getElementById("stage");
+  const previewCanvas = document.getElementById("preview-canvas");
+  const statusLine = document.getElementById("status-line");
+  const statChannel = document.getElementById("stat-channel");
+  const statAlpha = document.getElementById("stat-alpha");
+  const checkerToggle = document.getElementById("checker-toggle");
+  const opacityBgWrap = document.getElementById("opacity-bg-toggle-wrap");
+  const includeNormalCb = document.getElementById("include-normal");
+
+  /* =========================================================
+     LIBRARY
+     ========================================================= */
+  function buildLibrary() {
+    libList.innerHTML = "";
+    const groups = {};
+    GENERATORS.forEach(g => { (groups[g.group] = groups[g.group] || []).push(g); });
+    Object.keys(groups).forEach(grp => {
+      const gl = document.createElement("div");
+      gl.className = "lib-group-label";
+      gl.textContent = grp;
+      libList.appendChild(gl);
+      groups[grp].forEach(g => {
+        const btn = document.createElement("button");
+        btn.className = "lib-item" + (g.id === state.genId ? " active" : "");
+        btn.dataset.gen = g.id;
+        btn.innerHTML = '<span class="li-name">' + g.name + '</span>';
+        btn.addEventListener("click", () => selectGenerator(g.id));
+        libList.appendChild(btn);
+      });
+    });
+  }
+  function selectGenerator(id) {
+    if (!GEN_BY_ID[id]) return;
+    state.genId = id;
+    resetParamsFor(GEN_BY_ID[id]);
+    buildLibrary();
+    buildParamPanel();
+    render();
+  }
+
+  /* =========================================================
+     PARAM PANEL
+     ========================================================= */
+  function makeSliderRow(def, value, onInput) {
+    const row = document.createElement("div");
+    row.className = "param-row";
+    const label = document.createElement("label");
+    label.textContent = def.label;
+    const input = document.createElement("input");
+    input.type = "range";
+    input.min = def.min; input.max = def.max; input.step = def.step; input.value = value;
+    const val = document.createElement("span");
+    val.className = "param-value";
+    const fmt = v => (def.step < 1 ? Number(v).toFixed(2) : String(Math.round(v)));
+    val.textContent = fmt(value);
+    input.addEventListener("input", () => {
+      val.textContent = fmt(input.value);
+      onInput(parseFloat(input.value));
+    });
+    row.appendChild(label); row.appendChild(input); row.appendChild(val);
+    return row;
+  }
+  function makeCheckRow(def, value, onChange) {
+    const row = document.createElement("div");
+    row.className = "param-row";
+    const label = document.createElement("label");
+    label.textContent = def.label;
+    const input = document.createElement("input");
+    input.type = "checkbox"; input.checked = !!value;
+    input.addEventListener("change", () => onChange(input.checked));
+    row.appendChild(label); row.appendChild(input);
+    return row;
+  }
+
+  function buildParamPanel() {
+    const gen = GEN_BY_ID[state.genId];
+    genTitle.textContent = gen.name + " — Parameters";
+    paramPanel.innerHTML = "";
+    gen.params.forEach(def => {
+      paramPanel.appendChild(makeSliderRow(def, state.params[def.key], v => {
+        state.params[def.key] = v;
+        render();
+      }));
+    });
+  }
+
+  function buildGlobalPanel() {
+    globalPanel.innerHTML = "";
+    GLOBAL_DEFS.forEach(def => {
+      if (def.type === "check") {
+        globalPanel.appendChild(makeCheckRow(def, state.globals[def.key], v => {
+          state.globals[def.key] = v; render();
+        }));
+      } else {
+        globalPanel.appendChild(makeSliderRow(def, state.globals[def.key], v => {
+          state.globals[def.key] = v; render();
+        }));
+      }
+    });
+  }
+
+  /* =========================================================
+     PREVIEW / RENDER
+     ========================================================= */
+  function updateStageBg() {
+    stage.classList.remove("checker", "midgrey");
+    if (state.tab === "opacity") {
+      stage.classList.add(state.checker ? "checker" : "midgrey");
+      opacityBgWrap.style.display = "";
+    } else {
+      opacityBgWrap.style.display = "none";
+    }
+  }
+
+  function render() {
+    const gen = GEN_BY_ID[state.genId];
+    const ch = computeChannels(gen, activeParams(), state.globals, PREVIEW_SIZE);
+    lastChannels = ch;
+    updateStageBg();
+
+    if (state.tab === "opacity") {
+      paintRGBA(previewCanvas, ch.colorImage, ch.size);
+      // alpha stats
+      let minA = 255, maxA = 0, sum = 0;
+      const d = ch.colorImage.data;
+      for (let i = 3; i < d.length; i += 4) { const a = d[i]; if (a < minA) minA = a; if (a > maxA) maxA = a; sum += a; }
+      const px = d.length / 4;
+      statAlpha.innerHTML = "alpha <b>" + minA + "–" + maxA + "</b> · mean <b>" + (sum / px / 255).toFixed(2) + "</b>";
+    } else if (state.tab === "bump") {
+      paintGrey(previewCanvas, ch.bump, ch.size);
+      statAlpha.innerHTML = channelRange("bump", ch.bump);
+    } else if (state.tab === "spec") {
+      paintGrey(previewCanvas, ch.spec, ch.size);
+      statAlpha.innerHTML = channelRange("spec", ch.spec);
+    } else if (state.tab === "normal") {
+      paintNormal(previewCanvas, ch.normal, ch.size);
+      statAlpha.innerHTML = "RGB normal map";
+    }
+    statChannel.innerHTML = "channel <b>" + state.tab + "</b> · " + PREVIEW_SIZE + "px preview";
+  }
+  function channelRange(name, data) {
+    let mn = 1, mx = 0;
+    for (let i = 0; i < data.length; i++) { if (data[i] < mn) mn = data[i]; if (data[i] > mx) mx = data[i]; }
+    return name + " range <b>" + mn.toFixed(2) + "–" + mx.toFixed(2) + "</b>";
+  }
+
+  /* =========================================================
+     EXPORT
+     ========================================================= */
+  function downloadCanvas(canvas, filename) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(blob => {
+        if (!blob) { reject(new Error("toBlob failed")); return; }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+        resolve();
+      }, "image/png");
+    });
+  }
+  function channelCanvas(ch, which) {
+    const c = newCanvas(ch.size);
+    if (which === "opacity") paintRGBA(c, ch.colorImage, ch.size);
+    else if (which === "bump") paintGrey(c, ch.bump, ch.size);
+    else if (which === "spec") paintGrey(c, ch.spec, ch.size);
+    else if (which === "normal") paintNormal(c, ch.normal, ch.size);
+    return c;
+  }
+  async function exportChannels(list) {
+    const size = parseInt(resSelect.value, 10);
+    const gen = GEN_BY_ID[state.genId];
+    statusLine.textContent = "Rendering " + size + "px…";
+    // compute at export resolution
+    const ch = computeChannels(gen, activeParams(), state.globals, size);
+    const base = (state.basename || "label").trim().replace(/\s+/g, "_") || "label";
+    let n = 0;
+    for (const which of list) {
+      const canvas = channelCanvas(ch, which);
+      await downloadCanvas(canvas, base + "_" + which + ".png");
+      n++;
+    }
+    statusLine.textContent = "Exported " + n + " channel" + (n > 1 ? "s" : "") + " at " + size + "×" + size + " px.";
+  }
+
+  /* =========================================================
+     PRESETS  (= the growing library) — localStorage
+     ========================================================= */
+  const PRESET_INDEX = "labelpreset:index";
+  function presetGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function presetSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+  function presetRemove(k) { try { localStorage.removeItem(k); } catch (e) {} }
+  function presetNames() {
+    try { const a = JSON.parse(presetGet(PRESET_INDEX) || "[]"); return Array.isArray(a) ? a : []; }
+    catch (e) { return []; }
+  }
+  function setPresetNames(arr) { presetSet(PRESET_INDEX, JSON.stringify(arr)); }
+
+  function savePreset() {
+    const gen = GEN_BY_ID[state.genId];
+    const suggested = gen.name + " " + state.seed;
+    const name = (window.prompt("Preset name:", suggested) || "").trim();
+    if (!name) return;
+    const obj = {
+      generatorId: state.genId,
+      params: Object.assign({}, state.params),
+      seed: state.seed,
+      globals: Object.assign({}, state.globals),
+      name: name
+    };
+    presetSet("labelpreset:" + name, JSON.stringify(obj));
+    const names = presetNames();
+    if (names.indexOf(name) === -1) { names.push(name); setPresetNames(names); }
+    buildPresetList();
+    statusLine.textContent = 'Saved preset "' + name + '".';
+  }
+  function loadPreset(name) {
+    const raw = presetGet("labelpreset:" + name);
+    if (!raw) return;
+    let obj; try { obj = JSON.parse(raw); } catch (e) { return; }
+    if (!GEN_BY_ID[obj.generatorId]) return;
+    state.genId = obj.generatorId;
+    resetParamsFor(GEN_BY_ID[state.genId]);
+    Object.assign(state.params, obj.params || {});
+    state.seed = obj.seed != null ? String(obj.seed) : state.seed;
+    Object.assign(state.globals, obj.globals || {});
+    seedInput.value = state.seed;
+    buildLibrary(); buildParamPanel(); buildGlobalPanel();
+    render();
+    statusLine.textContent = 'Loaded preset "' + name + '".';
+  }
+  function deletePreset(name) {
+    presetRemove("labelpreset:" + name);
+    setPresetNames(presetNames().filter(n => n !== name));
+    buildPresetList();
+  }
+  function buildPresetList() {
+    presetList.innerHTML = "";
+    const names = presetNames();
+    if (!names.length) {
+      const e = document.createElement("div");
+      e.className = "preset-empty";
+      e.textContent = "No saved presets yet. Save one to grow the library.";
+      presetList.appendChild(e);
+      return;
+    }
+    names.forEach(name => {
+      const row = document.createElement("div");
+      row.className = "preset-row";
+      const load = document.createElement("button");
+      load.className = "pr-name"; load.textContent = name; load.title = "Load " + name;
+      load.addEventListener("click", () => loadPreset(name));
+      const del = document.createElement("button");
+      del.className = "btn"; del.textContent = "×"; del.title = "Delete " + name;
+      del.style.padding = "7px 9px";
+      del.addEventListener("click", () => { if (confirm('Delete preset "' + name + '"?')) deletePreset(name); });
+      row.appendChild(load); row.appendChild(del);
+      presetList.appendChild(row);
+    });
+  }
+
+  /* =========================================================
+     WIRE UP
+     ========================================================= */
+  document.getElementById("tab-row").addEventListener("click", e => {
+    const b = e.target.closest(".tab-btn"); if (!b) return;
+    state.tab = b.dataset.tab;
+    document.querySelectorAll(".tab-btn").forEach(x => x.classList.toggle("active", x === b));
+    render();
+  });
+  checkerToggle.addEventListener("change", () => { state.checker = checkerToggle.checked; updateStageBg(); });
+  seedInput.addEventListener("input", () => { state.seed = seedInput.value; render(); });
+  document.getElementById("randomize-btn").addEventListener("click", () => {
+    state.seed = randomSeedString(); seedInput.value = state.seed; render();
+  });
+  basenameInput.addEventListener("input", () => { state.basename = basenameInput.value; });
+  includeNormalCb.addEventListener("change", () => { state.includeNormal = includeNormalCb.checked; });
+  resSelect.addEventListener("change", () => {});
+
+  document.querySelectorAll("[data-export]").forEach(btn => {
+    btn.addEventListener("click", () => exportChannels([btn.dataset.export]));
+  });
+  document.getElementById("export-set-btn").addEventListener("click", () => {
+    const list = ["opacity", "bump", "spec"];
+    if (state.includeNormal) list.push("normal");
+    exportChannels(list);
+  });
+  document.getElementById("save-preset-btn").addEventListener("click", savePreset);
+
+  /* =========================================================
+     INIT
+     ========================================================= */
+  seedInput.value = state.seed;
+  basenameInput.value = state.basename;
+  buildLibrary();
+  buildParamPanel();
+  buildGlobalPanel();
+  buildPresetList();
+  render();
+
+  // expose a tiny hook for headless verification
+  window.__labelgen = {
+    state,
+    computeChannels: (size) => computeChannels(GEN_BY_ID[state.genId], activeParams(), state.globals, size || PREVIEW_SIZE),
+    selectGenerator,
+    setParam: (k, v) => { state.params[k] = v; render(); },
+    GENERATORS
+  };
+})();
+</script>
+</body>
+</html>
