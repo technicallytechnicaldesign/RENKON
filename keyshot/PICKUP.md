@@ -1,8 +1,11 @@
 # PICKUP -- KeyShot workstream handoff
 
-**Updated:** 2026-07-15. **Everything below is committed + pushed to `origin/main`.**
-This is the "read this first when you pick the KeyShot work back up" doc. Keep it
-current in place (like the repo's own CLAUDE.md status convention).
+**Updated:** 2026-07-16. **Everything below is committed + pushed to `origin/main`
+EXCEPT the material generator `AB05` (part-size-aware scaling), which is written +
+load-safe on disk but NOT yet committed** -- review the diff, then commit + push
+(AB04 stays on disk pending recycle). This is the "read this first when you pick
+the KeyShot work back up" doc. Keep it current in place (like the repo's own
+CLAUDE.md status convention).
 
 ---
 
@@ -11,8 +14,24 @@ current in place (like the repo's own CLAUDE.md status convention).
 Two KeyShot workstreams are mid-build, each driven by a deep Fable design review
 and built/reviewed by Opus:
 
-1. **Material generator** (`1_HLP_MAT_GENERATOR`) -- works. `AB04` is the current
-   **candidate under render-validation** -- FOUR new shader FAMILIES added as data
+1. **Material generator** (`1_HLP_MAT_GENERATOR`) -- works. `AB05` is the current
+   **candidate under render-validation** -- **PART-SIZE-AWARE TEXTURE SCALING**.
+   AB04 and earlier were NOT part-size aware: no bounding-box query anywhere, and
+   `Center On` (texture_space) was NEVER set -> KeyShot defaulted to *Center On:
+   Model* and every procedural texture mapped to the whole ~6700-unit MODEL, so on
+   a ~40 mm part feature sizes were wildly wrong ("textures loading at 6700, part
+   is 40 mm"); all texture Scales were hardcoded absolutes; and Spots' own tiling
+   Scale was never set at all (`["radius","size","scale"]` matched Radius first ->
+   ~6700 default -> giant blobs). AB05 fixes all of it: (1) `resolve_part_size`
+   (entered `part_size_mm` dialog field > `measure_part_size` walking scene
+   geometry via UNPROBED bbox APIs > `DEFAULT_PART_SIZE_MM = 50`), captured into
+   `spec['scale']`; (2) `SCALE_FRACTIONS` -- part-relative tiling Scales (scratch
+   0.12/fine 0.02/fractal 0.15/cellular 0.08/spots 0.06 of part size), a 40 mm part
+   reproduces roughly the old good values; (3) every tiling builder sets its Scale
+   explicitly (incl. the Spots-Scale fix) + `set_center_on_part` (type-2 enum ->
+   "Part"); (4) Spots distortion so pits read organic. ALL new APIs/params UNPROBED
+   -> getattr/find_param guarded, always builds; load-safe 19/19. `AB04` is the
+   superseded prior candidate (four shader FAMILIES added as data
    (per `AB04_FAMILIES_SPEC.md`, DSMI-2F5A-PROCGEN), on AB03's three-bugfix rev:
    (1) schema `extra` -- an optional 6th tuple element on MATERIALS rows carrying
    `family` + params (default `{}` = "opaque", every AB03 row untouched), threaded
@@ -26,8 +45,8 @@ and built/reviewed by Opus:
    `FAMILY_ALLOWED_LAYERS` per-family wear-layer gating so clear glass never gets
    grime/pitting (glass + thin film drop spots/cellular/occlusion/colour-gradient).
    ALL new constants + param names UNPROBED -> getattr/find_param guarded, always
-   builds; load-safe 20/20. `AB03` is the superseded prior candidate (three
-   confirmed bugfixes); `AB01`-`AB03` kept on disk pending recycle; `AA02` is the
+   builds. `AB04` is kept on disk pending recycle (its prior candidates AB01-AB03
+   were already recycled -- only AA02/AB04/AB05 remain on disk); `AA02` is the
    stable fallback. Vision docs: **MDD-4B7A9F**, **AB04_FAMILIES_SPEC**.
 2. **Render/animation scripts** (`2a_BAT_*`, `2b_ANI_*`) -- **Phase 1 shipped**
    (load-safety + reliability). The 3 animation scripts now *load for the first
@@ -65,12 +84,37 @@ Paste console output back so the design docs can be updated to Rev 2.
    in the Scripting Console. 13 probes; turns MDD-4B7A9F's assumptions into
    facts (label slot / masked-bump / new node params / blend-mode format / ...).
    Delete the `MATGRAPH_PROBE` material afterwards. -> feeds MDD-4B7A9F Rev 2.
-2. **AB04 material generator** -- `git pull`, render a **Brass or Chrome** part
-   (Scratches + Fractal both on). Confirm: colour comes through, a **glossy metal
-   with subtle roughness variation + recessed matte scratch streaks** (NOT flat).
-   Console should show a `SPEC {...}` line (with `finish`, `meta.placement_seed`,
-   `meta.family`, and `base.extra`) + a wire-audit. If good -> retire AA02, AB04
-   is canonical, then recycle AB03/AB02/AB01 (RNK-0062).
+2. **AB05 material generator** -- `git pull`, render a **Brass or Chrome** part
+   (Scratches + Fractal both on). **Enter the real Part size in mm in the dialog**
+   (e.g. 40) -- or leave 0 to let it auto-measure / default to 50. Confirm: colour
+   comes through, a **glossy metal with subtle roughness variation + recessed matte
+   scratch streaks** (NOT flat). Console should show a `SPEC {...}` line (with
+   `finish`, `meta.placement_seed`, `meta.family`, `base.extra`, and now a
+   `scale` block: `part_size_mm` + `source` + `resolved`) + a wire-audit. If
+   good -> retire AA02, AB05 is canonical, then recycle AB04 (RNK-0062).
+   **AB05 PART-SIZE-AWARE SCALING -- the headline change (all UNPROBED, watch the
+   console):**
+   - **Center On: Part** -- every tiling texture should now read *Center On: Part*
+     in the panel, NOT Model. Watch for `[info] couldn't confirm 'Center On' = Part`
+     (the enum int differs on this build -- note which of string/1/0 took) or
+     `[info] no 'Center On' parameter` (display name differs). This is the fix for
+     "textures loading at 6700, part is 40 mm".
+   - **Texture Scale** -- feature sizes should be part-appropriate (roughly 1-5 mm
+     on a 40 mm part), NOT the old ~6700 model-scale. **Especially Spots** -- its
+     Scale is now set explicitly (a separate `set_display`, not the old
+     `["radius","size","scale"]` list that matched Radius first); it should NOT be
+     giant blobs. If any Scale still reads ~6700, the "Scale" display name differs
+     on that node (watch for `[warn] no parameter matching 'scale'`).
+   - **Part size source** -- the console prints `part size {n} mm (entered)` /
+     `(measured)` / `part size unknown -- using default 50.0 mm`. If measured, it
+     names the bbox method that worked (`via getWorldBounds()` / `getBounds()` /
+     `getBoundingBox()`) -- the bbox API is UNPROBED, so if it silently defaults,
+     enter a Part size in the dialog and note which methods were absent.
+   - **Spots distortion** -- the spot pattern should read organic / irregular, not
+     perfectly round (Distortion ~0.4 + part-relative Distortion Scale). Watch for
+     `[warn] no parameter matching 'distortion'` / `'distortion scale'`.
+   - The build summary now prints a `Scale: part {n} mm ({source}) -> scratches ...`
+     line -- eyeball the per-node mm values look sane for the part.
    **AB04 FAMILIES -- render one of each and watch the console** (EVERY shader
    constant + family param name below is UNPROBED; all degrade non-fatally to an
    opaque metal/plastic -- note which fell back):
@@ -150,11 +194,9 @@ probe-dependent phases; design-for is fine, depend-on is not.
 
 | File | State |
 |---|---|
-| `1_HLP_MAT_GENERATOR_AB04.py` | **candidate** -- four new shader families (anisotropic metal, dielectric glass clear+frosted, thin film) via a per-row `extra` dict + family-aware base-param pass + per-family wear-layer gating (per `AB04_FAMILIES_SPEC.md`). All new constants/params UNPROBED, getattr/find_param guarded, always builds; load-safe 20/20. Render-validate then supersede AB03 + AA02 |
-| `1_HLP_MAT_GENERATOR_AB03.py` | superseded prior candidate -- three confirmed bugfixes on AB02: roughness-composite input-type fix (type-14 connection inputs, not PT_COLOR/13), real per-node placement jitter, recursive `getChildren()` auto-apply + kind histogram; kept on disk until AB04 confirmed, then recycle |
-| `1_HLP_MAT_GENERATOR_AB02.py` | earlier candidate (routing fix + Finish axis + Scratches Scale + seeded placement); kept on disk pending recycle |
-| `1_HLP_MAT_GENERATOR_AB01.py` | earlier candidate (spec-refactor + roughness blending); kept on disk pending recycle |
-| `1_HLP_MAT_GENERATOR_AA02.py` | stable fallback (kept until AB04 confirmed) |
+| `1_HLP_MAT_GENERATOR_AB05.py` | **candidate** (NOT yet committed) -- part-size-aware texture scaling on AB04: `resolve_part_size` (entered `part_size_mm` > measured via UNPROBED bbox APIs > default 50), `SCALE_FRACTIONS` (part-relative tiling Scales replacing hardcoded absolutes), `set_center_on_part` (Center On: Part enum, was defaulting to Model -> textures mapped to the whole ~6700-unit model), the Spots-Scale-never-set fix (giant blobs), and Spots distortion; `spec['scale']` captured for reproducibility. All new APIs/params UNPROBED, guarded, always builds; load-safe 19/19. Render-validate then supersede AB04 + AA02 |
+| `1_HLP_MAT_GENERATOR_AB04.py` | superseded prior candidate -- four new shader families (anisotropic metal, dielectric glass clear+frosted, thin film) via a per-row `extra` dict + family-aware base-param pass + per-family wear-layer gating (per `AB04_FAMILIES_SPEC.md`). All new constants/params UNPROBED, guarded, always builds. Kept on disk until AB05 confirmed, then recycle |
+| `1_HLP_MAT_GENERATOR_AA02.py` | stable fallback (kept until AB05 confirmed) |
 | `0_CHK_MATGRAPH_PROBE_AA01.py` | material probe pack -- run it |
 | `0_VAL_LOAD_SAFETY_AA01.py` | dev/CI guard (AST + ASCII); run before commits |
 | `2a_BAT_STD_VIEW_AA01.py`, `2a_BAT_TURNTABLE_AA01.py` | Phase-1 fixed (reliable, load-safe) |

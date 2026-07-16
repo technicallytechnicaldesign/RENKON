@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # AUTHOR claude-subagent
-# REV AB04
+# REV AB05
 # HEADLESS COMPLIANT
 # Procedural material *variant* generator, rebuilt as a spec-driven
 # sample -> validate -> compile pipeline (design MDD-4B7A9F, Phase 1). A dialog
@@ -14,6 +14,48 @@
 # AA02. Each build is auto-named MAT-<TYPE>-<WEAR>-<FINISH>-<hex>. Sits in the
 # 1_ helper stage as the material-*authoring* member of the MAT family, alongside
 # 1_HLP_MAT_PREFLIGHT (coverage QC) and 1_HLP_MAT_LOOKUP (Creo -> KeyShot map).
+#
+# WHAT'S NEW vs AB04 (AB05 = PART-SIZE-AWARE TEXTURE SCALING. AB04 and earlier
+# were NOT part-size aware: no bounding-box query anywhere, and 'Center On'
+# (texture_space) was NEVER set -- so KeyShot defaulted to 'Center On: Model' and
+# every procedural texture mapped to the whole ~6700-unit MODEL. On a ~40 mm part
+# that made feature sizes wildly wrong ("textures loading at 6700, part is 40 mm").
+# All texture Scales were hardcoded absolutes in BASE, unrelated to part size. And
+# Spots' OWN tiling Scale was never set at all -- add_spots_bump used the list
+# ["radius","size","scale"], which matched Radius FIRST (exact-match), so Spots
+# Scale stayed at KeyShot's ~6700 default -> giant blobs. AB05 fixes all of this.
+# EVERY new API/param access is defensive (getattr/find_param/try-except), logs
+# [warn]/[info], and the material ALWAYS builds. CONFIRM-AT-RENDER, see the block
+# in the docstring):
+#   NEW 1. PART-SIZE RESOLUTION. resolve_part_size(opts, name_filter) returns a
+#      characteristic part dimension in mm: (a) the operator-entered `part_size_mm`
+#      dialog field if > 0 (most reliable -- they know the part is 40 mm); else
+#      (b) measure_part_size(name_filter), which walks the scene geometry (reusing
+#      the recursive getChildren() collection) and tries a few UNPROBED lux
+#      bounding-box APIs per node (getWorldBounds/getBounds/getBoundingBox), taking
+#      the max extent across matched parts; else (c) DEFAULT_PART_SIZE_MM = 50.0
+#      with a clear [info]. Captured into spec['scale'] for reproducibility.
+#   NEW 2. PART-RELATIVE TEXTURE SCALES. SCALE_FRACTIONS maps each tiling texture's
+#      Scale to a FRACTION of part size (scratch 0.12, fine 0.02, fractal 0.15,
+#      cellular 0.08, spots 0.06), so a 40 mm part reproduces roughly today's good
+#      values (scratch 0.12*40 ~= 4.8 mm, matching the old hardcoded 5) AND it
+#      auto-adapts to any part size. Replaces the hardcoded absolutes in BASE
+#      (kept only as legacy fallbacks). The placement jitter still multiplies the
+#      resolved scale.
+#   NEW 3. SCALE SET ON EVERY NODE + CENTER ON: PART. Every tiling texture builder
+#      (fine noise, scratches, spots, fractal, cellular) now explicitly sets its
+#      Scale to the part-relative value -- including the FIX for the Spots Scale
+#      miss (a separate set_display call, not the ["radius","size","scale"] list).
+#      set_center_on_part(node) finds ['center on'] / texture_space (a type-2 enum)
+#      and sets it to "Part" (string first, then int candidates 1/0, same
+#      two-candidate + read-back pattern as set_blend_mode); called on every tiling
+#      node right after creation. Non-fatal + logged. CONFIRM-AT-RENDER: the enum
+#      value for "Part".
+#   NEW 4. SPOTS DISTORTION. add_spots_bump now drives Distortion (~0.4) and
+#      Distortion Scale (part-relative) so the spot pattern reads organic, not
+#      perfectly round. Defensive.
+# Everything else (family schema, buses, masking, placement jitter, spec pipeline,
+# and all AB01/AB02/AB03/AB04 fixes) is AB04's logic, extended -- not rewritten.
 #
 # WHAT'S NEW vs AB03 (AB04 = material FAMILIES -- design AB04_FAMILIES_SPEC,
 # DSMI-2F5A-PROCGEN. Four new base-shader FAMILIES added as data, not new
@@ -131,7 +173,8 @@
 # MDD-4B7A9F (scripts/research/MATERIAL_DIVERSITY_DESIGN.md).
 
 """
-KeyShot Procedural Material Generator -- REV AB04 (spec-driven, multi-family)
+KeyShot Procedural Material Generator -- REV AB05 (spec-driven, multi-family,
+part-size aware)
 ============================================================================
 
 Pivoted (AA02) from a fixed recipe into a variant generator, then (AB01)
@@ -212,6 +255,26 @@ watch the console for [warn]/[info]):
   * The brush angle is a STABLE per-build value from the placement RNG (the
     Scratches direction_field is a type-2 enum, not degrees, so it is NOT read).
 
+CONFIRM AT RENDER (AB05 -- part-size-aware scaling; all degrade non-fatally):
+  * CENTER ON: expect every tiling texture to now read "Center On: Part" in the
+    panel, NOT "Model". set_center_on_part tries the string "Part" then int
+    candidates (1, then 0). Watch the console for "[info] couldn't confirm
+    'Center On' = Part" (the enum value differs on this build) or "[info] no
+    'Center On' parameter" (the display name differs). NOTE which int took.
+  * TEXTURE SCALE: feature sizes should be part-appropriate (roughly 1-5 mm on a
+    40 mm part), NOT the old ~6700 model-scale default. Especially SPOTS -- its
+    Scale is now set explicitly (was giant blobs before). If a Scale still reads
+    ~6700, the "Scale" display name differs on that node (watch for "[warn] no
+    parameter matching 'scale'").
+  * PART SIZE SOURCE: the console prints one of "part size {n} mm (entered)",
+    "(measured)", or "part size unknown -- using default 50.0 mm". If measured,
+    it also prints which bounding-box method worked ("via getWorldBounds()" etc.)
+    -- the bbox API is UNPROBED, so if measurement silently falls to default, note
+    it and enter a Part size in the dialog instead.
+  * SPOTS DISTORTION: the spot pattern should read organic / irregular, not
+    perfectly round (Distortion ~0.4, Distortion Scale part-relative). Watch for
+    "[warn] no parameter matching 'distortion'" / "'distortion scale'".
+
 Masking / targeted wear (opt-in, off by default):
   Scratches-to-edges (Curvature mask) and Spots-to-cavities (Occlusion mask).
   The mask texture is mapped onto the bump layer's bump-height, so bump strength
@@ -245,7 +308,34 @@ PT_SHADERBUMP = getattr(lux, "PARAMETER_TYPE_SHADERBUMP", None)
 
 DEBUG = True  # prints real parameters for each node as it's created
 
-GENERATOR_REV = "AB04"
+GENERATOR_REV = "AB05"
+
+# --------------------------------------------------------------------------
+# Part-size-aware texture scaling (AB05)
+# --------------------------------------------------------------------------
+# Fallback when the operator neither entered a part size nor a bounding-box API
+# could measure one. 50 mm is a reasonable "small hardware part" default; the
+# console prints a clear [info] telling the operator to enter a Part size for
+# correct scaling when this is used.
+DEFAULT_PART_SIZE_MM = 50.0
+
+# Each tiling texture's "Scale" (a size in scene units / mm) as a FRACTION of the
+# resolved part size, so scales auto-adapt to any part instead of being hardcoded
+# absolutes. TUNED so a 40 mm part reproduces roughly today's known-good values;
+# the human will refine these at render. On a 40 mm part:
+#   scratch 0.12 -> 4.8 mm  (matches the old hardcoded scratch_scale 5.0)
+#   fine    0.02 -> 0.8 mm  (micro-grain; old absolute was 0.15)
+#   fractal 0.15 -> 6.0 mm  (broad roughness band; old absolute was 4.0)
+#   cellular 0.08 -> 3.2 mm (old absolute was 2.0)
+#   spots   0.06 -> 2.4 mm  (old absolute spots_size 0.05 was the RADIUS, not the
+#                            tiling Scale, which was never set at all -> giant blobs)
+SCALE_FRACTIONS = {
+    "scratch_scale": 0.12,
+    "fine_noise":    0.02,
+    "fractal":       0.15,
+    "cellular":      0.08,
+    "spots_scale":   0.06,
+}
 
 # --------------------------------------------------------------------------
 # Material type presets
@@ -349,6 +439,12 @@ FINISH_ABBR = {"Pristine": "PRS", "Brushed": "BRU", "Worn": "WRN", "Heavy": "HEV
 
 # Subtle base amplitudes at Light Wear (1.0x) -- learned last round that
 # these read as much stronger visually than the raw [0,1] numbers suggest.
+# AB05: the tiling *_scale absolutes below (fine_noise_scale, fractal_scale,
+# scratch_scale, cellular_scale, spots_size) are NO LONGER the source of truth for
+# a texture's tiling Scale -- SCALE_FRACTIONS * resolved part size is (see
+# build_material). They are kept only as LEGACY FALLBACKS for the placement-jitter
+# read-and-multiply path when a live value can't be read. The bump/density/size
+# amplitudes are unchanged.
 BASE = {
     "fine_noise_scale":    0.15,
     "fine_noise_bump":     0.01,
@@ -444,6 +540,10 @@ DEFAULT_OPTIONS = {
     # as the default (they want more distortion) -- change this ONE word to swap.
     "finish": "Brushed",
     "wear_multiplier": 1.0,
+    # AB05: characteristic part size in mm. 0 = auto (measure the scene, else fall
+    # back to DEFAULT_PART_SIZE_MM). Entering the real size (e.g. 40) is the most
+    # reliable route to correct texture scaling.
+    "part_size_mm": 0.0,
     "add_fine_noise": True,
     "add_scratches": True,
     "add_rounded_edges": False,
@@ -575,6 +675,162 @@ def derive_placement_seed(seed):
 
 
 # --------------------------------------------------------------------------
+# Part-size resolution (AB05) -- entered > measured > default
+# --------------------------------------------------------------------------
+# KeyShot's default "Center On: Model" maps a procedural texture's tiling Scale to
+# the whole model's bounding box, so a fixed Scale reads completely differently on
+# a 40 mm part vs a 6700-unit model. AB05 resolves a characteristic PART dimension
+# (mm) and drives every texture Scale off it (SCALE_FRACTIONS). This is where that
+# dimension comes from. The bounding-box APIs below are UNPROBED on the real build
+# -- every call is guarded, and a total miss just falls back to the default.
+
+# Candidate lux bounding-box methods, tried in order per geometry node. Only
+# getBoundingBox is documented as confirmed elsewhere in the repo (getSceneInfo
+# unit-scale + getBoundingBox(world=True)); getWorldBounds/getBounds are plausible
+# node-level alternates. All are getattr-guarded -> absence is non-fatal.
+BBOX_METHODS = ["getWorldBounds", "getBounds", "getBoundingBox"]
+
+
+def _vec3(v):
+    """Best-effort extract (x, y, z) floats from an unknown vector-like value:
+    attribute style (.x/.y/.z), method style (.getX()/.getY()/.getZ()), or an
+    indexable ([0]/[1]/[2]). Returns a 3-tuple of floats, or None."""
+    if v is None:
+        return None
+    try:
+        return (float(v.x), float(v.y), float(v.z))
+    except Exception:
+        pass
+    try:
+        return (float(v.getX()), float(v.getY()), float(v.getZ()))
+    except Exception:
+        pass
+    try:
+        return (float(v[0]), float(v[1]), float(v[2]))
+    except Exception:
+        pass
+    return None
+
+
+def _extent_from_bounds(bounds):
+    """Coerce an unknown bounding-box return into a max linear extent
+    (max of dx, dy, dz) in mm, or None if the shape isn't understood. Accepts an
+    object with .min/.max (or .getMin()/.getMax()), a (min, max) pair, or a flat
+    6-sequence [minx, miny, minz, maxx, maxy, maxz]."""
+    if bounds is None:
+        return None
+    mn = None
+    mx = None
+    try:
+        if hasattr(bounds, "min") and hasattr(bounds, "max"):
+            mn = _vec3(bounds.min)
+            mx = _vec3(bounds.max)
+        elif hasattr(bounds, "getMin") and hasattr(bounds, "getMax"):
+            mn = _vec3(bounds.getMin())
+            mx = _vec3(bounds.getMax())
+    except Exception:
+        mn = None
+        mx = None
+    if mn is None or mx is None:
+        seq = None
+        try:
+            seq = list(bounds)
+        except Exception:
+            seq = None
+        if seq is not None:
+            if len(seq) == 2:
+                mn = _vec3(seq[0])
+                mx = _vec3(seq[1])
+            elif len(seq) >= 6:
+                try:
+                    mn = (float(seq[0]), float(seq[1]), float(seq[2]))
+                    mx = (float(seq[3]), float(seq[4]), float(seq[5]))
+                except Exception:
+                    mn = None
+                    mx = None
+    if mn is None or mx is None:
+        return None
+    dx = abs(mx[0] - mn[0])
+    dy = abs(mx[1] - mn[1])
+    dz = abs(mx[2] - mn[2])
+    ext = max(dx, dy, dz)
+    return ext if ext > 0 else None
+
+
+def measure_part_size(name_filter):
+    """Best-effort: walk the scene geometry (reusing the recursive getChildren()
+    collection, _collect_descendants) and compute the max part extent (mm) across
+    matched nodes, trying the UNPROBED lux bounding-box APIs per node. Returns a
+    float, or None if nothing worked -- non-fatal, the caller falls back. Logs
+    which method (if any) succeeded so a future rev can lock the API name."""
+    try:
+        root = lux.getSceneTree()
+    except Exception as e:
+        print("  [info] part measure: getSceneTree() unavailable ({0})".format(e))
+        return None
+    try:
+        nodes = _collect_descendants(root)
+    except Exception:
+        nodes = []
+    if name_filter:
+        nodes = [n for n in nodes if _name_matches(n, name_filter)]
+    if not nodes:
+        print("  [info] part measure: no geometry nodes found to measure")
+        return None
+    best = None
+    method_used = None
+    for node in nodes:
+        for method in BBOX_METHODS:
+            fn = getattr(node, method, None)
+            if fn is None:
+                continue
+            bounds = None
+            # Try world-space first (getBoundingBox(world=True) is the confirmed
+            # form elsewhere in the repo), then a plain no-arg call.
+            try:
+                bounds = fn(world=True)
+            except Exception:
+                bounds = None
+            if bounds is None:
+                try:
+                    bounds = fn()
+                except Exception:
+                    bounds = None
+            ext = _extent_from_bounds(bounds)
+            if ext is not None:
+                if best is None or ext > best:
+                    best = ext
+                method_used = method
+                break  # this method worked on this node -- move to the next node
+    if best is None:
+        print("  [info] part measure: no bounding-box API returned usable bounds "
+              "(tried {0}) -- will fall back".format(", ".join(BBOX_METHODS)))
+        return None
+    print("  [info] part measure: max extent {0} mm via {1}()".format(best, method_used))
+    return best
+
+
+def resolve_part_size(opts, name_filter):
+    """Resolve a characteristic part dimension in mm. Priority:
+      1. Operator-entered `part_size_mm` (> 0) -- most reliable (they know it).
+      2. Measured via measure_part_size() (UNPROBED bbox APIs, best-effort).
+      3. DEFAULT_PART_SIZE_MM fallback, with a clear [info].
+    Returns (size_mm float, source str) where source is 'entered'|'measured'|
+    'default'. Fully non-fatal -- always returns a usable positive float."""
+    entered = as_float(opts.get("part_size_mm"), 0.0)
+    if entered and entered > 0.0:
+        print("  [info] part size {0} mm (entered)".format(entered))
+        return entered, "entered"
+    measured = measure_part_size(name_filter)
+    if measured is not None and measured > 0.0:
+        print("  [info] part size {0} mm (measured)".format(measured))
+        return measured, "measured"
+    print("  [info] part size unknown -- using default {0} mm; enter a Part size in "
+          "the dialog for correct texture scaling".format(DEFAULT_PART_SIZE_MM))
+    return DEFAULT_PART_SIZE_MM, "default"
+
+
+# --------------------------------------------------------------------------
 # Options dialog (GUI only -- auto-skipped in headless mode)
 # --------------------------------------------------------------------------
 
@@ -599,6 +855,10 @@ def get_options():
          FINISH_ORDER.index(DEFAULT_OPTIONS["finish"]), FINISH_ORDER),
         ("wear_multiplier", lux.DIALOG_DOUBLE, "Wear fine-tune (x):",
          DEFAULT_OPTIONS["wear_multiplier"], (0.0, 3.0)),
+        # AB05: part size (mm) drives part-relative texture scaling. 0 = auto
+        # (measure, else default). Placed right after the wear/finish rows.
+        ("part_size_mm", lux.DIALOG_DOUBLE, "Part size mm (0 = auto-measure):",
+         DEFAULT_OPTIONS["part_size_mm"], (0.0, 100000.0)),
         (lux.DIALOG_LABEL, "-- surface detail --"),
     ]
     for key in ["add_fine_noise", "add_scratches", "add_rounded_edges", "add_spots", "add_cellular"]:
@@ -625,10 +885,11 @@ def get_options():
                     "ALL"))
 
     opts = lux.getInputDialog(
-        title="Procedural Material Generator (AB04)",
+        title="Procedural Material Generator (AB05)",
         desc="Tick the layers you want, pick a base + wear + finish, and click OK. "
-             "(AB04: new material families -- anisotropic metal, glass clear/frosted, "
-             "thin film -- with per-family wear-layer gating.)",
+             "(AB05: part-size-aware texture scaling -- enter your Part size in mm "
+             "for correct feature sizes, or leave 0 to auto-measure. Textures now "
+             "map Center On: Part, not the whole model.)",
         values=values,
         id="procedural_material_generator_dialog",
     )
@@ -1002,25 +1263,31 @@ def _set_fresh_seed(node, rng, what="seed"):
     return _try_set_placement(p, rng.randint(0, 999999), what)
 
 
-def randomize_placement(node, rng, kind=None):
+def randomize_placement(node, rng, kind=None, scale_base=None):
     """Apply per-material variety to one procedural texture node by jittering its
     REAL pattern-shaping scalars (see the module note above -- the type-12 Texture
     Transform matrix is intentionally left unset). `kind` selects the node-aware
     jitter table; it is the node label already passed at creation, normalised to a
-    short key. Drawn from `rng` (seeded off placement_seed, reproducible), runs for
-    EVERY build, fully defensive -- every miss is a logged [info], never fatal."""
+    short key. `scale_base` (AB05) is the resolved PART-RELATIVE scale for this
+    node, used as the read-and-multiply fallback so the jitter stays part-
+    appropriate even if the live value can't be read; when None, the BASE absolute
+    is used (legacy behaviour). Drawn from `rng` (seeded off placement_seed,
+    reproducible), runs for EVERY build, fully defensive -- every miss is a logged
+    [info], never fatal."""
     if node is None:
         return
     k = (kind or "").strip().lower()
 
     # ALL tiling nodes share a 'scale' tiling control. Read-and-multiply; if the
-    # value can't be read, fall back to the node's BASE absolute * factor.
-    scale_base = {
-        "fine_noise": BASE["fine_noise_scale"],
-        "scratches": BASE["scratch_scale"],
-        "fractal": BASE["fractal_scale"],
-        "cellular": BASE["cellular_scale"],
-    }.get(k)
+    # value can't be read, fall back to the resolved part-relative scale (AB05),
+    # else the node's BASE absolute * factor.
+    if scale_base is None:
+        scale_base = {
+            "fine_noise": BASE["fine_noise_scale"],
+            "scratches": BASE["scratch_scale"],
+            "fractal": BASE["fractal_scale"],
+            "cellular": BASE["cellular_scale"],
+        }.get(k)
     if k in ("fine_noise", "scratches", "fractal", "cellular", "spots"):
         _jitter_mult(node, ["scale"], rng, 0.80, 1.25, "scale", scale_base)
 
@@ -1117,6 +1384,72 @@ def set_blend_mode(node, mode_name, mode_int):
         if _blend_matches(got, mode_name, mode_int):
             return True
     print("  [warn] couldn't confirm blend mode '{0}' -- left at node default".format(mode_name))
+    return False
+
+
+# --------------------------------------------------------------------------
+# Center On: Part (texture_space enum) setter (AB05, defensive)
+# --------------------------------------------------------------------------
+# Every tiling texture node has a 'Center On' control (param texture_space, a
+# type-2 enum -- Model vs Part). KeyShot defaults to "Center On: Model", which
+# maps the texture's Scale to the WHOLE model's bounding box; on a small part in a
+# big model this is the root cause of "textures loading at 6700, part is 40 mm".
+# Setting it to "Part" maps the texture to the part's own bounds so a mm-scale
+# Scale reads correctly. Which int is "Part" is UNPROBED -- try the string "Part"
+# first (unambiguous), then int candidates (1 = Part in the panel order
+# Model/Part, else 0), using the same two-candidate + read-back pattern as
+# set_blend_mode. CONFIRM-AT-RENDER: the enum value that took.
+CENTER_ON_PART_NAME = "Part"
+CENTER_ON_PART_INTS = (1, 0)
+
+
+def set_center_on_part(node):
+    """Set a tiling texture's 'Center On' (texture_space) enum to Part so the
+    texture maps to the PART's bounding box rather than the whole MODEL. Best-
+    effort + logged: the material still builds if the param is absent or the enum
+    value can't be confirmed (it just stays at KeyShot's default, Center On:
+    Model). Returns True if it was set (or plausibly set when read-back isn't
+    supported), else False. Tries the string "Part" first (unambiguous), then the
+    int candidates (1 = Part in the panel order Model/Part, else 0); the read-back
+    is matched against the SPECIFIC value just set, so an ignored set that leaves
+    the node at a Model default (which might equal one of the int candidates)
+    doesn't read as a false success."""
+    if node is None:
+        return False
+    p = find_param(node, ["center on", "texture space", "texture_space"])
+    if p is None:
+        print("  [info] no 'Center On' parameter on this node -- left at default (Model)")
+        return False
+    if p.isPure():
+        print("  [info] 'Center On' is connection-only here -- left at default")
+        return False
+    can_read = True
+    try:
+        p.getValue()
+    except Exception:
+        can_read = False
+    candidates = [CENTER_ON_PART_NAME]
+    candidates.extend(CENTER_ON_PART_INTS)
+    for val in candidates:
+        try:
+            p.setValue(val)
+        except Exception:
+            continue
+        if not can_read:
+            # setValue didn't raise and we can't read back -- accept optimistically
+            # (the string "Part" is tried first, so this prefers the unambiguous one).
+            return True
+        try:
+            got = p.getValue()
+        except Exception:
+            return True
+        if isinstance(val, str):
+            if isinstance(got, str) and got.strip().lower() == val.lower():
+                return True
+        else:
+            if got == val:
+                return True
+    print("  [info] couldn't confirm 'Center On' = Part -- left at node default")
     return False
 
 
@@ -1329,17 +1662,21 @@ def mask_bump_layer(graph, effect_node, mask_node, label):
 # them rather than wiring a single driver.
 # --------------------------------------------------------------------------
 
-def add_fine_noise_bump(graph):
+def add_fine_noise_bump(graph, scale=None):
     n = try_new_node(graph, "SHADER_TYPE_NOISE_TEXTURE", "Fine Noise")
     if n:
-        set_display(n, ["scale"], BASE["fine_noise_scale"])
+        # AB05: part-relative tiling Scale (SCALE_FRACTIONS['fine_noise'] * part
+        # size); BASE absolute is the legacy fallback only.
+        set_display(n, ["scale"], scale if scale is not None else BASE["fine_noise_scale"])
         # Give it an actual (small) bump amplitude -- without this the micro-grain
         # is dormant and surfaces read as flat CAD.
         set_display(n, ["bump height"], BASE["fine_noise_bump"])
+        # AB05: map to the PART, not the whole model.
+        set_center_on_part(n)
     return n
 
 
-def add_scratches_bump(graph, wear_mult, base_roughness, finish, damping=1.0):
+def add_scratches_bump(graph, wear_mult, base_roughness, finish, damping=1.0, scale=None):
     """Scratches layer. Change 2: the CHARACTER params (directional noise, noise,
     levels) and the scratch groove-depth BASELINE come DIRECTLY from the Finish
     tuple (NOT wear-scaled -- a brushed finish is brushed at any wear). The wear
@@ -1366,11 +1703,12 @@ def add_scratches_bump(graph, wear_mult, base_roughness, finish, damping=1.0):
         set_display(n, ["directional noise"], clamp01(dir_noise))
         set_display(n, ["noise"], clamp01(noise))
         set_display(n, ["levels"], levels)
-        # Scratches "Scale" -- the tiling scale (KeyShot default ~5mm), SEPARATE
-        # from Density (count) and Size (per-scratch). Never set before AB02.
-        # Defensive: skip-with-warn via set_display if the param is absent.
-        # CONFIRM AT RENDER: the exact display name "Scale" on Scratches.
-        set_display(n, ["scale"], BASE["scratch_scale"])
+        # Scratches "Scale" -- the tiling scale, SEPARATE from Density (count) and
+        # Size (per-scratch). AB05: part-relative (SCALE_FRACTIONS['scratch_scale']
+        # * part size -> ~4.8 mm on a 40 mm part, matching the old absolute 5.0);
+        # BASE absolute is the legacy fallback only. Defensive: skip-with-warn via
+        # set_display if the param is absent. CONFIRM AT RENDER: display name "Scale".
+        set_display(n, ["scale"], scale if scale is not None else BASE["scratch_scale"])
         # Colours drive ROUGHNESS. KeyShot's convention (confirmed from the v2
         # render, where a bright background flattened everything): brighter
         # texture = ROUGHER. So the scratch line is light -> a matte streak that
@@ -1381,6 +1719,8 @@ def add_scratches_bump(graph, wear_mult, base_roughness, finish, damping=1.0):
         set_display(n, ["color"], (0.75, 0.75, 0.75), ptype=PT_COLOR)
         bg = clamp01(base_roughness)
         set_display(n, ["background"], (bg, bg, bg), ptype=PT_COLOR)
+        # AB05: map to the PART, not the whole model.
+        set_center_on_part(n)
     return n
 
 
@@ -1392,38 +1732,54 @@ def add_rounded_edges_bump(graph, wear_mult, damping=1.0):
     return n
 
 
-def add_spots_bump(graph, wear_mult, damping=1.0):
+def add_spots_bump(graph, wear_mult, damping=1.0, scale=None):
     n = try_new_node(graph, "SHADER_TYPE_SPOTS", "Spots / Pitting")
     if n:
         set_display(n, ["bump height", "height"], clamp01(BASE["spots_bump_height"] * wear_mult * damping))
         set_display(n, ["density"], clamp01(BASE["spots_density"] * wear_mult))
-        # Spots has no 'Size' param (per the graph dump) -- 'Radius' is the
-        # per-spot size. Left as-is (change 2 note): whether Spots exposes a
-        # separate "Scale" distinct from Radius is UNCONFIRMED on this build, so
-        # the Density-vs-Scale split done for Scratches is NOT forced here. The
-        # placement pass (change 3) still jitters whatever scale/size it finds.
-        set_display(n, ["radius", "size", "scale"], clamp01(BASE["spots_size"] * wear_mult))
+        # 'Radius' is the per-spot size. Set it on its OWN exact-match key.
+        set_display(n, ["radius"], clamp01(BASE["spots_size"] * wear_mult))
+        # AB05 FIX (the giant-blobs bug): Spots' OWN tiling "Scale" was NEVER set.
+        # The old ["radius","size","scale"] list matched Radius FIRST (exact match),
+        # so Scale stayed at KeyShot's ~6700 model-scale default -> giant blobs.
+        # Set Scale EXPLICITLY (a separate call from radius), part-relative
+        # (SCALE_FRACTIONS['spots_scale'] * part size -> ~2.4 mm on a 40 mm part).
+        # CONFIRM AT RENDER: the display name "Scale" on Spots.
+        if scale is not None:
+            set_display(n, ["scale"], scale)
+        # AB05 distortion: drive the pattern organic (not perfectly round). A modest
+        # Distortion with a part-relative Distortion Scale reads as irregular pits.
+        # Defensive -- both skip-with-warn if absent on this build.
+        set_display(n, ["distortion"], 0.4)
+        if scale is not None:
+            set_display(n, ["distortion scale", "distortion_scale"], scale)
+        # AB05: map to the PART, not the whole model.
+        set_center_on_part(n)
     return n
 
 
-def add_cellular_bump(graph, wear_mult, damping=1.0):
+def add_cellular_bump(graph, wear_mult, damping=1.0, scale=None):
     # KeyShot's own manual describes this as capable of "cracked surfaces,
     # hammered metal" -- a strong effect even alone, hence the extra 0.6x.
     n = try_new_node(graph, "SHADER_TYPE_CELLULAR", "Cellular (experimental)")
     if n:
-        set_display(n, ["scale"], BASE["cellular_scale"])
+        # AB05: part-relative tiling Scale; BASE absolute is the legacy fallback.
+        set_display(n, ["scale"], scale if scale is not None else BASE["cellular_scale"])
         set_display(n, ["bump height", "height"],
                     clamp01(BASE["cellular_bump_height"] * wear_mult * damping * 0.6))
+        # AB05: map to the PART, not the whole model.
+        set_center_on_part(n)
     return n
 
 
-def make_fractal_roughness_node(graph, base_roughness):
+def make_fractal_roughness_node(graph, base_roughness, scale=None):
     """Create + configure a Fractal Noise node as a ROUGHNESS-bus source (broad
     variation). Returns the node (not wired) so the bus can composite it; None
     if the node type is unavailable."""
     n = try_new_node(graph, "SHADER_TYPE_NOISE_FRACTAL", "Fractal Noise (roughness source)")
     if n is not None:
-        set_display(n, ["scale"], BASE["fractal_scale"])
+        # AB05: part-relative tiling Scale; BASE absolute is the legacy fallback.
+        set_display(n, ["scale"], scale if scale is not None else BASE["fractal_scale"])
         # Constrain the noise to a TIGHT band around the base roughness. Left raw,
         # its 0-1 output would Lighten-max the whole surface toward matte and
         # flatten a glossy metal (the v2 blowout, in bus form). The Color 1 /
@@ -1433,6 +1789,8 @@ def make_fractal_roughness_node(graph, base_roughness):
         hi = clamp01(base_roughness + 0.08)
         set_display(n, ["color 1", "color1", "color a"], (lo, lo, lo), ptype=PT_COLOR)
         set_display(n, ["color 2", "color2", "color b"], (hi, hi, hi), ptype=PT_COLOR)
+        # AB05: map to the PART, not the whole model.
+        set_center_on_part(n)
     return n
 
 
@@ -1563,6 +1921,12 @@ def sample_spec(opts):
 
     fp = FINISH_PRESETS.get(finish_name, FINISH_PRESETS[DEFAULT_OPTIONS["finish"]])
 
+    # AB05: resolve the name filter once (needed to scope part measurement) and the
+    # characteristic part size (entered > measured > default). part_size drives all
+    # part-relative texture scales; captured into spec['scale'] for reproducibility.
+    name_filter = resolve_filter(opts.get("name_filter"))
+    part_size, size_source = resolve_part_size(opts, name_filter)
+
     name = resolve_material_name(opts.get("name_prefix", ""), material_type, wear_level, finish_name)
 
     spec = {
@@ -1600,8 +1964,24 @@ def sample_spec(opts):
         },
         "features": features,
         "masks": masks,
+        # AB05: part-size + the resolved part-relative texture scales. `resolved`
+        # values are part_size * SCALE_FRACTIONS, in mm -- captured so the emitted
+        # spec fully reproduces the scaling. build_material recomputes from
+        # part_size_mm (robust if this block is edited) but honours these too.
+        "scale": {
+            "part_size_mm": part_size,
+            "source": size_source,
+            "fractions": dict(SCALE_FRACTIONS),
+            "resolved": {
+                "fine_noise": part_size * SCALE_FRACTIONS["fine_noise"],
+                "scratches": part_size * SCALE_FRACTIONS["scratch_scale"],
+                "fractal": part_size * SCALE_FRACTIONS["fractal"],
+                "cellular": part_size * SCALE_FRACTIONS["cellular"],
+                "spots": part_size * SCALE_FRACTIONS["spots_scale"],
+            },
+        },
         "application": {
-            "name_filter": resolve_filter(opts.get("name_filter")),
+            "name_filter": name_filter,
         },
     }
     return spec
@@ -1653,6 +2033,16 @@ def validate_spec(spec):
     # coerced; unknown families pass through untouched). Kept on the spec so the
     # emitted spec is reproducible.
     base["extra"] = validate_family_extra(base.get("extra", {}))
+
+    # AB05: sanity-check the scale block so a bad/absent part size can never break
+    # the build (coerced to a positive float; non-positive -> default). Kept on the
+    # spec so the emitted spec stays honest.
+    scale = spec.setdefault("scale", {})
+    psize = as_float(scale.get("part_size_mm"), DEFAULT_PART_SIZE_MM)
+    if psize <= 0.0:
+        psize = DEFAULT_PART_SIZE_MM
+    scale["part_size_mm"] = psize
+    scale.setdefault("source", "default")
 
     # Finish (change 2): clamp dir/noise to [0,1], levels to an int in [1,5],
     # and the scratch bump BASELINE to a valid negative groove (magnitude [0,1]).
@@ -1711,6 +2101,22 @@ def build_material(spec):
     base_color = (base["color"][0], base["color"][1], base["color"][2])
     base_roughness = base["roughness"]
 
+    # AB05: resolve the part-relative texture scales (mm). Recomputed here from the
+    # spec's part_size_mm + SCALE_FRACTIONS so it is robust even if spec['scale']
+    # was hand-edited; defaults are used if the block is missing entirely.
+    scale_info = spec.get("scale", {})
+    part_size = as_float(scale_info.get("part_size_mm"), DEFAULT_PART_SIZE_MM)
+    if part_size <= 0.0:
+        part_size = DEFAULT_PART_SIZE_MM
+    size_source = scale_info.get("source", "default")
+    tex_scales = {
+        "fine_noise": part_size * SCALE_FRACTIONS["fine_noise"],
+        "scratches": part_size * SCALE_FRACTIONS["scratch_scale"],
+        "fractal": part_size * SCALE_FRACTIONS["fractal"],
+        "cellular": part_size * SCALE_FRACTIONS["cellular"],
+        "spots": part_size * SCALE_FRACTIONS["spots_scale"],
+    }
+
     # AB04: family + its shader params (opaque rows carry {} -> family "opaque").
     extra = base.get("extra", {}) or {}
     family = material_family(extra)
@@ -1743,6 +2149,10 @@ def build_material(spec):
         finish.get("levels"), finish.get("scratch_bump_height")))
     print("  Placement seed: {0} (per-build texture placement, reproducible)".format(placement_seed))
     print("  Family: {0}".format(family))
+    print("  Scale: part {0} mm ({1}) -> scratches {2}, fine {3}, fractal {4}, "
+          "cellular {5}, spots {6} mm (Center On: Part)".format(
+              part_size, size_source, tex_scales["scratches"], tex_scales["fine_noise"],
+              tex_scales["fractal"], tex_scales["cellular"], tex_scales["spots"]))
 
     # --- PER-FAMILY WEAR-LAYER GATING (AB04) --------------------------------
     # Intersect the user's chosen features with the family's allowed set BEFORE
@@ -1830,28 +2240,29 @@ def build_material(spec):
     bump_sources = []
     scratches_node = None  # captured so scratches can also drive the roughness bus
     if features["add_fine_noise"]:
-        fine_node = add_fine_noise_bump(graph)
-        randomize_placement(fine_node, placement_rng, "fine_noise")
+        fine_node = add_fine_noise_bump(graph, tex_scales["fine_noise"])
+        randomize_placement(fine_node, placement_rng, "fine_noise", tex_scales["fine_noise"])
         bump_sources.append(fine_node)
     if features["add_scratches"]:
-        scratches_node = add_scratches_bump(graph, wear_mult, base_roughness, finish, damping)
-        randomize_placement(scratches_node, placement_rng, "scratches")
+        scratches_node = add_scratches_bump(graph, wear_mult, base_roughness, finish, damping,
+                                            tex_scales["scratches"])
+        randomize_placement(scratches_node, placement_rng, "scratches", tex_scales["scratches"])
         if masks.get("mask_scratches_to_edges"):
             mask_bump_layer(graph, scratches_node, add_curvature_mask(graph), "scratches->edges")
         bump_sources.append(scratches_node)
     if features["add_rounded_edges"]:
         # Rounded Edges is a geometry-based bump, not a tiling texture -- no
-        # placement randomisation (nothing to de-repeat).
+        # placement randomisation (nothing to de-repeat) and no Center On / Scale.
         bump_sources.append(add_rounded_edges_bump(graph, wear_mult, damping))
     if features["add_spots"]:
-        sp = add_spots_bump(graph, wear_mult, damping)
-        randomize_placement(sp, placement_rng, "spots")
+        sp = add_spots_bump(graph, wear_mult, damping, tex_scales["spots"])
+        randomize_placement(sp, placement_rng, "spots", tex_scales["spots"])
         if masks.get("mask_spots_to_cavities"):
             sp = mask_bump_layer(graph, sp, add_occlusion_mask(graph), "spots->cavities")
         bump_sources.append(sp)
     if features["add_cellular"]:
-        cell_node = add_cellular_bump(graph, wear_mult, damping)
-        randomize_placement(cell_node, placement_rng, "cellular")
+        cell_node = add_cellular_bump(graph, wear_mult, damping, tex_scales["cellular"])
+        randomize_placement(cell_node, placement_rng, "cellular", tex_scales["cellular"])
         bump_sources.append(cell_node)
 
     combined_bump = combine_bump_sources(graph, bump_sources)
@@ -1876,9 +2287,10 @@ def build_material(spec):
     if scratches_node is not None:
         rough_sources.append(scratches_node)
     if features["add_fractal_roughness"]:
-        fr = make_fractal_roughness_node(graph, base_roughness)
+        fr = make_fractal_roughness_node(graph, base_roughness, tex_scales["fractal"])
         if fr is not None:
-            randomize_placement(fr, placement_rng, "fractal")  # Fractal Noise is a tiling texture
+            # Fractal Noise is a tiling texture -- part-relative scale + Center On: Part.
+            randomize_placement(fr, placement_rng, "fractal", tex_scales["fractal"])
             rough_sources.append(fr)
     if features["add_occlusion_roughness"]:
         oc = make_occlusion_roughness_node(graph, base_roughness)
