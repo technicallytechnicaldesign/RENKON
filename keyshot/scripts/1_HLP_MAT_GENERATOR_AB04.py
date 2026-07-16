@@ -1,18 +1,86 @@
 # -*- coding: utf-8 -*-
 # AUTHOR claude-subagent
-# REV AB02
+# REV AB04
 # HEADLESS COMPLIANT
 # Procedural material *variant* generator, rebuilt as a spec-driven
 # sample -> validate -> compile pipeline (design MDD-4B7A9F, Phase 1). A dialog
 # (or DEFAULT_OPTIONS in headless) is now a *sampler* that emits a plain-dict
 # MaterialSpec; build_material is a *compiler* that reads that spec and wires
 # three buses onto the base shader: a colour bus, a roughness bus, and a bump
-# bus. Same 12-material palette, same feature layers (fine noise, scratches,
-# spots, cellular, rounded edges, fractal/occlusion roughness, colour gradient),
-# same masking toggles, wear level, seed, and dialog UX as AA02. Each build is
-# auto-named MAT-<TYPE>-<WEAR>-<FINISH>-<hex>. Sits in the 1_ helper stage as
-# the material-*authoring* member of the MAT family, alongside
+# bus. Palette now spans MULTIPLE SHADER FAMILIES (opaque metal/plastic/paint +
+# anisotropic metal, dielectric glass, thin-film), same feature layers (fine
+# noise, scratches, spots, cellular, rounded edges, fractal/occlusion roughness,
+# colour gradient), same masking toggles, wear level, seed, and dialog UX as
+# AA02. Each build is auto-named MAT-<TYPE>-<WEAR>-<FINISH>-<hex>. Sits in the
+# 1_ helper stage as the material-*authoring* member of the MAT family, alongside
 # 1_HLP_MAT_PREFLIGHT (coverage QC) and 1_HLP_MAT_LOOKUP (Creo -> KeyShot map).
+#
+# WHAT'S NEW vs AB03 (AB04 = material FAMILIES -- design AB04_FAMILIES_SPEC,
+# DSMI-2F5A-PROCGEN. Four new base-shader FAMILIES added as data, not new
+# texture layers. NONE of the new shader constants or family param names are
+# probed on the real build -- EVERY one is getattr/find_param-guarded and skips
+# with a console [warn]/[info], and the material ALWAYS still builds (opaque
+# metal/plastic fallback). CONFIRM-AT-RENDER, see the block in the docstring):
+#   NEW 1. SCHEMA `extra`. MATERIALS rows gain an optional 6th element `extra`
+#      (a dict; default {} = family "opaque"), carrying `family` + family params
+#      (ior/frost, anisotropy/aniso_angle, film_thickness/film_ior). Existing
+#      5-element rows are untouched and behave EXACTLY as AB03. `extra` is threaded
+#      through sample_spec -> spec['base']['extra'] (a COPY, never the module row)
+#      -> validate_spec (numeric family params clamped) -> build_material. A short
+#      `meta.family` echo is captured for reproducibility. material_family(extra)
+#      returns the family string (default "opaque").
+#   NEW 2. FOUR FAMILIES (new MATERIALS rows, getattr-guarded shaders):
+#      * metal_aniso  -- "Aluminum (anisotropic brushed)", "Steel (anisotropic)":
+#        Metal base + anisotropy + a stable per-build brush angle.
+#      * dielectric   -- "Glass (clear)" AND "Glass (frosted)": SHADER_TYPE_DIELECTRIC
+#        (fallbacks GLASS -> SOLID_GLASS -> Plastic), ior ~1.51; frosted drives the
+#        base roughness (and a refraction-roughness param if present) high.
+#      * thinfilm     -- "Thin Film (oil slick)", "Anodised (iridescent)":
+#        SHADER_TYPE_THIN_FILM (fallback Metal), film thickness (nm) + film ior.
+#   NEW 3. FAMILY-AWARE base setup. apply_family_params(graph, base_node, extra,
+#      rng) applies the family shader params defensively AFTER colour+roughness
+#      are set. resolve_shader() gained a family-specific fallback chain for the
+#      new constants, degrading to Plastic/Metal with a logged note if absent.
+#   NEW 4. PER-FAMILY WEAR-LAYER GATING. FAMILY_ALLOWED_LAYERS maps family -> the
+#      set of FEATURE_KEYS that make sense on it; build_material intersects the
+#      user's chosen features with that set BEFORE building the buses, logging
+#      each dropped layer ("<label> skipped -- not applicable to <family>"). This
+#      stops nonsense like grime/pitting/cellular-corrosion on clear glass.
+# Everything else (spec pipeline, buses, masking, placement jitter, apply, and
+# all three AB03 confirmed bugfixes) is AB03's logic, extended -- not rewritten.
+#
+# WHAT'S NEW vs AB02 (three CONFIRMED BUGFIXES against a real AB02 DEBUG run --
+# the ground-truth KeyShot node param names captured there drive all three):
+#   FIX 1. ROUGHNESS BUS composite was never built (always 'single-fallback').
+#      ROOT CAUSE: _composite_inputs() looked for the Color Composite's two
+#      colour inputs with ptype=PT_COLOR, but PT_COLOR resolves to KeyShot type
+#      13 (a colour VALUE), while the Composite's Source/Background are type 14
+#      (colour/texture CONNECTION inputs). The filter matched nothing -> the
+#      chain stopped -> the roughness bus degraded to a single driver every time.
+#      FIX: identify Source ('Source') and Background ('Background') by NAME with
+#      NO type filter; positional fallback derives the connection type from those
+#      params defensively (never hardcodes 14). Now composites N sources ->
+#      'composite'. set_blend_mode still tries string-then-int; blend_mode is a
+#      type-2 int enum, so the int candidate (7=Lighten) is the one that takes.
+#   FIX 2. ANTI-REPETITION placement never applied. ROOT CAUSE: randomize_
+#      placement() guessed offset/rotation/translate param names that DO NOT
+#      EXIST on these nodes -- every set missed, so nothing varied. Placement is
+#      a type-12 'Texture Transform' matrix (transform_obj_to_uv), left UNSET on
+#      purpose (writing a raw matrix blind is too risky without a probe). FIX:
+#      jitter the REAL, per-node scalar params confirmed in the AB02 dump,
+#      node-type-aware, driven by the seeded placement RNG -- scale on all tiling
+#      nodes, plus noise_scale/level_scale (Scratches), magnitude (Fine Noise),
+#      seed/distortion/radius (Spots), noise_scale/shape_1..3 (Cellular), and
+#      bias_x/y/z (Occlusion). placement_seed still captured in spec['meta'].
+#   FIX 3. AUTO-APPLY hit 0 parts ('Applied to 0 node(s), skipped 22'). ROOT
+#      CAUSE: root.find('') returned only non-geometry nodes (all 22 were
+#      cameras, kind=6) -- the geometry was never reached. FIX: traverse the
+#      scene tree RECURSIVELY via getChildren() (defensive; falls back to
+#      root.find('')), and print a histogram of candidate node KINDS before
+#      applying so a future 0-apply is diagnosable. LEAST CERTAIN of the three
+#      (no scene to test on) -- marked CONFIRM-AT-RENDER in code + report.
+# Everything else (spec pipeline, buses, masking, Finish axis, apply philosophy)
+# is AB02's logic, surgically corrected -- not rewritten.
 #
 # WHAT'S NEW vs AB01 (three targeted changes -- see MDD-4B7A9F / RNK-0054):
 #   1. PARAMETER-ROUTING FIX (root-cause). find_param() now prefers an EXACT
@@ -63,13 +131,18 @@
 # MDD-4B7A9F (scripts/research/MATERIAL_DIVERSITY_DESIGN.md).
 
 """
-KeyShot Procedural Material Generator -- REV AB02 (spec-driven)
-==============================================================
+KeyShot Procedural Material Generator -- REV AB04 (spec-driven, multi-family)
+============================================================================
 
 Pivoted (AA02) from a fixed recipe into a variant generator, then (AB01)
 re-architected into a sample -> validate -> compile pipeline around a first-class
 MaterialSpec, then (AB02) hardened the param routing and added a Finish axis +
-seeded anti-repetition placement:
+seeded anti-repetition placement, then (AB03) fixed three CONFIRMED bugs against
+a real AB02 DEBUG run (roughness composite input types, placement param names,
+and geometry-reaching auto-apply), then (AB04) extended the palette into four
+new SHADER FAMILIES -- anisotropic metal, dielectric glass (clear + frosted),
+and thin-film -- via an optional per-row `extra` dict, a family-aware base-param
+pass, and per-family wear-layer gating (see the WHAT'S NEW vs AB03 block up top):
 
     options (dialog or DEFAULT_OPTIONS)
         -> sample_spec()     build the MaterialSpec dict (captures finish +
@@ -106,11 +179,38 @@ in every KeyShot version) -- these use getattr() and skip cleanly with a
 console warning if unavailable, rather than crashing:
   Cellular, Color Gradient
 
-UNPROBED on this build (CONFIRM AT RENDER -- treated as runtime-discovered,
-absence is non-fatal):
-  * Scratches "Scale" param name (change 2) -- assumed display name "Scale".
-  * Texture placement param names (change 3) -- offset / rotation / scale.
-    Best-effort; every miss logs an [info] and the build continues.
+CONFIRM AT RENDER (AB03 -- absence/mismatch is non-fatal, watch the console):
+  * FIX 1 landed: expect "Roughness bus: N source(s) -> mode 'composite'" (NOT
+    'single-fallback') whenever >= 2 roughness sources are active.
+  * FIX 2 landed: placement now jitters CONFIRMED per-node params (scale,
+    noise_scale, level_scale, magnitude, seed, distortion, radius, shape_1..3,
+    bias_x/y/z). The AB02 "placement: offset/rotation not settable" spam should
+    be GONE; any remaining [info] miss names a param whose display name differs
+    on this build. The type-12 Texture Transform matrix is intentionally UNSET.
+  * FIX 3 (LEAST CERTAIN -- no scene to test): auto-apply now walks getChildren()
+    recursively and prints a "candidate kinds: {...}" histogram before applying.
+    Confirm geometry kinds appear (not only kind=6 cameras) and material count>0.
+
+CONFIRM AT RENDER (AB04 families -- EVERY shader constant + param name below is
+UNPROBED on the real build; all degrade non-fatally to an opaque metal/plastic,
+watch the console for [warn]/[info]):
+  * SHADER CONSTANTS: SHADER_TYPE_DIELECTRIC (fallbacks GLASS -> SOLID_GLASS ->
+    Plastic) for glass; SHADER_TYPE_THIN_FILM (fallback Metal) for thin film. If
+    a family fell back, resolve_shader prints "[warn] <constant> unavailable on
+    this build -- using <fallback> instead".
+  * PARAM DISPLAY NAMES (find_param prefers exact display-name matches -- watch
+    for "[warn] no parameter matching '<name>'"): dielectric IOR
+    ["index of refraction","ior","refraction index"]; frosted refraction
+    roughness ["refraction roughness"]; thin-film thickness
+    ["thickness","film thickness"] + IOR ["index of refraction","ior"];
+    anisotropy ["anisotropy","aniso"] + brush angle
+    ["anisotropy angle","aniso angle","angle"].
+  * LOOK CHECKS: clear vs frosted glass visibly differ (clear = smooth/see-
+    through, frosted = matte/translucent, driven by the base roughness 0.02 vs
+    0.30 plus any refraction-roughness param); glass shows NO grime/pitting
+    (gated out); thin film reads iridescent (oil-slick / anodised rainbow).
+  * The brush angle is a STABLE per-build value from the placement RNG (the
+    Scratches direction_field is a type-2 enum, not degrees, so it is NOT read).
 
 Masking / targeted wear (opt-in, off by default):
   Scratches-to-edges (Curvature mask) and Spots-to-cavities (Occlusion mask).
@@ -145,21 +245,28 @@ PT_SHADERBUMP = getattr(lux, "PARAMETER_TYPE_SHADERBUMP", None)
 
 DEBUG = True  # prints real parameters for each node as it's created
 
-GENERATOR_REV = "AB02"
+GENERATOR_REV = "AB04"
 
 # --------------------------------------------------------------------------
 # Material type presets
 # --------------------------------------------------------------------------
 
 # Base materials -- THE PALETTE. Add a new one by adding a single row here:
-#   (display name, shader, colour RGB 0-1, roughness, 3-letter code)
+#   (display name, shader, colour RGB 0-1, roughness, 3-letter code[, extra])
 # The shader is a lux.SHADER_TYPE_* attribute *name*, resolved defensively at
 # build time (resolve_shader) so an unknown one (e.g. SHADER_TYPE_PAINT on a
 # build that lacks it) falls back to Plastic rather than crashing. Metals just
 # take a colour tint -- brass/copper/anodised are tinted metals; paints are a
 # Paint shader (Plastic fallback). Nothing else needs editing to add a colour.
+#
+# AB04: rows may carry an OPTIONAL 6th element `extra` -- a dict describing a
+# non-opaque shader FAMILY and its params. A missing 6th element == {} == family
+# "opaque" (fully backward-compatible: every AB03 5-element row behaves exactly as
+# before). See material_extra()/material_family(), apply_family_params(), and
+# FAMILY_ALLOWED_LAYERS. All family shader constants + param names are UNPROBED on
+# the real build -- getattr/find_param guarded, skip-with-warn, always builds.
 MATERIALS = [
-    # name,                      shader,                colour RGB,         rough, abbr
+    # name,                      shader,                colour RGB,         rough, abbr[, extra]
     ("Aluminum (brushed metal)", "SHADER_TYPE_METAL",   (0.72, 0.73, 0.75), 0.18,  "ALU"),
     ("Steel (metal)",            "SHADER_TYPE_METAL",   (0.55, 0.56, 0.58), 0.25,  "STL"),
     ("Chrome (metal)",           "SHADER_TYPE_METAL",   (0.90, 0.90, 0.92), 0.05,  "CHR"),
@@ -172,10 +279,50 @@ MATERIALS = [
     ("Paint - Safety Orange",    "SHADER_TYPE_PAINT",   (0.88, 0.34, 0.05), 0.30,  "POR"),
     ("Paint - Signal Blue",      "SHADER_TYPE_PAINT",   (0.03, 0.15, 0.40), 0.30,  "PBL"),
     ("Paint - White",            "SHADER_TYPE_PAINT",   (0.90, 0.90, 0.88), 0.32,  "PWH"),
+    # --- AB04 families (new base shaders; extra carries family + params) --------
+    # Anisotropic metal -- Metal base + directional (brushed) highlight. anisotropy
+    # in [0,1]; aniso_angle None -> a STABLE per-build angle from the placement RNG
+    # (the Scratches direction_field is a type-2 enum, not degrees, so it is NOT
+    # read -- see apply_family_params). All layers allowed (it's still a metal).
+    ("Aluminum (anisotropic brushed)", "SHADER_TYPE_METAL", (0.72, 0.73, 0.75), 0.18, "ANI",
+        {"family": "metal_aniso", "anisotropy": 0.5, "aniso_angle": None}),
+    ("Steel (anisotropic)",            "SHADER_TYPE_METAL", (0.55, 0.56, 0.58), 0.22, "ANS",
+        {"family": "metal_aniso", "anisotropy": 0.6, "aniso_angle": None}),
+    # Dielectric glass -- ships BOTH clear and frosted (user decision). Clear =
+    # smooth/see-through (roughness ~0.02); frosted = matte/translucent (roughness
+    # ~0.30 + a refraction-roughness param if present). ior ~1.51 (soda-lime glass).
+    ("Glass (clear)",                  "SHADER_TYPE_DIELECTRIC", (0.95, 0.97, 0.98), 0.02, "GLC",
+        {"family": "dielectric", "ior": 1.51, "transparent": True, "frost": 0.0}),
+    ("Glass (frosted)",                "SHADER_TYPE_DIELECTRIC", (0.95, 0.97, 0.98), 0.30, "GLF",
+        {"family": "dielectric", "ior": 1.51, "transparent": True, "frost": 0.30}),
+    # Thin film -- iridescent coating (oil-slick / anodised rainbow), its own BRDF.
+    # film_thickness in nm drives the interference colour; film_ior ~1.4.
+    ("Thin Film (oil slick)",          "SHADER_TYPE_THIN_FILM", (0.30, 0.30, 0.32), 0.10, "TFM",
+        {"family": "thinfilm", "film_thickness": 420, "film_ior": 1.4}),
+    ("Anodised (iridescent)",          "SHADER_TYPE_THIN_FILM", (0.20, 0.22, 0.28), 0.15, "IRI",
+        {"family": "thinfilm", "film_thickness": 650, "film_ior": 1.4}),
 ]
 MATERIAL_TYPE_ORDER = [m[0] for m in MATERIALS]
 MATERIAL_BY_NAME = {m[0]: m for m in MATERIALS}
 TYPE_ABBR = {m[0]: m[4] for m in MATERIALS}
+
+
+def material_extra(mat):
+    """Return a MATERIALS row's optional 6th element (the `extra` family dict), or
+    {} when the row is a plain 5-element AB03-style row. Defensive: a non-dict 6th
+    element is treated as absent."""
+    if len(mat) >= 6 and isinstance(mat[5], dict):
+        return mat[5]
+    return {}
+
+
+def material_family(extra):
+    """Return the shader-family string carried by an `extra` dict, defaulting to
+    'opaque' (the AB03 behaviour) when absent or malformed. Known families:
+    'opaque', 'metal_aniso', 'dielectric', 'thinfilm'."""
+    if not isinstance(extra, dict):
+        return "opaque"
+    return extra.get("family", "opaque") or "opaque"
 
 WEAR_PRESETS = {"Pristine": 0.3, "Light Wear": 1.0, "Moderate Wear": 2.5, "Heavy Wear": 5.0}
 WEAR_ORDER = list(WEAR_PRESETS.keys())
@@ -265,6 +412,25 @@ FEATURE_PROBS = {  # used only when "Randomize features" is checked
     "add_occlusion_roughness": 0.25, "add_color_gradient": 0.12,
 }
 
+# Per-family wear-layer gating (AB04). Maps a family -> the set of FEATURE_KEYS
+# that make physical sense on it. build_material intersects the user's chosen
+# features with this set BEFORE building the buses, logging each dropped layer --
+# so e.g. clear glass never gets grime/pitting/cellular-corrosion. opaque and
+# metal_aniso allow everything (a brushed metal is still a metal). Dielectric and
+# thin film drop the "dirt/corrosion" layers (spots, cellular, occlusion grime)
+# and the colour-gradient driver (their look comes from the shader, not a tint);
+# scratches stay (they read as frosting / fine surface texture), and fractal
+# broad-roughness stays for dielectric (mild). A family absent from this map
+# falls back to "all allowed" so a future family is never silently crippled.
+# (Defined here, AFTER FEATURE_KEYS, because it references it.)
+FAMILY_ALLOWED_LAYERS = {
+    "opaque":      set(FEATURE_KEYS),
+    "metal_aniso": set(FEATURE_KEYS),
+    "dielectric":  set(["add_fine_noise", "add_scratches",
+                        "add_rounded_edges", "add_fractal_roughness"]),
+    "thinfilm":    set(["add_fine_noise", "add_scratches", "add_rounded_edges"]),
+}
+
 # Masking modifiers -- separate from FEATURE_KEYS so they never get swept into
 # the loud-layer cap or randomize logic. Opt-in, off by default; read straight
 # from opts in sample_spec.
@@ -299,6 +465,21 @@ DEFAULT_OPTIONS = {
 
 def clamp01(v):
     return max(0.0, min(1.0, v))
+
+
+def as_float(v, default):
+    """Coerce v to float, returning `default` on None / non-numeric (AB04 family
+    params arrive from a plain dict and may be None or malformed)."""
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return default
+
+
+def clampf(v, lo, hi):
+    """Clamp v into [lo, hi] (used for family params with a non-[0,1] range, e.g.
+    IOR ~1.0..3.0 or film thickness in nm)."""
+    return max(lo, min(hi, v))
 
 
 # Material names must stay globally unique even when a run is seeded for a
@@ -444,8 +625,10 @@ def get_options():
                     "ALL"))
 
     opts = lux.getInputDialog(
-        title="Procedural Material Generator (AB02)",
-        desc="Tick the layers you want, pick a base + wear + finish, and click OK.",
+        title="Procedural Material Generator (AB04)",
+        desc="Tick the layers you want, pick a base + wear + finish, and click OK. "
+             "(AB04: new material families -- anisotropic metal, glass clear/frosted, "
+             "thin film -- with per-family wear-layer gating.)",
         values=values,
         id="procedural_material_generator_dialog",
     )
@@ -519,17 +702,82 @@ def try_new_node(graph, attr_name, label):
         return None
 
 
-def resolve_shader(shader_attr):
-    """Resolve a base-material shader by attribute name, falling back to Plastic
-    then Metal so an unknown constant (e.g. SHADER_TYPE_PAINT on a build that
-    lacks it) degrades to a working material instead of crashing the build."""
-    for attr in (shader_attr, "SHADER_TYPE_PLASTIC", "SHADER_TYPE_METAL"):
+# AB04: family-specific shader fallback chains. NONE of the new constants
+# (SHADER_TYPE_DIELECTRIC/GLASS/SOLID_GLASS, SHADER_TYPE_THIN_FILM) are probed on
+# the real build -- resolve_shader tries them in order via getattr and drops to a
+# working opaque shader (Plastic then Metal) with a logged note if all are absent.
+FAMILY_SHADER_FALLBACKS = {
+    "dielectric": ["SHADER_TYPE_DIELECTRIC", "SHADER_TYPE_GLASS", "SHADER_TYPE_SOLID_GLASS"],
+    "thinfilm":   ["SHADER_TYPE_THIN_FILM"],
+}
+
+
+def resolve_shader(shader_attr, family="opaque"):
+    """Resolve a base-material shader by attribute name, falling back through the
+    family's alternates (AB04) and then to Plastic/Metal, so an unknown constant
+    (e.g. SHADER_TYPE_PAINT, or the new SHADER_TYPE_DIELECTRIC / SHADER_TYPE_THIN_FILM
+    on a build that lacks them) degrades to a working material instead of crashing.
+    For an opaque row this is identical to AB03 (chain = shader, Plastic, Metal)."""
+    chain = [shader_attr]
+    for alt in FAMILY_SHADER_FALLBACKS.get(family, []):
+        if alt not in chain:
+            chain.append(alt)
+    # Thin film prefers a Metal fallback (an iridescent coating still reads best on
+    # a metal base); everything else prefers Plastic first. Both end at Metal.
+    tail = ["SHADER_TYPE_METAL", "SHADER_TYPE_PLASTIC"] if family == "thinfilm" \
+        else ["SHADER_TYPE_PLASTIC", "SHADER_TYPE_METAL"]
+    for a in tail:
+        if a not in chain:
+            chain.append(a)
+    for attr in chain:
         st = getattr(lux, attr, None)
         if st is not None:
             if attr != shader_attr:
                 print("  [warn] {0} unavailable on this build -- using {1} instead".format(shader_attr, attr))
             return st
     return None
+
+
+def apply_family_params(graph, base_node, extra, rng):
+    """Apply the family-specific shader params to the base node (AB04), AFTER its
+    colour + roughness are set. EVERY set is best-effort via find_param/set_display
+    -- an absent param logs a [warn]/[info] and the build continues (the material
+    still works, it just misses that one refinement). All display names are
+    UNPROBED guesses; find_param prefers exact display-name matches. Returns the
+    family string handled. `rng` is the seeded placement RNG (used only for the
+    stable per-build anisotropy angle, so it is reproducible from placement_seed)."""
+    family = material_family(extra)
+    if family == "metal_aniso":
+        # Directional (brushed) highlight strength.
+        set_display(base_node, ["anisotropy", "aniso"], clamp01(as_float(extra.get("anisotropy"), 0.5)))
+        # Angle: the Scratches direction_field is a type-2 enum (not a degree
+        # value), so we deliberately do NOT read it. Pick a STABLE per-build angle
+        # from the placement RNG and record it, so the brush highlight has a
+        # consistent (reproducible) per-material orientation. CONFIRM AT RENDER:
+        # the "anisotropy angle" display name (degrees vs 0-1 is unprobed).
+        angle = extra.get("aniso_angle")
+        if angle is None:
+            angle = rng.uniform(0.0, 180.0)
+        extra["aniso_angle_used"] = angle
+        set_display(base_node, ["anisotropy angle", "aniso angle", "angle"], angle)
+    elif family == "dielectric":
+        set_display(base_node, ["index of refraction", "ior", "refraction index"],
+                    clampf(as_float(extra.get("ior"), 1.51), 1.0, 3.0))
+        frost = clamp01(as_float(extra.get("frost"), 0.0))
+        if frost > 0.0:
+            # The roughness bus still targets the base roughness input, and the
+            # frosted row already sets a high base roughness -- so frosting shows
+            # even if the dedicated param below is absent. Also try a refraction-
+            # roughness param (some glass BRDFs separate surface vs refraction
+            # roughness). CONFIRM AT RENDER: the "refraction roughness" name.
+            set_display(base_node, ["refraction roughness"], frost)
+        # Absorption / tint is via the base colour input (set in build_material).
+    elif family == "thinfilm":
+        set_display(base_node, ["thickness", "film thickness"],
+                    clampf(as_float(extra.get("film_thickness"), 500.0), 1.0, 2000.0))
+        set_display(base_node, ["index of refraction", "ior"],
+                    clampf(as_float(extra.get("film_ior"), 1.4), 1.0, 3.0))
+    return family
 
 
 def find_param(node, keywords, ptype=None):
@@ -635,24 +883,38 @@ def wire_scalar_driver(graph, texture_node, base_node, keywords, label):
 
 
 # --------------------------------------------------------------------------
-# Anti-repetition: seeded per-material texture placement (change 3)
+# Anti-repetition: seeded per-material texture placement (FIX 2, AB03)
 # --------------------------------------------------------------------------
 # KeyShot procedural textures are deterministic and world-aligned, so without
-# per-material placement every build tiles IDENTICALLY and reads as fake / too-
-# perfect even with noise on. randomize_placement() applies a small random
-# offset / rotation / scale-jitter to each procedural texture node.
+# per-material variety every build tiles IDENTICALLY and reads as fake / too-
+# perfect even with noise on.
 #
-# !! UNPROBED PARAM NAMES -- CONFIRM AT RENDER !!
-# The KeyShot placement param display names are NOT confirmed on this build.
-# They are treated as runtime-discovered (via find_param, same as every other
-# param here). Every lookup + set is best-effort: a miss logs an [info] and the
-# build continues. Ranges below are conservative assumptions to confirm in the
-# human's render loop:
-#   * offset / translate: each component random in [-1.0, 1.0] (node's own
-#     units; kept small so a material never slides wildly off-feature).
-#   * rotation: random in [0, 360] degrees.
-#   * scale: existing value multiplied by a factor in [1-scale_jitter,
-#     1+scale_jitter]; if the value can't be read, a small absolute in [0.9, 1.1].
+# WHY THIS WAS REWRITTEN (root cause, confirmed): AB02's randomize_placement()
+# guessed offset/rotation/translate param names -- but the real AB02 DEBUG dump
+# shows those params DO NOT EXIST on any of these nodes. Every set missed, so
+# placement never actually varied anything (the console was full of
+# "placement: offset/rotation not settable here").
+#
+# THE ONE real placement lever is the type-12 'Texture Transform' matrix
+# (transform_obj_to_uv), present on every tiling node. We DELIBERATELY LEAVE IT
+# UNSET: writing a raw 4x4/3x3 texture-transform matrix blind -- with no probe
+# of its expected shape/units on this build -- is too risky and could throw a
+# feature wildly off-surface. Instead, variety comes from jittering the REAL,
+# per-node scalar params that shape each pattern. EVERY name used below is
+# confirmed present in the AB02 ground-truth param list, so these are no longer
+# "unprobed guesses" -- they are the actual pattern-shaping controls:
+#   * ALL tiling nodes : scale        (read-and-multiply x[0.80,1.25])
+#   * Scratches        : + noise_scale x[0.7,1.4], level_scale x[0.85,1.2]
+#   * Fine Noise       : magnitude    x[0.85,1.15]   (subtle)
+#   * Fractal Noise    : scale only (mild -- broad-band roughness, keep gentle)
+#   * Spots            : seed <- fresh int (the single best variety lever),
+#                        distortion += [0.0,0.15] (capped), radius x[0.85,1.2]
+#   * Cellular         : noise_scale x[0.7,1.4], shape_1/2/3 each x[0.9,1.1]
+#   * Occlusion (rough): bias_x/y/z <- [-0.5,0.5]   (offsets the AO sampling)
+# Driven by the seeded placement RNG, so every build is reproducible from
+# spec['meta']['placement_seed']; runs for EVERY build. Fully defensive: every
+# miss logs an [info] and the build continues. find_param's exact-match-first
+# (change 1) keeps e.g. "Scale" from colliding with "Noise Scale".
 
 
 def _try_set_placement(param, value, what):
@@ -666,57 +928,128 @@ def _try_set_placement(param, value, what):
         return False
 
 
-def randomize_placement(node, rng, scale_jitter=0.15):
-    """Apply per-material randomised placement to one procedural texture node,
-    drawing from `rng` (a Random seeded off the captured placement_seed, so this
-    is reproducible). Runs for EVERY build (killing global repetition is the whole
-    point). Fully defensive -- see the module note above; placement param names
-    are UNPROBED and any miss is a logged [info], never fatal."""
+def _placement_param(node, keywords, what):
+    """Resolve a jitter target defensively. Returns the param, or None (logging an
+    [info]) when it is missing or connection-only -- so callers stay one-liners."""
+    p = find_param(node, keywords)
+    if p is None:
+        print("  [info] placement: {0} not settable here (no matching param)".format(what))
+        return None
+    if p.isPure():
+        print("  [info] placement: {0} is connection-only here -- skipped".format(what))
+        return None
+    return p
+
+
+def _jitter_mult(node, keywords, rng, lo, hi, what, base_default=None):
+    """Multiply a scalar param by uniform(lo, hi). Prefers reading the current
+    value and multiplying; if it can't be read, falls back to base_default*factor
+    when a base is supplied, else logs and leaves the node default. Best-effort."""
+    p = _placement_param(node, keywords, what)
+    if p is None:
+        return False
+    factor = rng.uniform(lo, hi)
+    cur = None
+    try:
+        cur = p.getValue()
+    except Exception:
+        cur = None
+    if isinstance(cur, (int, float)) and not isinstance(cur, bool) and cur:
+        return _try_set_placement(p, cur * factor, what)
+    if base_default is not None:
+        return _try_set_placement(p, base_default * factor, what)
+    print("  [info] placement: {0} value unreadable and no base -- left at default".format(what))
+    return False
+
+
+def _jitter_add(node, keywords, rng, lo, hi, what, cap=None):
+    """Add uniform(lo, hi) to a scalar param (reads current, else treats as 0),
+    clamped to [0, cap] when a cap is given. Best-effort."""
+    p = _placement_param(node, keywords, what)
+    if p is None:
+        return False
+    add = rng.uniform(lo, hi)
+    cur = None
+    try:
+        cur = p.getValue()
+    except Exception:
+        cur = None
+    if not isinstance(cur, (int, float)) or isinstance(cur, bool):
+        cur = 0.0
+    val = cur + add
+    if cap is not None:
+        val = min(cap, val)
+    val = max(0.0, val)
+    return _try_set_placement(p, val, what)
+
+
+def _jitter_set(node, keywords, rng, lo, hi, what):
+    """Set a scalar param directly to uniform(lo, hi) -- for params that ARE the
+    offset (e.g. Occlusion bias_x/y/z), not a value to scale. Best-effort."""
+    p = _placement_param(node, keywords, what)
+    if p is None:
+        return False
+    return _try_set_placement(p, rng.uniform(lo, hi), what)
+
+
+def _set_fresh_seed(node, rng, what="seed"):
+    """Set an integer Seed param to a fresh value from the placement RNG. For
+    Spots this is the single strongest variety lever (a real 'Seed' param).
+    Kept in a moderate range so a build with a narrow seed domain still takes."""
+    p = _placement_param(node, [what, "seed"], what)
+    if p is None:
+        return False
+    return _try_set_placement(p, rng.randint(0, 999999), what)
+
+
+def randomize_placement(node, rng, kind=None):
+    """Apply per-material variety to one procedural texture node by jittering its
+    REAL pattern-shaping scalars (see the module note above -- the type-12 Texture
+    Transform matrix is intentionally left unset). `kind` selects the node-aware
+    jitter table; it is the node label already passed at creation, normalised to a
+    short key. Drawn from `rng` (seeded off placement_seed, reproducible), runs for
+    EVERY build, fully defensive -- every miss is a logged [info], never fatal."""
     if node is None:
         return
-    # -- offset / translate (x, y, z) --
-    try:
-        p = find_param(node, ["translate", "offset", "position", "move"])
-        if p is None:
-            print("  [info] placement: offset not settable here (no matching param)")
-        elif p.isPure():
-            print("  [info] placement: offset is connection-only here -- skipped")
-        else:
-            off = (rng.uniform(-1.0, 1.0), rng.uniform(-1.0, 1.0), rng.uniform(-1.0, 1.0))
-            _try_set_placement(p, off, "offset")
-    except Exception as e:
-        print("  [info] placement: offset not settable here ({0})".format(e))
-    # -- rotation --
-    try:
-        p = find_param(node, ["rotation", "rotate", "angle"])
-        if p is None:
-            print("  [info] placement: rotation not settable here (no matching param)")
-        elif p.isPure():
-            print("  [info] placement: rotation is connection-only here -- skipped")
-        else:
-            _try_set_placement(p, rng.uniform(0.0, 360.0), "rotation")
-    except Exception as e:
-        print("  [info] placement: rotation not settable here ({0})".format(e))
-    # -- scale (jitter the existing value; else a small absolute) --
-    try:
-        p = find_param(node, ["scale", "size"])
-        if p is None:
-            print("  [info] placement: scale not settable here (no matching param)")
-        elif p.isPure():
-            print("  [info] placement: scale is connection-only here -- skipped")
-        else:
-            factor = rng.uniform(1.0 - scale_jitter, 1.0 + scale_jitter)
-            cur = None
-            try:
-                cur = p.getValue()
-            except Exception:
-                cur = None
-            if isinstance(cur, (int, float)) and cur:
-                _try_set_placement(p, cur * factor, "scale")
-            else:
-                _try_set_placement(p, rng.uniform(0.9, 1.1), "scale")
-    except Exception as e:
-        print("  [info] placement: scale not settable here ({0})".format(e))
+    k = (kind or "").strip().lower()
+
+    # ALL tiling nodes share a 'scale' tiling control. Read-and-multiply; if the
+    # value can't be read, fall back to the node's BASE absolute * factor.
+    scale_base = {
+        "fine_noise": BASE["fine_noise_scale"],
+        "scratches": BASE["scratch_scale"],
+        "fractal": BASE["fractal_scale"],
+        "cellular": BASE["cellular_scale"],
+    }.get(k)
+    if k in ("fine_noise", "scratches", "fractal", "cellular", "spots"):
+        _jitter_mult(node, ["scale"], rng, 0.80, 1.25, "scale", scale_base)
+
+    if k == "scratches":
+        _jitter_mult(node, ["noise scale", "noise_scale"], rng, 0.7, 1.4, "noise_scale")
+        _jitter_mult(node, ["level scale", "level_scale"], rng, 0.85, 1.2, "level_scale")
+    elif k == "fine_noise":
+        _jitter_mult(node, ["magnitude"], rng, 0.85, 1.15, "magnitude")
+    elif k == "fractal":
+        # scale (mild) is covered above -- broad-band roughness, keep it gentle.
+        pass
+    elif k == "spots":
+        # Seed is the strongest variety lever on Spots (a real 'Seed' param).
+        _set_fresh_seed(node, rng)
+        _jitter_add(node, ["distortion"], rng, 0.0, 0.15, "distortion", cap=1.0)
+        _jitter_mult(node, ["radius"], rng, 0.85, 1.2, "radius")
+    elif k == "cellular":
+        _jitter_mult(node, ["noise scale", "noise_scale"], rng, 0.7, 1.4, "noise_scale")
+        _jitter_mult(node, ["shape 1", "shape_1"], rng, 0.9, 1.1, "shape_1")
+        _jitter_mult(node, ["shape 2", "shape_2"], rng, 0.9, 1.1, "shape_2")
+        _jitter_mult(node, ["shape 3", "shape_3"], rng, 0.9, 1.1, "shape_3")
+    elif k == "occlusion":
+        # bias_x/y/z act as a positional offset of the occlusion sampling -- set
+        # directly (they are offsets, not values to scale).
+        _jitter_set(node, ["bias x", "bias_x"], rng, -0.5, 0.5, "bias_x")
+        _jitter_set(node, ["bias y", "bias_y"], rng, -0.5, 0.5, "bias_y")
+        _jitter_set(node, ["bias z", "bias_z"], rng, -0.5, 0.5, "bias_z")
+    else:
+        print("  [info] placement: unknown node kind {0} -- only scale jittered".format(repr(kind)))
 
 
 # --------------------------------------------------------------------------
@@ -763,6 +1096,10 @@ def set_blend_mode(node, mode_name, mode_int):
         p.getValue()
     except Exception:
         can_read = False
+    # blend_mode is a TYPE-2 int enum in the real AB02 dump, so the int candidate
+    # (mode_int = 7 = Lighten) is the one most likely to take. We still try the
+    # string label first (unambiguous), then fall through to the int -- keeping
+    # both candidates as before, but the int IS always attempted second.
     for val in (mode_name, mode_int, mode_name.lower(), mode_name.upper()):
         try:
             p.setValue(val)
@@ -785,20 +1122,64 @@ def set_blend_mode(node, mode_name, mode_int):
 
 def _composite_inputs(comp):
     """Return (source_param_name, background_param_name) for a Color Composite,
-    or (None, None) if two colour inputs can't be identified. Prefers matching
-    by display name, then falls back to the first two non-pure colour-type
-    params positionally."""
-    src = find_param(comp, ["source", "foreground", "top", "color 1", "input 1"], ptype=PT_COLOR)
-    bg = find_param(comp, ["background", "base", "bottom", "color 2", "input 2"], ptype=PT_COLOR)
+    or (None, None) if two inputs can't be identified.
+
+    FIX 1 (AB03, root-cause): the Composite's Source/Background are colour/texture
+    CONNECTION inputs -- KeyShot param TYPE 14 in the real AB02 dump -- NOT the
+    plain colour-VALUE type (13 = PT_COLOR). AB02 searched for them with
+    ptype=PT_COLOR, matched NOTHING, and stopped the roughness chain, forcing
+    single-fallback every run. Identify them by NAME with NO type filter
+    ('Source' / 'Background' in the dump); the positional fallback derives the
+    connection type from those params defensively rather than hardcoding 14."""
+    # Primary: by display name, no type filter (they are connection inputs).
+    src = find_param(comp, ["source", "foreground", "top"])
+    bg = find_param(comp, ["background", "base", "bottom"])
     if src is not None and bg is not None and src.getName() != bg.getName():
         return src.getName(), bg.getName()
-    # Positional fallback: non-pure colour-type inputs (clipping_mask is pure,
-    # so it's excluded).
+
     try:
-        names = [p.getName() for p in comp.getParameters()
-                 if (PT_COLOR is not None and p.getType() == PT_COLOR and not p.isPure())]
+        params = comp.getParameters()
     except Exception:
-        names = []
+        params = []
+
+    # Derive the connection-colour type from whichever named input we DID find,
+    # so we never blindly hardcode 14 as a lux constant.
+    conn_type = None
+    for cand in (src, bg):
+        if cand is not None and conn_type is None:
+            try:
+                conn_type = cand.getType()
+            except Exception:
+                conn_type = None
+
+    names = []
+    if conn_type is not None:
+        # The connection inputs are the non-pure params of that type
+        # (clipping_mask is type 14 too but pure, so it's excluded).
+        for p in params:
+            try:
+                if p.getType() == conn_type and not p.isPure():
+                    names.append(p.getName())
+            except Exception:
+                continue
+    else:
+        # No named input found on this build -- exclude the KNOWN non-inputs by
+        # display name (blend_mode/mask_mode are int enums; alpha/background_alpha/
+        # source_alpha are floats; clip_using_source/invert_mask are bools;
+        # clipping_mask is pure) and take the first two remaining non-pure params.
+        _NON_INPUTS = ("blend mode", "blend", "mask mode", "alpha", "source alpha",
+                       "background alpha", "clip using source", "invert mask",
+                       "clipping mask")
+        for p in params:
+            try:
+                if p.isPure():
+                    continue
+                dn = p.getDisplayName().strip().lower()
+                if dn in _NON_INPUTS:
+                    continue
+                names.append(p.getName())
+            except Exception:
+                continue
     if len(names) >= 2:
         return names[0], names[1]
     return None, None
@@ -1171,7 +1552,14 @@ def sample_spec(opts):
     masks = {k: bool(opts.get(k, False)) for k in MASK_KEYS}
 
     mat = MATERIAL_BY_NAME.get(material_type, MATERIAL_BY_NAME[DEFAULT_OPTIONS["material_type"]])
-    _, shader_attr, base_color, base_roughness, _ = mat
+    # Index-based unpack (AB04): rows are now 5- OR 6-element. Never destructure a
+    # fixed arity. `extra` is COPIED so validate/build mutating it (e.g. recording
+    # the chosen anisotropy angle) can NEVER mutate the module-level MATERIALS row.
+    shader_attr = mat[1]
+    base_color = mat[2]
+    base_roughness = mat[3]
+    extra = dict(material_extra(mat))
+    family = material_family(extra)
 
     fp = FINISH_PRESETS.get(finish_name, FINISH_PRESETS[DEFAULT_OPTIONS["finish"]])
 
@@ -1188,11 +1576,15 @@ def sample_spec(opts):
             "material_type": material_type,
             "wear_level": wear_level,
             "finish": finish_name,
+            # Short family echo for reproducibility / at-a-glance in the emitted spec.
+            "family": family,
         },
         "base": {
             "shader": shader_attr,
             "color": [base_color[0], base_color[1], base_color[2]],
             "roughness": base_roughness,
+            # AB04: family + family shader params (opaque rows carry {}).
+            "extra": extra,
         },
         "wear": {
             "level": wear_level,
@@ -1215,6 +1607,29 @@ def sample_spec(opts):
     return spec
 
 
+def validate_family_extra(extra):
+    """Clamp/sanity-check the numeric family params in an `extra` dict, in place
+    (AB04). Every param is optional and defensively coerced; an opaque row ({}) or
+    an unknown family passes through untouched. Ranges: anisotropy [0,1], brush
+    angle wrapped into [0,360) (None left as-is -- chosen per-build later), IOR
+    ~[1.0,3.0], frost [0,1], film thickness [1,2000] nm, film IOR ~[1.0,3.0]."""
+    if not isinstance(extra, dict):
+        return {}
+    family = material_family(extra)
+    if family == "metal_aniso":
+        extra["anisotropy"] = clamp01(as_float(extra.get("anisotropy"), 0.5))
+        ang = extra.get("aniso_angle")
+        if ang is not None:
+            extra["aniso_angle"] = as_float(ang, 0.0) % 360.0
+    elif family == "dielectric":
+        extra["ior"] = clampf(as_float(extra.get("ior"), 1.51), 1.0, 3.0)
+        extra["frost"] = clamp01(as_float(extra.get("frost"), 0.0))
+    elif family == "thinfilm":
+        extra["film_thickness"] = clampf(as_float(extra.get("film_thickness"), 500.0), 1.0, 2000.0)
+        extra["film_ior"] = clampf(as_float(extra.get("film_ior"), 1.4), 1.0, 3.0)
+    return extra
+
+
 def validate_spec(spec):
     """Validator: sanity-check + clamp the spec and derive the loud-layer
     damping context. Deliberately does NOT cap loud layers in manual mode --
@@ -1234,6 +1649,10 @@ def validate_spec(spec):
     color = base.get("color", [0.5, 0.5, 0.5])
     base["color"] = [clamp01(color[0]), clamp01(color[1]), clamp01(color[2])]
     base["roughness"] = clamp01(base.get("roughness", 0.3))
+    # AB04: clamp any numeric family params in `extra` (defensive -- optional +
+    # coerced; unknown families pass through untouched). Kept on the spec so the
+    # emitted spec is reproducible.
+    base["extra"] = validate_family_extra(base.get("extra", {}))
 
     # Finish (change 2): clamp dir/noise to [0,1], levels to an int in [1,5],
     # and the scratch bump BASELINE to a valid negative groove (magnitude [0,1]).
@@ -1292,7 +1711,11 @@ def build_material(spec):
     base_color = (base["color"][0], base["color"][1], base["color"][2])
     base_roughness = base["roughness"]
 
-    shader_type = resolve_shader(base["shader"])
+    # AB04: family + its shader params (opaque rows carry {} -> family "opaque").
+    extra = base.get("extra", {}) or {}
+    family = material_family(extra)
+
+    shader_type = resolve_shader(base["shader"], family)
     if shader_type is None:
         raise RuntimeError("No usable base shader for '{0}'".format(material_type))
 
@@ -1319,6 +1742,22 @@ def build_material(spec):
         finish_name, finish.get("dir_noise"), finish.get("noise"),
         finish.get("levels"), finish.get("scratch_bump_height")))
     print("  Placement seed: {0} (per-build texture placement, reproducible)".format(placement_seed))
+    print("  Family: {0}".format(family))
+
+    # --- PER-FAMILY WEAR-LAYER GATING (AB04) --------------------------------
+    # Intersect the user's chosen features with the family's allowed set BEFORE
+    # building any bus, so a family never gets a nonsensical layer (grime/pitting/
+    # cellular-corrosion on clear glass, etc.). opaque/metal_aniso allow all, so
+    # this is a no-op for them. Each dropped layer is logged. `features` is a
+    # reference into the spec, so the emitted spec reflects what was actually
+    # built; the sampled intent is still visible in meta/randomized.
+    allowed = FAMILY_ALLOWED_LAYERS.get(family, set(FEATURE_KEYS))
+    if family != "opaque":
+        for k in FEATURE_KEYS:
+            if features.get(k) and k not in allowed:
+                print("  [info] {0} skipped -- not applicable to {1}".format(FEATURE_LABELS[k], family))
+                features[k] = False
+
     active = [FEATURE_LABELS[k] for k, v in features.items() if v]
     active_str = ", ".join(active) if active else "(none)"
     print("Features: {0}".format(active_str))
@@ -1330,9 +1769,15 @@ def build_material(spec):
     # Damp each loud bump layer's amplitude by how many are stacked, so total
     # surface energy stays roughly bounded regardless of how many ended up
     # active -- this is what actually stops combinations from compounding into
-    # chaotic noise. (Computed in validate_spec.)
-    active_loud_count = derived.get("active_loud_count", 0)
-    damping = derived.get("damping", 1.0)
+    # chaotic noise. RECOMPUTED here (AB04) from the POST-GATE features, so a
+    # family that dropped loud layers (e.g. glass loses spots/cellular) isn't
+    # over-damped by validate_spec's pre-gate count. spec['derived'] is updated
+    # to keep the emitted spec honest.
+    active_loud_count = sum(1 for k in LOUD_BUMP_FEATURES if features.get(k))
+    damping = 1.0 / math.sqrt(max(1, active_loud_count))
+    derived["active_loud_count"] = active_loud_count
+    derived["damping"] = damping
+    spec["derived"] = derived
     if active_loud_count > 1:
         print("  {0} loud bump layers active -- damping each by {1:.2f}x".format(active_loud_count, damping))
 
@@ -1365,8 +1810,17 @@ def build_material(spec):
     set_display(base_node, ["color", "diffuse", "tint", "reflectance", "base color"],
                 base_color)
     # Static roughness value is the ultimate fallback for the roughness bus:
-    # if every roughness wire fails, this value still applies.
+    # if every roughness wire fails, this value still applies. For frosted glass
+    # this base roughness is deliberately high (~0.30) so it reads matte even if
+    # the refraction-roughness param below is absent.
     set_display(base_node, ["roughness"], base_roughness)
+
+    # --- FAMILY BASE PARAMS (AB04) ------------------------------------------
+    # Apply the non-opaque family's shader params (IOR/frost, anisotropy+angle,
+    # film thickness/IOR) defensively AFTER colour+roughness. No-op for opaque.
+    # Every set is best-effort; a missing param logs and the material still works.
+    if family != "opaque":
+        apply_family_params(graph, base_node, extra, placement_rng)
 
     # --- BUMP BUS: bump-domain layers combined into one bump input ----------
     # Masking is applied per-layer here: a masked layer gets a Curvature/
@@ -1377,11 +1831,11 @@ def build_material(spec):
     scratches_node = None  # captured so scratches can also drive the roughness bus
     if features["add_fine_noise"]:
         fine_node = add_fine_noise_bump(graph)
-        randomize_placement(fine_node, placement_rng)
+        randomize_placement(fine_node, placement_rng, "fine_noise")
         bump_sources.append(fine_node)
     if features["add_scratches"]:
         scratches_node = add_scratches_bump(graph, wear_mult, base_roughness, finish, damping)
-        randomize_placement(scratches_node, placement_rng)
+        randomize_placement(scratches_node, placement_rng, "scratches")
         if masks.get("mask_scratches_to_edges"):
             mask_bump_layer(graph, scratches_node, add_curvature_mask(graph), "scratches->edges")
         bump_sources.append(scratches_node)
@@ -1391,13 +1845,13 @@ def build_material(spec):
         bump_sources.append(add_rounded_edges_bump(graph, wear_mult, damping))
     if features["add_spots"]:
         sp = add_spots_bump(graph, wear_mult, damping)
-        randomize_placement(sp, placement_rng)
+        randomize_placement(sp, placement_rng, "spots")
         if masks.get("mask_spots_to_cavities"):
             sp = mask_bump_layer(graph, sp, add_occlusion_mask(graph), "spots->cavities")
         bump_sources.append(sp)
     if features["add_cellular"]:
         cell_node = add_cellular_bump(graph, wear_mult, damping)
-        randomize_placement(cell_node, placement_rng)
+        randomize_placement(cell_node, placement_rng, "cellular")
         bump_sources.append(cell_node)
 
     combined_bump = combine_bump_sources(graph, bump_sources)
@@ -1424,13 +1878,15 @@ def build_material(spec):
     if features["add_fractal_roughness"]:
         fr = make_fractal_roughness_node(graph, base_roughness)
         if fr is not None:
-            randomize_placement(fr, placement_rng)  # Fractal Noise is a tiling texture
+            randomize_placement(fr, placement_rng, "fractal")  # Fractal Noise is a tiling texture
             rough_sources.append(fr)
     if features["add_occlusion_roughness"]:
-        # Occlusion is geometry-based (cavity-driven), not a tiling texture -- no
-        # placement randomisation.
         oc = make_occlusion_roughness_node(graph, base_roughness)
         if oc is not None:
+            # Occlusion has no tiling scale, but its bias_x/y/z DO offset the AO
+            # sampling (confirmed in the AB02 dump) -- FIX 2 jitters those so even
+            # the crevice-grime source varies per material instead of being global.
+            randomize_placement(oc, placement_rng, "occlusion")
             rough_sources.append(oc)
     rough_mode = build_roughness_bus(graph, base_node, rough_sources)
     print("  Roughness bus: {0} source(s) -> mode '{1}'".format(len(rough_sources), rough_mode))
@@ -1446,15 +1902,97 @@ def build_material(spec):
     return graph, name
 
 
+def _collect_descendants(root):
+    """FIX 3 (AB03): recursively collect all descendant nodes of `root` via
+    getChildren(). AB02 used root.find(''), which on the operator's scene
+    returned ONLY non-geometry nodes (all 22 were cameras, kind=6) and never
+    reached the geometry -- so 0 parts got the material. Walk the tree by hand
+    instead. Fully defensive: any getChildren() failure just prunes that branch,
+    and the caller falls back to root.find('') if getChildren isn't available at
+    all. A visited-set (by id) guards against a pathological cyclic tree."""
+    collected = []
+    visited = set()
+    stack = []
+    try:
+        first = root.getChildren()
+    except Exception:
+        first = None
+    if first:
+        stack.extend(first)
+    while stack:
+        node = stack.pop()
+        marker = id(node)
+        if marker in visited:
+            continue
+        visited.add(marker)
+        collected.append(node)
+        try:
+            children = node.getChildren()
+        except Exception:
+            children = None
+        if children:
+            stack.extend(children)
+    return collected
+
+
+def _name_matches(node, name_filter):
+    """Best-effort substring name match, so name filtering still works on the
+    recursively-collected node list (the find() fallback filters on its own)."""
+    try:
+        nm = node.getName()
+    except Exception:
+        return False
+    if not nm:
+        return False
+    return name_filter.lower() in nm.lower()
+
+
 def apply_material_to_parts(name, name_filter=None):
     """Apply `name` across the scene. Deliberately does NOT pre-filter to
     isObject() -- KeyShot's own docs confirm Group nodes accept setMaterial()
     and cascade it to their children, so excluding Groups (as an earlier
     version of this function did) silently skipped entire assemblies. Instead
     every node is tried; only genuine failures (cameras, lights, etc.) are
-    skipped, based on what setMaterial() itself reports."""
+    skipped, based on what setMaterial() itself reports.
+
+    FIX 3 (AB03, CONFIRM-AT-RENDER -- LEAST CERTAIN of the three fixes, no scene
+    to test on): reach geometry by walking the tree RECURSIVELY via getChildren()
+    rather than root.find(''), which returned only cameras on the operator's
+    scene. Prints a histogram of candidate node KINDS discovered BEFORE applying,
+    so if 0 still apply the operator can see exactly what kinds exist."""
     root = lux.getSceneTree()
-    candidates = root.find(name=name_filter) if name_filter else root.find("")
+
+    # Prefer a recursive getChildren() walk; fall back to root.find('') if the
+    # API isn't available on this build.
+    try:
+        can_walk = root.getChildren() is not None
+    except Exception:
+        can_walk = False
+
+    if can_walk:
+        candidates = _collect_descendants(root)
+        used_recursive = True
+        if name_filter:
+            candidates = [n for n in candidates if _name_matches(n, name_filter)]
+    else:
+        print("  [info] getChildren() unavailable -- falling back to root.find('')")
+        candidates = root.find(name=name_filter) if name_filter else root.find("")
+        used_recursive = False
+
+    # DEBUG: histogram of candidate KINDS BEFORE applying -- if 0 apply, this
+    # tells us what kinds exist (e.g. {6: 17, <geo-kind>: N, ...}).
+    if DEBUG:
+        discovered = {}
+        for node in candidates:
+            try:
+                kd = node.getKind()
+            except Exception:
+                kd = "?"
+            discovered[kd] = discovered.get(kd, 0) + 1
+        print("  candidate kinds: {0} ({1} node(s) via {2})".format(
+            discovered, len(candidates),
+            "recursive getChildren" if used_recursive else "root.find fallback"))
+
     applied, skipped = 0, 0
     kind_counts = {}
     for node in candidates:
@@ -1481,8 +2019,9 @@ def apply_material_to_parts(name, name_filter=None):
     if DEBUG and applied:
         print("  applied to node kinds: {0}".format(kind_counts))
     if applied == 0 and DEBUG:
-        print("  [info] nothing matched -- run with DEBUG=True and check the node "
-              "kinds above, or confirm the scene actually has geometry loaded")
+        print("  [info] nothing matched -- see the 'candidate kinds' histogram above; "
+              "if it's all kind=6 (cameras) the geometry wasn't reached, so confirm a "
+              "model is actually loaded in the scene")
     return applied
 
 
