@@ -4,24 +4,32 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>KeyShot Scripts — RENKON</title>
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap"></noscript>
 <style>
   :root {
-    --bg: #0a0f16;
-    --panel-bg: #0d1520;
-    --panel-bg-raised: #101a27;
-    --line: #1c2733;
-    --text: #e8e8e0;
-    --muted: #93999e;
+    --bg: #0C141D;
+    --panel-bg: #14202C;
+    --panel-bg-raised: #182635;
+    --line: #22303E;
+    --text: #ECF2F6;
+    --muted: #6E7E8C;
 
     --c-structural: #002F67;
-    --c-fluid: #2FA8B0;
-    --c-accent: #E8792E;
+    --c-fluid: #4FD1D9;
+    --c-accent: #F08A3C;
+
+    --font-display: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "Space Mono", ui-monospace, Consolas, monospace;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   body {
     background: var(--bg); color: var(--text);
-    font-family: "IBM Plex Mono", "Courier New", monospace;
+    font-family: var(--font-display);
     -webkit-font-smoothing: antialiased;
     min-height: 100vh; display: flex; flex-direction: column;
   }
@@ -33,10 +41,13 @@
     padding: 14px 28px; border-bottom: 1px solid var(--line);
     position: sticky; top: 0; background: var(--bg); z-index: 10;
   }
-  header .wordmark { font-size: 14px; letter-spacing: 0.28em; font-weight: 500; flex: none; margin-right: auto; }
-  header .wordmark b { color: var(--c-accent); font-weight: 500; }
+  header .brand { display: flex; align-items: center; gap: 11px; margin-right: auto; color: var(--text); }
+  header .brand .mark { width: 26px; height: 26px; flex: none; color: var(--c-accent); }
+  header .brand .mark svg { display: block; width: 100%; height: 100%; }
+  header .wordmark { font-family: var(--font-display); font-size: 14px; letter-spacing: 0.28em; font-weight: 700; flex: none; }
+  header .wordmark b { color: var(--c-accent); font-weight: 700; }
   header .wordmark:hover { color: var(--text); }
-  header .meta { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+  header .meta { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
   @media (max-width: 600px) {
     header { padding: 12px 16px; }
   }
@@ -44,6 +55,7 @@
   main { flex: 1; padding: 32px 28px 56px; max-width: 1000px; margin: 0 auto; width: 100%; }
 
   .up-link {
+    font-family: var(--font-mono);
     display: inline-flex; align-items: center; gap: 6px;
     color: var(--c-accent); font-size: 10px; letter-spacing: 0.06em;
     text-transform: uppercase; margin-bottom: 18px;
@@ -52,15 +64,17 @@
 
   .page-head { margin-bottom: 24px; }
   .page-head h1 {
+    font-family: var(--font-display);
     font-size: 17px; letter-spacing: 0.08em; text-transform: uppercase;
-    color: var(--text); margin: 0 0 8px 0; font-weight: 500;
+    color: var(--text); margin: 0 0 8px 0; font-weight: 700;
   }
   .page-head p { color: var(--muted); font-size: 12px; margin: 0; max-width: 68ch; line-height: 1.7; }
 
   section { margin-bottom: 36px; }
   section > h2 {
+    font-family: var(--font-display);
     font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
-    color: var(--muted); margin: 0 0 14px; font-weight: 500;
+    color: var(--muted); margin: 0 0 14px; font-weight: 700;
     display: flex; align-items: center; gap: 10px;
   }
   section > h2 .rule { flex: 1; height: 1px; background: var(--line); }
@@ -76,15 +90,15 @@
   .switch button {
     -webkit-appearance: none; appearance: none; cursor: pointer;
     background: transparent; color: var(--muted); border: none;
-    font-family: inherit; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
     padding: 9px 16px; transition: color 0.12s ease, background 0.12s ease;
     border-left: 1px solid var(--line);
   }
   .switch button:first-child { border-left: none; }
   .switch button:hover { color: var(--text); }
   .switch button.active { color: var(--c-accent); background: var(--panel-bg-raised); }
-  .switch-hint { font-size: 10px; color: var(--muted); letter-spacing: 0.04em; }
-  .switch-hint b { color: var(--c-fluid); font-weight: 500; }
+  .switch-hint { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 0.04em; }
+  .switch-hint b { color: var(--c-fluid); font-weight: 700; }
 
   .view[hidden] { display: none; }
 
@@ -98,15 +112,17 @@
     background: var(--panel-bg-raised);
   }
   .zone-code {
+    font-family: var(--font-mono);
     font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
     color: var(--c-accent); border: 1px solid var(--c-accent);
     padding: 3px 9px; white-space: nowrap; flex: none;
   }
   .zone-code.support { color: var(--c-fluid); border-color: var(--c-fluid); }
   .zone-code.muted { color: var(--muted); border-color: var(--line); }
-  .zone-title { font-size: 12px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text); flex: none; }
+  .zone-title { font-family: var(--font-display); font-size: 12px; letter-spacing: 0.09em; text-transform: uppercase; font-weight: 700; color: var(--text); flex: none; }
   .zone-blurb { font-size: 11px; color: var(--muted); line-height: 1.5; flex: 1 1 220px; min-width: 160px; }
   .zone-count {
+    font-family: var(--font-mono);
     font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
     color: var(--c-fluid); white-space: nowrap; flex: none;
   }
@@ -116,6 +132,7 @@
 
   /* stage sub-label inside the main-pipeline zone (by-type view) */
   .substage {
+    font-family: var(--font-mono);
     padding: 9px 18px 5px; font-size: 9.5px; letter-spacing: 0.14em;
     text-transform: uppercase; color: var(--muted); border-top: 1px solid var(--line);
   }
@@ -130,6 +147,7 @@
   .row:hover { background: var(--panel-bg-raised); }
 
   .row .tag {
+    font-family: var(--font-mono);
     font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
     color: var(--c-fluid); white-space: nowrap; padding-top: 2px;
   }
@@ -142,6 +160,7 @@
   .row .note code { color: var(--c-fluid); }
 
   .status {
+    font-family: var(--font-mono);
     font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
     padding: 3px 8px; border: 1px solid var(--line); white-space: nowrap; height: fit-content;
   }
@@ -153,6 +172,7 @@
   /* status + last-updated stack, right-aligned in the third column */
   .status-col { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
   .updated {
+    font-family: var(--font-mono);
     font-size: 9.5px; letter-spacing: 0.05em; text-transform: uppercase;
     color: var(--c-fluid); white-space: nowrap;
   }
@@ -170,6 +190,7 @@
   .item .note { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.6; max-width: 64ch; }
   .item .note code { color: var(--c-fluid); }
   .item .kind {
+    font-family: var(--font-mono);
     font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
     color: var(--muted); border: 1px solid var(--line); padding: 3px 8px; white-space: nowrap; height: fit-content;
   }
@@ -182,7 +203,7 @@
     font-size: 11px; line-height: 1.6;
   }
   .backlog li:first-child { border-top: none; }
-  .backlog .pri { color: var(--c-accent); font-size: 10px; letter-spacing: 0.04em; padding-top: 1px; }
+  .backlog .pri { font-family: var(--font-mono); color: var(--c-accent); font-size: 10px; letter-spacing: 0.04em; padding-top: 1px; }
   .backlog .idea { color: var(--text); }
   .backlog .idea .stage { color: var(--muted); }
   .backlog .idea em { color: var(--c-fluid); font-style: normal; }
@@ -193,8 +214,9 @@
     padding: 22px 24px;
   }
   .notes h3 {
+    font-family: var(--font-display);
     font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
-    color: var(--text); margin: 0 0 14px; font-weight: 500;
+    color: var(--text); margin: 0 0 14px; font-weight: 700;
   }
   .notes ul { margin: 0; padding: 0; list-style: none; }
   .notes li {
@@ -214,7 +236,20 @@
 </head>
 <body>
   <header>
-    <a class="wordmark" href="../index.html">REN<b>K</b>ON</a>
+    <a class="brand" href="../index.html" aria-label="RENKON home">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round">
+          <circle cx="50" cy="50" r="44"/>
+          <g transform="rotate(0 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(72 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(144 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(216 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(288 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <circle cx="50" cy="50" r="8.5"/>
+        </svg>
+      </span>
+      <span class="wordmark">RENK<b>O</b>N</span>
+    </a>
     <div class="meta">KeyShot &middot; Scripts</div>
   </header>
 

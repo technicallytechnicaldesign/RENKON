@@ -4,28 +4,36 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Parametric Assets</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap"></noscript>
 <style>
   :root {
-    --bg: #0a0f16;
-    --panel-bg: #0d1520;
-    --panel-bg-raised: #101a27;
-    --line: #1c2733;
-    --text: #e8e8e0;
-    --muted: #93999e;
+    --bg: #0C141D;
+    --panel-bg: #14202C;
+    --panel-bg-raised: #182635;
+    --line: #22303E;
+    --text: #ECF2F6;
+    --muted: #6E7E8C;
 
     --c-structural: #002F67;
-    --c-fluid: #2FA8B0;
-    --c-accent: #E8792E;
+    --c-fluid: #4FD1D9;
+    --c-accent: #F08A3C;
     --c-leader: #E8E8E8;
     --c-panel-base: #001A33;
     --c-panel: rgba(0,26,51,0.85);
     --c-label: #F5F7F8;
+
+    --font-display: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "Space Mono", ui-monospace, Consolas, monospace;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   body {
     background: var(--bg); color: var(--text);
-    font-family: "IBM Plex Mono", "Courier New", monospace;
+    font-family: var(--font-display);
     -webkit-font-smoothing: antialiased;
   }
   a { color: inherit; }
@@ -44,6 +52,7 @@
     position: sticky; top: 0; background: var(--bg); z-index: 10;
   }
   #app-header .crumbs {
+    font-family: var(--font-mono);
     font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
     min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
@@ -52,8 +61,11 @@
     letter-spacing: 0.08em; text-transform: uppercase; padding: 0; font-family: inherit;
   }
   #app-header .crumbs button:hover { text-decoration: underline; }
-  #app-header .mark { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; margin-left: auto; flex: none; }
-  #app-header .wordmark { font-size: 14px; letter-spacing: 0.28em; font-weight: 500; margin-right: 24px; flex: none; }
+  #app-header .mark { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.08em; margin-left: auto; flex: none; }
+  #app-header .brand { display: flex; align-items: center; gap: 11px; color: var(--text); margin-right: 24px; flex: none; }
+  #app-header .brand .mark { width: 26px; height: 26px; flex: none; color: var(--c-accent); margin-left: 0; }
+  #app-header .brand .mark svg { display: block; width: 100%; height: 100%; }
+  #app-header .wordmark { font-family: var(--font-display); font-size: 14px; letter-spacing: 0.28em; font-weight: 500; flex: none; }
   #app-header .wordmark b { color: var(--c-accent); font-weight: 500; }
   @media (max-width: 600px) {
     #app-header { padding: 12px 16px; gap: 12px; }
@@ -62,15 +74,17 @@
 
   .page-head { margin-bottom: 24px; }
   .page-head h1 {
+    font-family: var(--font-display);
     font-size: 17px; letter-spacing: 0.08em; text-transform: uppercase;
     color: var(--text); margin: 0 0 6px 0; font-weight: 500;
   }
   .page-head p { color: var(--muted); font-size: 12px; margin: 0; max-width: 62ch; line-height: 1.6; }
   .up-link {
+    font-family: var(--font-mono);
     display: inline-flex; align-items: center; gap: 5px;
     background: none; border: none; color: var(--c-accent);
     font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
-    padding: 0; margin-bottom: 10px; font-family: inherit;
+    padding: 0; margin-bottom: 10px;
   }
   .up-link:hover { text-decoration: underline; }
   .up-icon { font-size: 12px; line-height: 1; }
@@ -86,9 +100,9 @@
   }
   .card.active { cursor: pointer; }
   .card.active:hover { background: var(--panel-bg-raised); }
-  .card .tag { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-accent); }
+  .card .tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-accent); }
   .card.planned .tag { color: var(--muted); }
-  .card h2 { font-size: 13px; margin: 0; font-weight: 500; }
+  .card h2 { font-family: var(--font-display); font-size: 13px; margin: 0; font-weight: 500; }
   .card p { font-size: 12px; color: var(--muted); margin: 0; line-height: 1.6; }
   .card.planned { opacity: 0.55; border: 1px dashed var(--line); background: transparent; }
   .card.subtype-card { padding-bottom: 12px; }
@@ -106,6 +120,7 @@
     background: var(--panel-bg); border: 1px solid var(--line); margin-bottom: 16px;
   }
   .palette-details > summary {
+    font-family: var(--font-mono);
     padding: 14px 18px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
     color: var(--text); font-weight: 500; cursor: pointer; list-style: none;
   }
@@ -116,7 +131,7 @@
     display: flex; flex-wrap: wrap; gap: 18px; padding: 4px 18px 16px;
   }
   .palette-role { display: flex; align-items: center; gap: 8px; }
-  .palette-role label { font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .palette-role label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
   .palette-role input[type=color] { width: 28px; height: 28px; padding: 0; border: 1px solid var(--line); background: none; }
   .palette-actions { display: flex; gap: 8px; align-items: center; margin-left: auto; }
   .save-status { font-size: 10px; color: var(--muted); min-width: 90px; }
@@ -126,10 +141,10 @@
     padding: 14px 18px; background: var(--panel-bg); border: 1px solid var(--line); margin-bottom: 16px;
   }
   .param-row { display: flex; align-items: center; gap: 8px; }
-  .param-row label { font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .param-row label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
   .param-row input[type=range] { width: 100px; accent-color: var(--c-accent); }
   .param-row input[type=checkbox] { accent-color: var(--c-accent); width: 16px; height: 16px; }
-  .param-value { font-size: 10px; color: var(--text); min-width: 34px; text-align: right; }
+  .param-value { font-family: var(--font-mono); font-size: 10px; color: var(--text); min-width: 34px; text-align: right; }
   .param-panel .btn { margin-left: auto; }
   .param-hint { flex-basis: 100%; font-size: 12px; color: var(--muted); }
 
@@ -143,6 +158,7 @@
   .pattern-groups { display: flex; flex-wrap: wrap; gap: 18px; }
   .pattern-group { display: flex; flex-direction: column; gap: 6px; }
   .pattern-group-label {
+    font-family: var(--font-mono);
     font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
   }
   .pattern-select { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -150,15 +166,17 @@
   .pattern-btn .ic svg { width: 16px; height: 16px; display: block; flex: none; }
   .pattern-filter-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 6px; }
   .filter-chip {
+    font-family: var(--font-mono);
     display: flex; align-items: center; gap: 6px; padding: 6px 10px;
     border: 1px solid var(--line); background: transparent; color: var(--muted);
     font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase;
-    cursor: pointer; font-family: inherit;
+    cursor: pointer;
   }
   .filter-chip .ic svg { width: 14px; height: 14px; display: block; flex: none; }
   .filter-chip:hover { border-color: var(--c-accent); color: var(--c-accent); }
   .filter-chip.active { border-color: var(--c-accent); color: var(--c-accent); background: var(--panel-bg-raised); }
   .section-label {
+    font-family: var(--font-mono);
     display: block; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
     color: var(--text); font-weight: 500; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 4px;
   }
@@ -174,14 +192,14 @@
   .preview-caption { flex-basis: 100%; font-size: 12px; color: var(--muted); text-align: center; margin-top: 2px; }
   .canvas-row { display: flex; flex-wrap: wrap; gap: 1px; background: var(--line); border: 1px solid var(--line); margin-bottom: 16px; }
   .canvas-panel { background: var(--panel-bg); padding: 16px; flex: 1 1 260px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
-  .canvas-panel-title { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); align-self: flex-start; }
+  .canvas-panel-title { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); align-self: flex-start; }
   .canvas-panel canvas { width: 100%; max-width: 320px; height: auto; background: var(--stage-bg, #060a10); border: 1px solid var(--line); }
 
   .text-field-wrap {
     display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;
     padding: 14px 18px; background: var(--panel-bg); border: 1px solid var(--line); max-width: 420px;
   }
-  .text-field-wrap label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .text-field-wrap label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
   .text-field-wrap input[type=text] {
     background: var(--panel-bg-raised, #060a10); border: 1px solid var(--line); color: var(--text);
     padding: 8px 10px; font-size: 13px;
@@ -197,6 +215,7 @@
   .large-stage svg { max-width: min(260px, 100%); max-height: 180px; width: auto; height: auto; display: block; }
 
   .btn {
+    font-family: var(--font-mono);
     background: transparent; border: 1px solid var(--line); color: var(--text);
     font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; padding: 8px 14px;
   }
@@ -226,7 +245,20 @@
 <body>
   <div id="app">
     <header id="app-header">
-      <a class="wordmark" href="../../index.html">REN<b>K</b>ON</a>
+      <a class="brand" href="../../index.html" aria-label="RENKON home">
+        <span class="mark" aria-hidden="true">
+          <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round">
+            <circle cx="50" cy="50" r="44"/>
+            <g transform="rotate(0 50 50)"><circle cx="50" cy="24" r="9"/></g>
+            <g transform="rotate(72 50 50)"><circle cx="50" cy="24" r="9"/></g>
+            <g transform="rotate(144 50 50)"><circle cx="50" cy="24" r="9"/></g>
+            <g transform="rotate(216 50 50)"><circle cx="50" cy="24" r="9"/></g>
+            <g transform="rotate(288 50 50)"><circle cx="50" cy="24" r="9"/></g>
+            <circle cx="50" cy="50" r="8.5"/>
+          </svg>
+        </span>
+        <span class="wordmark">RENK<b>O</b>N</span>
+      </a>
       <div class="crumbs" id="crumbs"></div>
       <div class="mark">OVERLAY TOOLKIT</div>
     </header>
@@ -243,8 +275,8 @@
      ========================================================= */
   const PALETTE_ROLES = [
     { key: "structural", cssVar: "--c-structural", label: "Structural", hex: "#002F67" },
-    { key: "fluid",      cssVar: "--c-fluid",      label: "Fluid",      hex: "#2FA8B0" },
-    { key: "accent",     cssVar: "--c-accent",     label: "Accent",     hex: "#E8792E" },
+    { key: "fluid",      cssVar: "--c-fluid",      label: "Fluid",      hex: "#4FD1D9" },
+    { key: "accent",     cssVar: "--c-accent",     label: "Accent",     hex: "#F08A3C" },
     { key: "leader",     cssVar: "--c-leader",     label: "Leader",     hex: "#E8E8E8" },
     { key: "panel",      cssVar: "--c-panel-base", label: "Panel BG",   hex: "#001A33" },
     { key: "label",      cssVar: "--c-label",      label: "Label Text", hex: "#F5F7F8" }
@@ -499,7 +531,7 @@ ${particle(0)}${particle(1)}${particle(2)}
     rx: var(--r-mult,0); ry: var(--r-mult,0);
     opacity: 0; animation: cll_fadeUp_${rid} 0.4s ease-out 0.5s forwards;
     animation-duration: calc(0.4s / var(--s-mult,1)); animation-delay: calc(0.5s / var(--s-mult,1)); }
-  .cll_label { font-family: "IBM Plex Mono","Courier New",monospace; font-size: 14px; fill: var(--c-label);
+  .cll_label { font-family: "Space Mono","Courier New",monospace; font-size: 14px; fill: var(--c-label);
     opacity: 0; animation: cll_fadeUp_${rid} 0.4s ease-out 0.55s forwards;
     animation-duration: calc(0.4s / var(--s-mult,1)); animation-delay: calc(0.55s / var(--s-mult,1)); }
   @keyframes cll_draw_${rid} { to { stroke-dashoffset: 0; } }
@@ -550,7 +582,7 @@ ${particle(0)}${particle(1)}${particle(2)}
     transform-box: fill-box; transform-origin: center; transform: scale(0); opacity: 0;
     animation: cnb_pop_${rid} 0.35s cubic-bezier(.2,1.4,.4,1) 0.45s forwards;
     animation-duration: calc(0.35s / var(--s-mult,1)); animation-delay: calc(0.45s / var(--s-mult,1)); }
-  .cnb_num { font-family: "IBM Plex Mono","Courier New",monospace; font-size: 16px; font-weight: 600;
+  .cnb_num { font-family: "Space Mono","Courier New",monospace; font-size: 16px; font-weight: 600;
     fill: var(--c-structural); text-anchor: middle; dominant-baseline: central;
     opacity: 0; animation: cnb_fadeIn_${rid} 0.2s linear 0.65s forwards;
     animation-duration: calc(0.2s / var(--s-mult,1)); animation-delay: calc(0.65s / var(--s-mult,1)); }
@@ -581,7 +613,7 @@ ${particle(0)}${particle(1)}${particle(2)}
   .cbd_bg { fill: var(--c-panel); rx: var(--r-mult,0); ry: var(--r-mult,0); opacity: 0;
     animation: cbd_fadeIn_${rid} 0.15s linear 0.5s forwards;
     animation-duration: calc(0.15s / var(--s-mult,1)); animation-delay: calc(0.5s / var(--s-mult,1)); }
-  .cbd_label { font-family: "IBM Plex Mono","Courier New",monospace; font-size: 14px; fill: var(--c-label);
+  .cbd_label { font-family: "Space Mono","Courier New",monospace; font-size: 14px; fill: var(--c-label);
     text-anchor: middle; opacity: 0; animation: cbd_fadeIn_${rid} 0.2s linear 0.6s forwards;
     animation-duration: calc(0.2s / var(--s-mult,1)); animation-delay: calc(0.6s / var(--s-mult,1)); }
   @keyframes cbd_drawOut_${rid} { to { stroke-dashoffset: 0; } }
@@ -667,7 +699,7 @@ ${particle(0)}${particle(1)}${particle(2)}
   .ctb_tail { fill: var(--c-panel); }
   .ctb_bubble { fill: var(--c-panel); stroke: var(--c-leader); stroke-width: calc(1 * var(--t-mult,1));
     rx: var(--r-mult,6); ry: var(--r-mult,6); }
-  .ctb_label { font-family: "IBM Plex Mono","Courier New",monospace; font-size: 15px; fill: var(--c-label); text-anchor: middle; }
+  .ctb_label { font-family: "Space Mono","Courier New",monospace; font-size: 15px; fill: var(--c-label); text-anchor: middle; }
 </style></defs>
 <g class="ctb_grp">
 <path class="ctb_tail" d="M40,70 L26,92 L54,70 Z" />
@@ -1023,7 +1055,7 @@ ${arrow(-30, 0)}${arrow(0, 0.1)}${arrow(30, 0.2)}
   .dtr_bg { fill: var(--c-panel); rx: var(--r-mult,0); ry: var(--r-mult,0); opacity: 0;
     animation: dtr_fadeIn_${rid} 0.15s linear 0.45s forwards;
     animation-duration: calc(0.15s / var(--s-mult,1)); animation-delay: calc(0.45s / var(--s-mult,1)); }
-  .dtr_label { font-family: "IBM Plex Mono","Courier New",monospace; font-size: 11px; letter-spacing: 0.08em;
+  .dtr_label { font-family: "Space Mono","Courier New",monospace; font-size: 11px; letter-spacing: 0.08em;
     fill: var(--c-label); text-anchor: middle; opacity: 0; animation: dtr_fadeIn_${rid} 0.2s linear 0.55s forwards;
     animation-duration: calc(0.2s / var(--s-mult,1)); animation-delay: calc(0.55s / var(--s-mult,1)); }
   @keyframes dtr_draw_${rid} { to { stroke-dashoffset: 0; } }
@@ -1053,7 +1085,7 @@ ${arrow(-30, 0)}${arrow(0, 0.1)}${arrow(30, 0.2)}
     transform-box: fill-box; transform-origin: left center; transform: scaleX(0); opacity: 0;
     animation: bst_pop_${rid} 0.3s ease-out 0.2s forwards;
     animation-duration: calc(0.3s / var(--s-mult,1)); animation-delay: calc(0.2s / var(--s-mult,1)); }
-  .bst_label { font-family: "IBM Plex Mono","Courier New",monospace; font-size: 13px; letter-spacing: 0.06em;
+  .bst_label { font-family: "Space Mono","Courier New",monospace; font-size: 13px; letter-spacing: 0.06em;
     fill: var(--c-label); opacity: 0; animation: bst_fadeIn_${rid} 0.2s linear 0.45s forwards;
     animation-duration: calc(0.2s / var(--s-mult,1)); animation-delay: calc(0.45s / var(--s-mult,1)); }
   @keyframes bst_draw_${rid} { to { stroke-dashoffset: 0; } }
@@ -1141,7 +1173,7 @@ ${hLines.join("")}
     animation-duration: calc(0.55s / var(--s-mult,1)); }
   .ftb_bar { fill: var(--c-panel); rx: var(--r-mult,0); ry: var(--r-mult,0); }
   .ftb_accent { stroke: var(--c-accent); stroke-width: calc(5 * var(--t-mult,1)); }
-  .ftb_label { font-family: "IBM Plex Mono","Courier New",monospace; font-size: 20px; letter-spacing: 0.04em; fill: var(--c-label); }
+  .ftb_label { font-family: "Space Mono","Courier New",monospace; font-size: 20px; letter-spacing: 0.04em; fill: var(--c-label); }
   @keyframes ftb_in_${rid} { to { transform: translateX(0); } }
 </style></defs>
 <g class="ftb_slide">
@@ -1421,6 +1453,13 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     labelCard.innerHTML = `<div class="tag">Active</div><h2>Render Labels</h2><p>Placeable decals (fingerprints, scuffs, machining marks) with opacity, bump and spec maps.</p>`;
     labelCard.addEventListener("click", () => { window.location.href = "../label-generator/index.html"; });
     grid.appendChild(labelCard);
+
+    // Signage & Stickers lives in its own file — link out to it.
+    const signageCard = document.createElement("button");
+    signageCard.className = "card active";
+    signageCard.innerHTML = `<div class="tag">Active</div><h2>Signage &amp; Stickers</h2><p>Warning stickers, data plates, certification badges, pipe markers and lockout tags &mdash; placeable decals with opacity, bump and spec maps.</p>`;
+    signageCard.addEventListener("click", () => { window.location.href = "../signage/index.html"; });
+    grid.appendChild(signageCard);
 
     const placeholder = document.createElement("div");
     placeholder.className = "card planned";
@@ -3577,14 +3616,14 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
         }
         w.document.title = filename;
         w.document.body.style.cssText =
-          "margin:0;min-height:100vh;background:#0a0f16;color:#e8e8e0;display:flex;" +
+          "margin:0;min-height:100vh;background:#0C141D;color:#ECF2F6;display:flex;" +
           "flex-direction:column;align-items:center;gap:16px;padding:24px;" +
-          "font-family:'IBM Plex Mono','Courier New',monospace";
+          "font-family:'Space Mono','Courier New',monospace";
         w.document.body.innerHTML =
-          '<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7a7f83">' + filename + '</div>' +
-          '<a href="' + url + '" download="' + filename + '" style="color:#E8792E;font-size:12px;text-decoration:none;border:1px solid #E8792E;padding:8px 16px">↓ Save PNG</a>' +
-          '<div style="font-size:10px;color:#7a7f83">… or right-click the image below and “Save image as…”</div>' +
-          '<img src="' + url + '" alt="' + filename + '" style="max-width:94vw;max-height:78vh;border:1px solid #1c2733"/>';
+          '<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#6E7E8C">' + filename + '</div>' +
+          '<a href="' + url + '" download="' + filename + '" style="color:#F08A3C;font-size:12px;text-decoration:none;border:1px solid #F08A3C;padding:8px 16px">↓ Save PNG</a>' +
+          '<div style="font-size:10px;color:#6E7E8C">… or right-click the image below and “Save image as…”</div>' +
+          '<img src="' + url + '" alt="' + filename + '" style="max-width:94vw;max-height:78vh;border:1px solid #22303E"/>';
         setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
         resolve(true);
       }, "image/png");
@@ -3604,18 +3643,18 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     }
     w.document.title = title + " — frame sequence";
     w.document.body.style.cssText =
-      "margin:0;min-height:100vh;background:#0a0f16;color:#e8e8e0;" +
-      "font-family:'IBM Plex Mono','Courier New',monospace;padding:24px";
+      "margin:0;min-height:100vh;background:#0C141D;color:#ECF2F6;" +
+      "font-family:'Space Mono','Courier New',monospace;padding:24px";
 
     const header = w.document.createElement("div");
     header.style.cssText = "display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap";
     const label = w.document.createElement("div");
-    label.style.cssText = "font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7a7f83";
+    label.style.cssText = "font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#6E7E8C";
     label.textContent = title + " — " + frames.length + " frames";
     const dlAllBtn = w.document.createElement("button");
     dlAllBtn.textContent = "↓ Download All";
     dlAllBtn.style.cssText =
-      "color:#E8792E;font-size:12px;background:none;border:1px solid #E8792E;" +
+      "color:#F08A3C;font-size:12px;background:none;border:1px solid #F08A3C;" +
       "padding:8px 16px;cursor:pointer;font-family:inherit;letter-spacing:.04em";
     dlAllBtn.addEventListener("click", () => {
       dlAllBtn.disabled = true;
@@ -3637,14 +3676,14 @@ ${drop("sdt_d1", 0)}${drop("sdt_d2", 0.53)}${drop("sdt_d3", 1.06)}
     frames.forEach(f => {
       const cell = w.document.createElement("div");
       cell.style.cssText =
-        "border:1px solid #1c2733;padding:8px;display:flex;flex-direction:column;" +
-        "gap:6px;align-items:center;background:#0d1520";
+        "border:1px solid #22303E;padding:8px;display:flex;flex-direction:column;" +
+        "gap:6px;align-items:center;background:#14202C";
       const img = w.document.createElement("img");
       img.src = f.url; img.alt = f.filename;
-      img.style.cssText = "max-width:100%;border:1px solid #1c2733";
+      img.style.cssText = "max-width:100%;border:1px solid #22303E";
       const link = w.document.createElement("a");
       link.href = f.url; link.download = f.filename; link.textContent = f.filename;
-      link.style.cssText = "color:#7a7f83;font-size:10px;text-decoration:none";
+      link.style.cssText = "color:#6E7E8C;font-size:10px;text-decoration:none";
       cell.appendChild(img); cell.appendChild(link);
       grid.appendChild(cell);
     });

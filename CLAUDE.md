@@ -63,17 +63,34 @@ Practical rules:
 ## Build & conventions
 
 - **No build step, no framework.** Tools are self-contained single-file HTML
-  apps that open directly in a browser. No external dependencies — everything
-  is native browser APIs (Canvas, `blob:` URLs, Web Animations API, native SVG
-  time control); the last CDN dependency (`gif.js`) was removed in favor of a
-  Worker-free, dependency-free frame-sequence export.
-- **Shared aesthetic** across all pages (keep new pages consistent):
-  - Dark: `--bg:#0a0f16`, `--panel-bg:#0d1520`, `--line:#1c2733`,
-    `--text:#e8e8e0`, `--muted:#7a7f83`.
-  - Palette roles: `--c-structural:#002F67`, `--c-fluid:#2FA8B0`,
-    `--c-accent:#E8792E` (accent = interactive/orange).
-  - Font: `"IBM Plex Mono","Courier New",monospace`. Sharp corners, 1px grid
-    lines, uppercase letter-spaced labels.
+  apps that open directly in a browser. No external JS dependencies —
+  everything is native browser APIs (Canvas, `blob:` URLs, Web Animations API,
+  native SVG time control); the last CDN dependency (`gif.js`) was removed in
+  favor of a Worker-free, dependency-free frame-sequence export. **One
+  sanctioned exception:** the brand fonts (below) load from Google Fonts —
+  preconnect + a non-blocking `<link media="print" onload="this.media='all'">`
+  swap, with a `<noscript>` fallback and a system-font stack behind it, so a
+  blocked/offline CDN degrades gracefully rather than breaking the page.
+- **Shared aesthetic** across all pages (keep new pages consistent) — reconciled
+  with the approved RENKON brand kit (`SHARED/BRAND_KITS/RENKON/`, RNK-0045)
+  2026-07-17, RNK-0126: the site stays dark (it's a working-tool surface), now
+  using the brand's dark-*derived* token scale rather than its light-native
+  default:
+  - Dark: `--bg:#0C141D`, `--panel-bg:#14202C`, `--panel-bg-raised:#182635`,
+    `--line:#22303E`, `--text:#ECF2F6`, `--muted:#6E7E8C`.
+  - Palette roles: `--c-structural:#002F67` (unchanged — base/structural, not
+    a brand accent), `--c-fluid:#4FD1D9` (flow teal), `--c-accent:#F08A3C`
+    (safety orange; accent = interactive/orange, points, never decorates).
+  - Fonts: **Space Grotesk** (700 for display/headings/subheads/wordmark, 400
+    body) + **Space Mono** (uppercase, letter-spaced labels/meta/chips/tags —
+    the "engineering annotation" bits), both OFL via Google Fonts. Sharp
+    corners, 1px grid lines, uppercase letter-spaced labels.
+  - The mark/logo (lotus-root section mark) is now wired in: an inline
+    `.brand` lockup (mark span + wordmark span) in the header, plus
+    `assets/favicon.svg`, propagated across the landing page and all five
+    sub-pages (keyshot/index.html, keyshot/scripts.html,
+    proc-gen/signage/index.html, proc-gen/label-generator/index.html,
+    proc-gen/parametric-generators/index.html) 2026-07-17.
 - **Relative links only** between pages (no leading `/`) so everything works
   both opened as local files and served under the `/RENKON/` Pages base.
 

@@ -1,0 +1,3430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Signage &amp; Stickers &mdash; RENKON</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap"></noscript>
+<style>
+  :root {
+    --bg: #0C141D;
+    --panel-bg: #14202C;
+    --panel-bg-raised: #182635;
+    --line: #22303E;
+    --text: #ECF2F6;
+    --muted: #6E7E8C;
+
+    --c-structural: #002F67;
+    --c-fluid: #4FD1D9;
+    --c-accent: #F08A3C;
+
+    --stage-bg: #060a10;
+
+    --font-display: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "Space Mono", ui-monospace, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  button, input, select { font-family: inherit; }
+  button { cursor: pointer; border-radius: 0; }
+  button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible {
+    outline: 2px solid var(--c-accent); outline-offset: 2px;
+  }
+
+  #app-header {
+    display: flex; align-items: center; gap: 20px;
+    padding: 14px 28px; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; background: var(--bg); z-index: 10;
+  }
+  #app-header .brand { display: flex; align-items: center; gap: 11px; color: var(--text); text-decoration: none; flex: none; }
+  #app-header .brand .mark { width: 26px; height: 26px; flex: none; color: var(--c-accent); }
+  #app-header .brand .mark svg { display: block; width: 100%; height: 100%; }
+  #app-header .wordmark { font-family: var(--font-display); font-size: 14px; letter-spacing: 0.28em; font-weight: 700; text-decoration: none; flex: none; }
+  #app-header .wordmark b { color: var(--c-accent); font-weight: 700; }
+  #app-header .crumbs {
+    font-family: var(--font-mono);
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+    flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #app-header .mark { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.08em; flex: none; }
+
+  #app-main { padding: 22px 28px 40px; max-width: 1600px; margin: 0 auto; }
+  .page-head { margin-bottom: 20px; }
+  .page-head h1 { font-family: var(--font-display); font-size: 16px; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 6px; font-weight: 700; }
+  .page-head p { color: var(--muted); font-size: 12px; margin: 0; max-width: 74ch; line-height: 1.6; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr) 300px;
+    gap: 1px; background: var(--line); border: 1px solid var(--line);
+  }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+  .col { background: var(--panel-bg); padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+  .section-label {
+    font-family: var(--font-mono);
+    display: block; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text); font-weight: 700; border-bottom: 1px solid var(--line);
+    padding-bottom: 8px; margin: 0 0 4px;
+  }
+
+  /* Library */
+  .lib-group-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 8px 0 2px; }
+  .lib-item {
+    background: transparent; border: 1px solid var(--line); color: var(--text);
+    text-align: left; padding: 10px 12px; display: flex; flex-direction: column; gap: 3px;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .lib-item .li-name { font-size: 12px; }
+  .lib-item .li-grp { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .lib-item:hover { border-color: var(--c-accent); }
+  .lib-item.active { border-color: var(--c-accent); background: var(--panel-bg-raised); }
+  .lib-item.active .li-name { color: var(--c-accent); }
+
+  /* Preset list */
+  .preset-list { display: flex; flex-direction: column; gap: 4px; }
+  .preset-row { display: flex; align-items: center; gap: 6px; }
+  .preset-row .pr-name {
+    flex: 1 1 auto; min-width: 0; background: transparent; border: 1px solid var(--line);
+    color: var(--text); text-align: left; padding: 7px 9px; font-size: 11px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .preset-row .pr-name:hover { border-color: var(--c-accent); color: var(--c-accent); }
+  .preset-empty { font-size: 10px; color: var(--muted); }
+
+  /* Center preview */
+  .tab-row { display: flex; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+  .tab-btn {
+    font-family: var(--font-mono);
+    flex: 1 1 0; background: var(--panel-bg); border: none; color: var(--muted);
+    padding: 9px 6px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--c-accent); background: var(--panel-bg-raised); box-shadow: inset 0 -2px 0 var(--c-accent); }
+
+  .stage {
+    background: var(--stage-bg); border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center; padding: 14px;
+    min-height: 320px;
+  }
+  .stage canvas { width: 100%; max-width: 512px; height: auto; display: block; image-rendering: auto; }
+  /* checkerboard behind the opacity view so the alpha cutout is visible */
+  .stage.checker {
+    background-color: #20272f;
+    background-image:
+      linear-gradient(45deg, #2c343d 25%, transparent 25%, transparent 75%, #2c343d 75%, #2c343d),
+      linear-gradient(45deg, #2c343d 25%, transparent 25%, transparent 75%, #2c343d 75%, #2c343d);
+    background-size: 24px 24px; background-position: 0 0, 12px 12px;
+  }
+  .stage.midgrey { background: #808080; }
+
+  .preview-meta { font-family: var(--font-mono); display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; font-size: 10px; color: var(--muted); }
+  .preview-meta .stat b { color: var(--text); font-weight: 700; }
+  .toggle-inline { font-family: var(--font-mono); display: inline-flex; align-items: center; gap: 6px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .toggle-inline input { accent-color: var(--c-accent); width: 15px; height: 15px; }
+
+  /* Right params */
+  .param-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .param-row label { font-family: var(--font-mono); flex: 0 0 96px; font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+  .param-row input[type=range] { flex: 1 1 auto; min-width: 0; accent-color: var(--c-accent); }
+  .param-row input[type=checkbox] { accent-color: var(--c-accent); width: 16px; height: 16px; }
+  .param-row .param-value { flex: 0 0 40px; font-size: 10px; color: var(--text); text-align: right; }
+  .param-row select, .param-row input[type=text] {
+    flex: 1 1 auto; min-width: 0; background: var(--stage-bg); border: 1px solid var(--line);
+    color: var(--text); padding: 6px 8px; font-size: 11px;
+  }
+  .param-row select:focus-visible, .param-row input[type=text]:focus-visible { border-color: var(--c-accent); }
+
+  .field {
+    display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px;
+  }
+  .field label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .field input[type=text], .field select {
+    background: var(--stage-bg); border: 1px solid var(--line); color: var(--text);
+    padding: 7px 9px; font-size: 12px;
+  }
+  .field input[type=text]:focus-visible { border-color: var(--c-accent); }
+  .seed-row { display: flex; gap: 6px; }
+  .seed-row input { flex: 1 1 auto; min-width: 0; }
+
+  .btn {
+    font-family: var(--font-mono);
+    background: transparent; border: 1px solid var(--line); color: var(--text);
+    font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; padding: 8px 12px;
+  }
+  .btn:hover { border-color: var(--c-accent); color: var(--c-accent); }
+  .btn.primary { border-color: var(--c-accent); color: var(--c-accent); }
+  .btn.primary:hover { background: var(--c-accent); color: var(--bg); }
+  .btn.full { width: 100%; }
+  .btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .status-line { font-size: 11px; color: var(--muted); min-height: 14px; line-height: 1.5; }
+
+  footer.note {
+    margin-top: 26px; font-size: 11px; color: var(--muted); line-height: 1.7;
+    border-top: 1px solid var(--line); padding-top: 14px; max-width: 84ch;
+  }
+  footer.note code { color: var(--c-fluid); }
+</style>
+<script src="../../assets/theme.js"></script>
+<script src="../../assets/reveal.js"></script>
+</head>
+<body>
+  <header id="app-header">
+    <a class="brand" href="../../index.html" aria-label="RENKON home">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round">
+          <circle cx="50" cy="50" r="44"/>
+          <g transform="rotate(0 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(72 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(144 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(216 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(288 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <circle cx="50" cy="50" r="8.5"/>
+        </svg>
+      </span>
+      <span class="wordmark">RENK<b>O</b>N</span>
+    </a>
+    <div class="crumbs">Parametric Assets / Signage &amp; Stickers</div>
+    <div class="mark">DECAL CHANNELS</div>
+  </header>
+  <main id="app-main">
+    <div class="page-head">
+      <h1>Signage &amp; Stickers</h1>
+      <p>Placeable industrial signage decals for KeyShot &mdash; warning stickers, data plates,
+         certification badges, pipe markers and lockout tags. Pick a generator, set the parameters,
+         and export the opacity / bump / spec (and optional normal) maps.</p>
+    </div>
+
+    <div class="layout">
+      <!-- LEFT: library + presets -->
+      <div class="col" id="col-lib">
+        <div>
+          <span class="section-label">Library</span>
+          <div id="lib-list"></div>
+        </div>
+        <div>
+          <span class="section-label">Saved Presets</span>
+          <div class="preset-list" id="preset-list"></div>
+        </div>
+      </div>
+
+      <!-- CENTER: preview -->
+      <div class="col" id="col-preview">
+        <div class="tab-row" id="tab-row">
+          <button class="tab-btn active" data-tab="opacity">Opacity</button>
+          <button class="tab-btn" data-tab="bump">Bump</button>
+          <button class="tab-btn" data-tab="spec">Spec</button>
+          <button class="tab-btn" data-tab="normal">Normal</button>
+        </div>
+        <div class="stage checker" id="stage">
+          <canvas id="preview-canvas" width="512" height="512"></canvas>
+        </div>
+        <div class="preview-meta" id="preview-meta">
+          <label class="toggle-inline" id="opacity-bg-toggle-wrap">
+            <input type="checkbox" id="checker-toggle" checked /> Checkerboard alpha
+          </label>
+          <span class="stat" id="stat-channel"></span>
+          <span class="stat" id="stat-alpha"></span>
+        </div>
+      </div>
+
+      <!-- RIGHT: params + globals + export -->
+      <div class="col" id="col-params">
+        <div>
+          <span class="section-label" id="gen-title">Parameters</span>
+          <div id="param-panel"></div>
+        </div>
+
+        <div>
+          <span class="section-label">Seed</span>
+          <div class="field">
+            <div class="seed-row">
+              <input type="text" id="seed-input" spellcheck="false" />
+              <button class="btn" id="randomize-btn" title="Re-roll the seed">Roll</button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <span class="section-label">Channel Globals</span>
+          <div id="global-panel"></div>
+        </div>
+
+        <div>
+          <span class="section-label">Export</span>
+          <div class="field">
+            <label for="basename-input">Base name</label>
+            <input type="text" id="basename-input" spellcheck="false" value="label_01" />
+          </div>
+          <div class="field">
+            <label for="res-select">Resolution</label>
+            <select id="res-select">
+              <option value="1024">1024 &times; 1024</option>
+              <option value="2048">2048 &times; 2048</option>
+            </select>
+          </div>
+          <label class="toggle-inline" style="margin-bottom:10px;">
+            <input type="checkbox" id="include-normal" /> Include normal map in set
+          </label>
+          <div class="btn-row" style="margin-bottom:8px;">
+            <button class="btn" data-export="opacity">Opacity</button>
+            <button class="btn" data-export="bump">Bump</button>
+            <button class="btn" data-export="spec">Spec</button>
+            <button class="btn" data-export="normal">Normal</button>
+          </div>
+          <button class="btn primary full" id="export-set-btn">Export set</button>
+          <button class="btn full" id="save-preset-btn" style="margin-top:6px;">Save preset</button>
+          <div class="status-line" id="status-line"></div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="note">
+      Channels: <code>opacity</code> = RGBA cutout (alpha = where the label shows), <code>bump</code> = height
+      (mid-grey 128 = flat), <code>spec</code> = roughness (white shinier, black matte), <code>normal</code> = Sobel of bump.
+      Exports as <code>&lt;basename&gt;_opacity/_bump/_spec/_normal.png</code> for the label's channel slots.
+    </footer>
+  </main>
+
+<canvas id="work-canvas" style="display:none"></canvas>
+
+<script>
+(function () {
+  "use strict";
+
+  /* =========================================================
+     SEEDED RNG  —  hash a seed string -> uint32 -> mulberry32
+     (mirrors the sibling parametric-generators tool)
+     ========================================================= */
+  function hashSeed(str) {
+    // xfnv-1a
+    str = String(str);
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 0x01000193);
+    }
+    return h >>> 0;
+  }
+  function mulberry32(seed) {
+    let s = seed >>> 0;
+    return function () {
+      s |= 0; s = (s + 0x6D2B79F5) | 0;
+      let t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function randomSeedString() {
+    return Math.floor(Math.random() * 0xffffffff).toString(36).toUpperCase().padStart(6, "0");
+  }
+
+  /* =========================================================
+     VALUE-NOISE FIELD  (smooth bilinear, from the sibling tool)
+     Returns a sampler(x,y) in [0,1].
+     ========================================================= */
+  function makeNoise(w, h, cellSize, rng) {
+    const cols = Math.ceil(w / cellSize) + 2, rows = Math.ceil(h / cellSize) + 2;
+    const grid = new Float32Array(cols * rows);
+    for (let i = 0; i < grid.length; i++) grid[i] = rng();
+    const smooth = t => t * t * (3 - 2 * t);
+    return function (x, y) {
+      const gx = x / cellSize, gy = y / cellSize;
+      let x0 = Math.floor(gx), y0 = Math.floor(gy);
+      if (x0 < 0) x0 = 0; if (y0 < 0) y0 = 0;
+      if (x0 > cols - 2) x0 = cols - 2; if (y0 > rows - 2) y0 = rows - 2;
+      const sx = smooth(gx - x0), sy = smooth(gy - y0);
+      const v00 = grid[y0 * cols + x0], v10 = grid[y0 * cols + x0 + 1];
+      const v01 = grid[(y0 + 1) * cols + x0], v11 = grid[(y0 + 1) * cols + x0 + 1];
+      const top = v00 + (v10 - v00) * sx;
+      const bot = v01 + (v11 - v01) * sx;
+      return top + (bot - top) * sy;
+    };
+  }
+  // fractal sum of two octaves for organic warp
+  function makeFbm(w, h, cell, rng) {
+    const a = makeNoise(w, h, cell, rng);
+    const b = makeNoise(w, h, cell / 2, rng);
+    return (x, y) => a(x, y) * 0.65 + b(x, y) * 0.35;
+  }
+
+  function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+  function smoothstep(e0, e1, x) {
+    let t = (x - e0) / (e1 - e0);
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    return t * t * (3 - 2 * t);
+  }
+
+  /* =========================================================
+     GENERATOR REGISTRY
+
+     A generator is a self-contained object:
+       { id, name, group, params:[{key,label,min,max,step,default}],
+         drawColor(ctx, p, rng, size),   // paints RGBA; ALPHA = cutout
+         drawHeight(hctx, p, rng, size), // paints greyscale HEIGHT (128 = flat)
+         drawSpec(sctx, p, rng, size)    // optional greyscale spec (white=shinier)
+       }
+
+     Adding a new generator (paint, grime, ...) is a drop-in: push another
+     object onto GENERATORS with these methods. The framework derives the
+     export channels (opacity / bump / spec / normal) from whatever the three
+     draw* methods paint — no other wiring required.
+
+     Both generators below compute one shared per-pixel field (cached) so the
+     colour / height / spec channels stay pixel-aligned across draw calls.
+     ========================================================= */
+
+  const _fieldCache = { key: null, data: null };
+  function cachedField(gen, p, size, build) {
+    const key = gen.id + "|" + size + "|" + JSON.stringify(p);
+    if (_fieldCache.key === key) return _fieldCache.data;
+    const data = build();
+    _fieldCache.key = key; _fieldCache.data = data;
+    return data;
+  }
+
+  function _byte(v) { return v < 0 ? 0 : v > 255 ? 255 : v | 0; }
+
+  /* ---------- WARNING / TEXT STICKER + CONTAINER GLYPHS (group "Signage") ----------
+     The seed generator for this tool. It does NOT paint a per-pixel relief
+     field - it paints real vector content (die-cut shape, stripes, border,
+     pictogram container, internal symbol glyph, fillText header/body)
+     straight onto each channel's canvas with Canvas 2D ops. _build() precomputes
+     the sticker's geometry plus every random placement (torn-edge notches, a
+     corner peel bite, scuff scratches, ink-fade blotches) ONCE from a seeded
+     rng and caches it (cachedField), so drawColor / drawHeight / drawSpec all
+     paint the exact same layout - just with different "ink"/"field" colours
+     (real colour vs. mid-grey-plus-emboss vs. gloss grey) via channelColors().
+     Weathering (torn cutout edge, fade, scuffs) is applied only in the colour
+     channel, since that is what actually defines the alpha cutout; height
+     gets a standing rolled-rim/recess at the die-cut edge instead (not
+     weather-gated) plus the same text/border geometry embossed. */
+  const SIGNAGE_SCHEMES = {
+    "Caution":   { field: "#F5C518", ink: "#111111" },
+    "Warning":   { field: "#F07300", ink: "#111111" },
+    "Danger":    { field: "#C4262E", ink: "#FFFFFF" },
+    "Notice":    { field: "#1F5FA8", ink: "#FFFFFF" },
+    "Safety":    { field: "#1E7A46", ink: "#FFFFFF" },
+    "Text Only": { field: "#F2F2EC", ink: "#1A1A1A" }
+  };
+  function traceSignagePath(ctx, shape, bw, bh, radius) {
+    ctx.beginPath();
+    if (shape === "Circle") {
+      ctx.ellipse(0, 0, Math.max(0.5, bw / 2), Math.max(0.5, bh / 2), 0, 0, Math.PI * 2);
+    } else if (shape === "Diamond") {
+      ctx.moveTo(0, -bh / 2); ctx.lineTo(bw / 2, 0); ctx.lineTo(0, bh / 2); ctx.lineTo(-bw / 2, 0);
+      ctx.closePath();
+    } else if (shape === "Triangle") {
+      ctx.moveTo(0, -bh / 2); ctx.lineTo(bw / 2, bh / 2); ctx.lineTo(-bw / 2, bh / 2);
+      ctx.closePath();
+    } else if (shape === "Rectangle") {
+      ctx.rect(-bw / 2, -bh / 2, bw, bh);
+    } else { // Rounded Rect
+      const x = -bw / 2, y = -bh / 2, w = bw, h = bh;
+      const rr = Math.max(0, Math.min(radius, Math.min(w, h) / 2 - 0.5));
+      ctx.moveTo(x + rr, y);
+      ctx.arcTo(x + w, y, x + w, y + h, rr);
+      ctx.arcTo(x + w, y + h, x, y + h, rr);
+      ctx.arcTo(x, y + h, x, y, rr);
+      ctx.arcTo(x, y, x + w, y, rr);
+      ctx.closePath();
+    }
+  }
+  function signageInnerRect(shape, bw, bh) {
+    if (shape === "Circle") {
+      const side = Math.min(bw, bh) * 0.66;
+      return { x: -side / 2, y: -side / 2, w: side, h: side };
+    }
+    if (shape === "Diamond") {
+      const side = Math.min(bw, bh) * 0.42;
+      return { x: -side / 2, y: -side / 2, w: side, h: side };
+    }
+    if (shape === "Triangle") {
+      return { x: -bw * 0.34, y: bh * 0.02, w: bw * 0.68, h: bh * 0.44 };
+    }
+    return { x: -bw * 0.42, y: -bh * 0.42, w: bw * 0.84, h: bh * 0.84 };
+  }
+  // walks a polygon (or ellipse) boundary proportional to arc length; t in [0,1)
+  function signagePerimeterPoint(shape, bw, bh, t) {
+    t = ((t % 1) + 1) % 1;
+    if (shape === "Circle") {
+      const a = t * Math.PI * 2;
+      return [Math.cos(a) * bw / 2, Math.sin(a) * bh / 2];
+    }
+    let pts;
+    if (shape === "Diamond") pts = [[0, -bh / 2], [bw / 2, 0], [0, bh / 2], [-bw / 2, 0]];
+    else if (shape === "Triangle") pts = [[0, -bh / 2], [bw / 2, bh / 2], [-bw / 2, bh / 2]];
+    else pts = [[-bw / 2, -bh / 2], [bw / 2, -bh / 2], [bw / 2, bh / 2], [-bw / 2, bh / 2]];
+    const n = pts.length, edges = [];
+    let total = 0;
+    for (let i = 0; i < n; i++) {
+      const a = pts[i], b = pts[(i + 1) % n], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      edges.push({ a, b, len }); total += len;
+    }
+    let d = t * total;
+    for (let i = 0; i < edges.length; i++) {
+      const e = edges[i];
+      if (d <= e.len || i === edges.length - 1) {
+        const u = e.len > 0 ? d / e.len : 0;
+        return [e.a[0] + (e.b[0] - e.a[0]) * u, e.a[1] + (e.b[1] - e.a[1]) * u];
+      }
+      d -= e.len;
+    }
+    return pts[0];
+  }
+  function signageFitFontSize(ctx, text, maxWidth, maxPx, minPx, fontFn) {
+    let px = Math.max(minPx, Math.round(maxPx));
+    while (px > minPx) {
+      ctx.font = fontFn(px);
+      if (ctx.measureText(text).width <= maxWidth) break;
+      px -= 1;
+    }
+    ctx.font = fontFn(px);
+    return px;
+  }
+  function signageWrapText(ctx, text, maxWidth, maxLines) {
+    const words = text.split(/\s+/).filter(Boolean);
+    const lines = [];
+    let cur = "";
+    for (let i = 0; i < words.length; i++) {
+      const w = words[i];
+      const test = cur ? cur + " " + w : w;
+      if (!cur || ctx.measureText(test).width <= maxWidth) {
+        cur = test;
+      } else {
+        lines.push(cur);
+        cur = w;
+        if (lines.length >= maxLines) return lines.slice(0, maxLines);
+      }
+    }
+    if (cur) lines.push(cur);
+    return lines.slice(0, maxLines);
+  }
+  /* ---- pictogram containers + internal symbol glyphs ----
+     `pictogram` picks the CONTAINER (None / Warning Triangle / Prohibition /
+     Mandatory / Bare Symbol); `symbol` picks the glyph drawn INSIDE it. Every
+     shape is drawn as pure vector paths (no fillText glyphs) so it renders
+     identically headless or in-browser, with no font dependency. */
+
+  // generic rounded-corner polygon path (used for the warning-triangle
+  // container; reusable by future generators for rounded badge shapes).
+  function roundedPolygonPath(ctx, pts, r) {
+    const n = pts.length;
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const prev = pts[(i - 1 + n) % n], cur = pts[i], next = pts[(i + 1) % n];
+      const v1x = cur[0] - prev[0], v1y = cur[1] - prev[1], len1 = Math.hypot(v1x, v1y) || 1;
+      const v2x = next[0] - cur[0], v2y = next[1] - cur[1], len2 = Math.hypot(v2x, v2y) || 1;
+      const rr = Math.max(0, Math.min(r, len1 * 0.5, len2 * 0.5));
+      const p1x = cur[0] - v1x / len1 * rr, p1y = cur[1] - v1y / len1 * rr;
+      const p2x = cur[0] + v2x / len2 * rr, p2y = cur[1] + v2y / len2 * rr;
+      if (i === 0) ctx.moveTo(p1x, p1y); else ctx.lineTo(p1x, p1y);
+      ctx.arcTo(cur[0], cur[1], p2x, p2y, rr);
+    }
+    ctx.closePath();
+  }
+  function roundedTrianglePath(ctx, s, r) {
+    const halfW = s * 0.577, top = -s * 0.55, bot = s * 0.45;
+    roundedPolygonPath(ctx, [[0, top], [halfW, bot], [-halfW, bot]], r);
+  }
+
+  // ISO-style container fixed colours (colour channel) vs. the flush,
+  // embossed-rim treatment used for height/spec so the plate stays inside
+  // the field/ink grey scale already established by signageChannelColors.
+  function signageContainerColors(mode, kind, C) {
+    if (mode === "color") {
+      if (kind === "Warning Triangle") return { fill: "#F5C518", stroke: "#111111" };
+      if (kind === "Prohibition")      return { fill: "#FFFFFF", stroke: "#C4262E" };
+      if (kind === "Mandatory")        return { fill: "#1F5FA8", stroke: "#12406E" };
+      return { fill: "rgba(0,0,0,0)", stroke: C.ink }; // Bare Symbol: no container fill
+    }
+    return { fill: C.field, stroke: C.ink }; // height / spec: flush plate + embossed rim
+  }
+  function signageSymbolColor(mode, kind, C) {
+    if (mode === "color") {
+      if (kind === "Mandatory") return "#FFFFFF";
+      if (kind === "Warning Triangle" || kind === "Prohibition") return "#111111";
+      return C.ink; // Bare Symbol adapts to the sticker's own ink colour
+    }
+    return C.ink;
+  }
+
+  // the 8 internal glyphs, pure vector, centered at (0,0), scaled to box `s`.
+  function drawSignageSymbolGlyph(ctx, kind, s, color) {
+    if (!kind || s <= 0) return;
+    ctx.save();
+    ctx.strokeStyle = color; ctx.fillStyle = color;
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    ctx.lineWidth = Math.max(1, s * 0.09);
+    if (kind === "Electricity") {
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.06, -s / 2); ctx.lineTo(s * 0.24, -s * 0.04); ctx.lineTo(-s * 0.02, -s * 0.04);
+      ctx.lineTo(s * 0.16, s / 2); ctx.lineTo(-s * 0.28, s * 0.1); ctx.lineTo(s * 0.02, s * 0.1);
+      ctx.closePath(); ctx.fill();
+    } else if (kind === "Hot Surface") {
+      ctx.beginPath();
+      ctx.ellipse(0, s * 0.22, s * 0.38, s * 0.14, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      for (let i = -1; i <= 1; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * s * 0.22 - s * 0.09, -s * 0.04);
+        ctx.quadraticCurveTo(i * s * 0.22, -s * 0.34, i * s * 0.22 + s * 0.09, -s * 0.04);
+        ctx.stroke();
+      }
+    } else if (kind === "Pinch / Crush") {
+      const rr = s * 0.24, gap = s * 0.06;
+      [-1, 1].forEach(side => {
+        ctx.beginPath(); ctx.arc(side * (rr + gap), 0, rr, 0, Math.PI * 2); ctx.stroke();
+        for (let k = -1; k <= 1; k++) {
+          ctx.beginPath();
+          ctx.moveTo(side * (rr + gap) + Math.cos(k * 0.9) * rr, Math.sin(k * 0.9) * rr);
+          ctx.lineTo(side * (rr + gap) + Math.cos(k * 0.9) * (rr + s * 0.06), Math.sin(k * 0.9) * (rr + s * 0.06));
+          ctx.stroke();
+        }
+      });
+      ctx.beginPath();
+      ctx.moveTo(0, -s * 0.42); ctx.lineTo(gap * 1.4, 0); ctx.lineTo(-gap * 1.4, 0);
+      ctx.closePath(); ctx.fill();
+    } else if (kind === "Entanglement") {
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.26, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.42, -Math.PI * 0.65, Math.PI * 0.35); ctx.stroke();
+      const aAng = Math.PI * 0.35, ax = Math.cos(aAng) * s * 0.42, ay = Math.sin(aAng) * s * 0.42;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay); ctx.lineTo(ax - s * 0.1, ay - s * 0.03); ctx.lineTo(ax - s * 0.02, ay + s * 0.09);
+      ctx.closePath(); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.46, s * 0.3);
+      ctx.quadraticCurveTo(-s * 0.2, s * 0.1, -s * 0.05, 0);
+      ctx.stroke();
+    } else if (kind === "Cutting Blade") {
+      const rr = s * 0.4, nT = 10;
+      ctx.beginPath();
+      for (let i = 0; i < nT; i++) {
+        const a0 = i / nT * Math.PI * 2, a1 = (i + 0.5) / nT * Math.PI * 2, a2 = (i + 1) / nT * Math.PI * 2;
+        const x0 = Math.cos(a0) * rr, y0 = Math.sin(a0) * rr;
+        const x1 = Math.cos(a1) * (rr + s * 0.09), y1 = Math.sin(a1) * (rr + s * 0.09);
+        const x2 = Math.cos(a2) * rr, y2 = Math.sin(a2) * rr;
+        if (i === 0) ctx.moveTo(x0, y0); else ctx.lineTo(x0, y0);
+        ctx.lineTo(x1, y1); ctx.lineTo(x2, y2);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.save();
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.beginPath(); ctx.arc(0, 0, rr * 0.35, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    } else if (kind === "Laser") {
+      for (let i = 0; i < 8; i++) {
+        const a = i / 8 * Math.PI * 2;
+        ctx.save(); ctx.rotate(a);
+        ctx.beginPath();
+        ctx.moveTo(0, 0); ctx.lineTo(s * 0.1, -s * 0.5); ctx.lineTo(-s * 0.1, -s * 0.5);
+        ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.12, 0, Math.PI * 2); ctx.fill();
+    } else if (kind === "Corrosive") {
+      ctx.save();
+      ctx.rotate(-0.5);
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.08, -s * 0.46);
+      ctx.lineTo(s * 0.08, -s * 0.46);
+      ctx.lineTo(s * 0.08, s * 0.06);
+      ctx.arc(0, s * 0.06, s * 0.08, 0, Math.PI, false);
+      ctx.lineTo(-s * 0.08, -s * 0.46);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+      ctx.beginPath(); ctx.moveTo(-s * 0.44, s * 0.4); ctx.lineTo(s * 0.44, s * 0.4); ctx.stroke();
+      [-0.18, 0.05, 0.28].forEach((dx, i) => {
+        ctx.beginPath();
+        ctx.arc(s * dx, s * 0.4, s * (0.05 + i * 0.01), Math.PI, 0, true);
+        ctx.stroke();
+      });
+    } else { // "General" (!) -- a clean vector exclamation mark, no font dependency
+      const stemW = s * 0.16, stemTop = -s * 0.5, stemBot = s * 0.08, rr = stemW / 2;
+      ctx.beginPath();
+      ctx.moveTo(-rr, stemTop + rr);
+      ctx.arcTo(-rr, stemTop, rr, stemTop, rr);
+      ctx.arcTo(rr, stemTop, rr, stemBot, rr);
+      ctx.arcTo(rr, stemBot, -rr, stemBot, rr);
+      ctx.arcTo(-rr, stemBot, -rr, stemTop, rr);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath(); ctx.arc(0, s * 0.34, stemW * 0.55, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+  // orchestrates container + symbol: draws the container shape (if any),
+  // then the symbol glyph scaled/nudged to sit inside it, then (for
+  // Prohibition) the diagonal slash on top, ISO-style.
+  function drawSignagePictogram(ctx, container, symbol, cx, cy, s, mode, C) {
+    if (!container || container === "None" || s <= 0) return;
+    const sym = symbol || "General";
+    ctx.save();
+    ctx.translate(cx, cy);
+    const cc = signageContainerColors(mode, container, C);
+    const symColor = signageSymbolColor(mode, container, C);
+    let innerScale = 1, symOffsetY = 0;
+    if (container === "Warning Triangle") {
+      roundedTrianglePath(ctx, s, s * 0.05);
+      ctx.fillStyle = cc.fill; ctx.fill();
+      ctx.lineWidth = Math.max(1, s * 0.07);
+      ctx.strokeStyle = cc.stroke; ctx.stroke();
+      innerScale = 0.44; symOffsetY = s * 0.08;
+    } else if (container === "Prohibition" || container === "Mandatory") {
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.5, 0, Math.PI * 2);
+      ctx.fillStyle = cc.fill; ctx.fill();
+      ctx.lineWidth = Math.max(1, s * (container === "Prohibition" ? 0.09 : 0.05));
+      ctx.strokeStyle = cc.stroke; ctx.stroke();
+      innerScale = container === "Prohibition" ? 0.52 : 0.56;
+    }
+    ctx.translate(0, symOffsetY);
+    drawSignageSymbolGlyph(ctx, sym, s * innerScale, symColor);
+    ctx.translate(0, -symOffsetY);
+    if (container === "Prohibition") {
+      ctx.rotate(-Math.PI / 4);
+      ctx.lineWidth = Math.max(1, s * 0.09);
+      ctx.strokeStyle = cc.stroke;
+      ctx.beginPath(); ctx.moveTo(-s * 0.5, 0); ctx.lineTo(s * 0.5, 0); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  // colour set for a given channel mode: real ink/field, embossed grey, or gloss grey
+  function signageChannelColors(mode, p, scheme) {
+    if (mode === "height") {
+      const inkV = _byte(128 + clamp01(p.emboss) * 30);
+      const stripeV = _byte(128 + clamp01(p.emboss) * 10);
+      return { field: "rgb(128,128,128)", ink: "rgb(" + inkV + "," + inkV + "," + inkV + ")", stripeDark: "rgb(" + stripeV + "," + stripeV + "," + stripeV + ")" };
+    }
+    if (mode === "spec") {
+      const fieldV = _byte(50 + clamp01(p.gloss) * 140);
+      const inkV = _byte(Math.max(20, fieldV - 55));
+      return { field: "rgb(" + fieldV + "," + fieldV + "," + fieldV + ")", ink: "rgb(" + inkV + "," + inkV + "," + inkV + ")", stripeDark: "rgb(" + inkV + "," + inkV + "," + inkV + ")" };
+    }
+    return { field: scheme.field, ink: scheme.ink, stripeDark: "#141414" };
+  }
+  function paintSignageStripes(ctx, f, p, C, size) {
+    const bw = f.boxW, bh = f.boxH;
+    const bandH = bh * (0.14 + 0.12 * clamp01(p.stripes));
+    const stripeW = Math.max(2, size * 0.018);
+    [-bh / 2, bh / 2 - bandH].forEach(by => {
+      ctx.save();
+      ctx.beginPath(); ctx.rect(-bw / 2, by, bw, bandH); ctx.clip();
+      ctx.fillStyle = C.stripeDark;
+      ctx.save(); ctx.rotate(Math.PI / 4);
+      const span = (bw + bh) * 1.5;
+      for (let sx = -span; sx < span; sx += stripeW * 2) ctx.fillRect(sx, -span, stripeW, span * 2);
+      ctx.restore();
+      ctx.restore();
+    });
+  }
+  function paintSignageBorder(ctx, f, p, C, size) {
+    const lw = size * (0.006 + 0.018 * clamp01(p.border));
+    const inset = lw * 1.4;
+    ctx.save();
+    ctx.lineWidth = lw; ctx.strokeStyle = C.ink;
+    traceSignagePath(ctx, f.shape, Math.max(4, f.boxW - inset * 2), Math.max(4, f.boxH - inset * 2), Math.max(0, f.radius - inset));
+    ctx.stroke();
+    ctx.restore();
+  }
+  function paintSignageRolledRim(ctx, f, size) {
+    ctx.save();
+    ctx.translate(f.cx, f.cy); ctx.rotate(f.rot);
+    const rimW = Math.max(1, size * 0.01);
+    ctx.lineWidth = rimW;
+    ctx.strokeStyle = "rgb(165,165,165)";
+    traceSignagePath(ctx, f.shape, f.boxW - rimW, f.boxH - rimW, Math.max(0, f.radius - rimW * 0.5));
+    ctx.stroke();
+    ctx.strokeStyle = "rgb(108,108,108)";
+    traceSignagePath(ctx, f.shape, f.boxW - rimW * 3, f.boxH - rimW * 3, Math.max(0, f.radius - rimW * 1.5));
+    ctx.stroke();
+    ctx.restore();
+  }
+  // shared layout: field fill, stripes, pictogram, header/body text, border.
+  // Called once per channel with different "ink"/"field" colours so all three
+  // channels paint the identical geometry (drawHeight's emboss is just this
+  // same call with grey "ink").
+  function paintSignageContent(ctx, f, p, scheme, mode, size) {
+    const bw = f.boxW, bh = f.boxH;
+    const C = signageChannelColors(mode, p, scheme);
+    ctx.save();
+    ctx.translate(f.cx, f.cy); ctx.rotate(f.rot);
+    ctx.save();
+    traceSignagePath(ctx, f.shape, bw, bh, f.radius);
+    ctx.clip();
+
+    ctx.fillStyle = C.field;
+    ctx.fillRect(-size, -size, size * 2, size * 2);
+
+    if (p.stripes > 0.01) paintSignageStripes(ctx, f, p, C, size);
+
+    const inner = signageInnerRect(f.shape, bw, bh);
+    const hasIcon = p.pictogram && p.pictogram !== "None";
+    const header = String(p.header || "").trim();
+    const body = String(p.body || "").trim();
+    const hasHeader = !!header, hasBody = !!body;
+
+    ctx.fillStyle = C.ink;
+    ctx.textAlign = "center";
+
+    // Vertical layout: a dedicated body zone at the bottom (so body text is
+    // never squeezed out), with the icon + header stacked and centered in the
+    // remaining top zone. Everything is fit to both width and its zone height.
+    const bodyZoneH = hasBody ? inner.h * ((hasHeader || hasIcon) ? 0.38 : 0.9) : 0;
+    const topZoneH = inner.h - bodyZoneH;
+    const topY = inner.y;
+    const bodyZoneY = inner.y + topZoneH;
+
+    // header px (fit into the top zone height left over after the icon + width)
+    let iconSize = 0;
+    if (hasIcon) iconSize = Math.min(inner.w * 0.5, topZoneH * (hasHeader ? 0.55 : 0.82));
+    let headerPx = 0;
+    if (hasHeader) {
+      const headerAvailH = Math.max(8, topZoneH - (hasIcon ? iconSize * 1.05 : 0));
+      const maxHeaderPx = Math.max(9, Math.min(headerAvailH * 0.82, inner.w * 0.5, size * 0.12));
+      headerPx = signageFitFontSize(ctx, header, inner.w * 0.94, maxHeaderPx, 8,
+        sz => '900 ' + sz + 'px "Arial Black", Impact, system-ui, sans-serif');
+    }
+    // center the icon+header stack in the top zone
+    const stackH = (hasIcon ? iconSize * 1.05 : 0) + (hasHeader ? headerPx * 1.1 : 0);
+    let cy = topY + Math.max(0, (topZoneH - stackH) / 2);
+    if (hasIcon) {
+      drawSignagePictogram(ctx, p.pictogram, p.symbol, 0, cy + iconSize * 0.5, iconSize, mode, C);
+      cy += iconSize * 1.05;
+    }
+    if (hasHeader) {
+      ctx.font = '900 ' + headerPx + 'px "Arial Black", Impact, system-ui, sans-serif';
+      ctx.textBaseline = "top";
+      ctx.fillText(header, 0, cy);
+      cy += headerPx * 1.1;
+    }
+
+    // body: wrap to up to 3 lines, shrink to fit the body zone, center it there.
+    // A small top/bottom pad keeps the block clear of the die-cut border rule.
+    if (hasBody) {
+      const bodyPad = bodyZoneH * 0.12;
+      const usableH = Math.max(6, bodyZoneH - bodyPad * 2);
+      let bodyPx = Math.max(7, Math.min(size * 0.05, usableH * 0.46, inner.w * 0.12));
+      ctx.font = bodyPx + 'px system-ui, Arial, sans-serif';
+      let lines = signageWrapText(ctx, body, inner.w * 0.96, 3);
+      // shrink until the wrapped block fits the usable body height
+      while (bodyPx > 7 && lines.length * bodyPx * 1.25 > usableH) {
+        bodyPx -= 1;
+        ctx.font = bodyPx + 'px system-ui, Arial, sans-serif';
+        lines = signageWrapText(ctx, body, inner.w * 0.96, 3);
+      }
+      ctx.textBaseline = "top";
+      const blockH = lines.length * bodyPx * 1.25;
+      const by = bodyZoneY + bodyPad + Math.max(0, (usableH - blockH) / 2);
+      lines.forEach((ln, i) => ctx.fillText(ln, 0, by + i * bodyPx * 1.25));
+    }
+
+    if (p.border > 0.01) paintSignageBorder(ctx, f, p, C, size);
+
+    ctx.restore(); // clip
+    ctx.restore(); // translate/rotate
+  }
+  // torn die-cut edge + corner peel bite (alpha erosion), ink fade blotches and
+  // scuff scratches (surface wear) - colour/alpha channel only, seeded in _build.
+  function applySignageWeather(ctx, f, p, size) {
+    if (clamp01(p.weather) <= 0.01) return;
+    ctx.save();
+    ctx.translate(f.cx, f.cy); ctx.rotate(f.rot);
+
+    ctx.globalCompositeOperation = "destination-out";
+    f.notches.forEach(nt => {
+      if (nt.r <= 0) return;
+      const pt = signagePerimeterPoint(f.shape, f.boxW, f.boxH, nt.t);
+      ctx.beginPath(); ctx.arc(pt[0], pt[1], nt.r, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(0,0,0," + nt.a + ")"; ctx.fill();
+    });
+    if (f.peel && f.peel.r > 0) {
+      const pt = signagePerimeterPoint(f.shape, f.boxW, f.boxH, f.peel.t);
+      ctx.beginPath(); ctx.arc(pt[0], pt[1], f.peel.r, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(0,0,0," + f.peel.a + ")"; ctx.fill();
+    }
+    ctx.globalCompositeOperation = "source-over";
+
+    ctx.save();
+    traceSignagePath(ctx, f.shape, f.boxW, f.boxH, f.radius);
+    ctx.clip();
+    ctx.globalCompositeOperation = "source-atop";
+    f.fadeBlotches.forEach(b => {
+      if (b.r <= 0) return;
+      const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+      grad.addColorStop(0, "rgba(255,255,255," + b.a + ")");
+      grad.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "rgba(255,255,255," + (0.12 + 0.18 * clamp01(p.weather)) + ")";
+    f.scuffs.forEach(sc => {
+      ctx.lineWidth = sc.w;
+      ctx.beginPath();
+      ctx.moveTo(sc.x - Math.cos(sc.ang) * sc.len / 2, sc.y - Math.sin(sc.ang) * sc.len / 2);
+      ctx.lineTo(sc.x + Math.cos(sc.ang) * sc.len / 2, sc.y + Math.sin(sc.ang) * sc.len / 2);
+      ctx.stroke();
+    });
+    ctx.restore(); // clip
+    ctx.globalCompositeOperation = "source-over";
+    ctx.restore(); // translate/rotate
+  }
+  const Signage = {
+    id: "signage", name: "Warning / Text Sticker", group: "Signage",
+    params: [
+      { key: "style", label: "Style", type: "select", default: "Caution",
+        options: ["Caution", "Warning", "Danger", "Notice", "Safety", "Text Only"] },
+      { key: "shape", label: "Shape", type: "select", default: "Rounded Rect",
+        options: ["Rounded Rect", "Rectangle", "Circle", "Diamond", "Triangle"] },
+      { key: "header", label: "Header", type: "text", default: "CAUTION", placeholder: "HEADER TEXT", maxLength: 28 },
+      { key: "body", label: "Body", type: "text", default: "Read manual before operating", placeholder: "Body text (optional)", maxLength: 90 },
+      { key: "pictogram", label: "Pictogram", type: "select", default: "Warning Triangle",
+        options: [
+          { value: "None", label: "None" },
+          { value: "Warning Triangle", label: "Warning Triangle" },
+          { value: "Prohibition", label: "Prohibition" },
+          { value: "Mandatory", label: "Mandatory" },
+          { value: "Bare Symbol", label: "Bare Symbol" }
+        ] },
+      { key: "symbol", label: "Symbol", type: "select", default: "General",
+        options: [
+          { value: "General", label: "General (!)" },
+          { value: "Electricity", label: "Electricity" },
+          { value: "Hot Surface", label: "Hot Surface" },
+          { value: "Pinch / Crush", label: "Pinch / Crush" },
+          { value: "Entanglement", label: "Entanglement" },
+          { value: "Cutting Blade", label: "Cutting Blade" },
+          { value: "Laser", label: "Laser" },
+          { value: "Corrosive", label: "Corrosive" }
+        ] },
+      { key: "stripes",  label: "Stripes",  min: 0,    max: 1,  step: 0.01, default: 0 },
+      { key: "border",   label: "Border",   min: 0,    max: 1,  step: 0.01, default: 0.5 },
+      { key: "radius",   label: "Radius",   min: 0,    max: 1,  step: 0.01, default: 0.4 },
+      { key: "coverage", label: "Coverage", min: 0.2,  max: 1,  step: 0.01, default: 0.55 },
+      { key: "rotation", label: "Rotation", min: -30,  max: 30, step: 1,    default: 0 },
+      { key: "weather",  label: "Weather",  min: 0,    max: 1,  step: 0.01, default: 0.25 },
+      { key: "emboss",   label: "Emboss",   min: 0,    max: 1,  step: 0.01, default: 0.4 },
+      { key: "gloss",    label: "Gloss",    min: 0,    max: 1,  step: 0.01, default: 0.5 }
+    ],
+    _build(p, size) {
+      const r = mulberry32(hashSeed(p.seed + "|sig"));
+      const cx = size / 2, cy = size / 2;
+      const rot = (p.rotation || 0) * Math.PI / 180;
+      const shape = p.shape || "Rounded Rect";
+      const cov = clamp01(p.coverage != null ? p.coverage : 0.55);
+      let boxW, boxH;
+      if (shape === "Circle") { boxW = boxH = size * 0.62 * cov; }
+      else if (shape === "Diamond") { boxW = boxH = size * 0.74 * cov; }
+      else if (shape === "Triangle") { boxW = size * 0.78 * cov; boxH = size * 0.70 * cov; }
+      else { boxW = size * 0.80 * cov; boxH = size * 0.50 * cov; }
+      boxW = Math.max(4, boxW); boxH = Math.max(4, boxH);
+      const radius = shape === "Rounded Rect" ? Math.min(boxW, boxH) * 0.5 * clamp01(p.radius) * 0.6 : 0;
+
+      const weather = clamp01(p.weather);
+      const nNotch = Math.round(2 + 10 * weather);
+      const notches = [];
+      for (let i = 0; i < nNotch; i++) {
+        notches.push({ t: r(), r: size * (0.006 + 0.024 * r()) * (0.3 + weather), a: 0.5 + 0.5 * r() });
+      }
+      let peel = null;
+      if (weather > 0.15) {
+        peel = { t: r(), r: size * (0.02 + 0.05 * weather) * (0.7 + r() * 0.6), a: 0.6 + 0.3 * r() };
+      }
+      const nScuff = Math.round(weather * 6);
+      const scuffs = [];
+      for (let i = 0; i < nScuff; i++) {
+        scuffs.push({
+          x: (r() - 0.5) * boxW * 0.7,
+          y: (r() - 0.5) * boxH * 0.7,
+          ang: r() * Math.PI * 2,
+          len: (0.2 + 0.5 * r()) * Math.min(boxW, boxH),
+          w: Math.max(1, size * 0.003 * (0.6 + r()))
+        });
+      }
+      const nBlot = Math.round(1 + weather * 4);
+      const fadeBlotches = [];
+      for (let i = 0; i < nBlot; i++) {
+        fadeBlotches.push({
+          x: (r() - 0.5) * boxW * 0.8,
+          y: (r() - 0.5) * boxH * 0.8,
+          r: Math.min(boxW, boxH) * (0.15 + 0.25 * r()),
+          a: (0.10 + 0.22 * r()) * weather
+        });
+      }
+      return { cx, cy, rot, shape, boxW, boxH, radius, notches, peel, scuffs, fadeBlotches };
+    },
+    drawColor(ctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const scheme = SIGNAGE_SCHEMES[p.style] || SIGNAGE_SCHEMES.Caution;
+      paintSignageContent(ctx, f, p, scheme, "color", size);
+      applySignageWeather(ctx, f, p, size);
+    },
+    drawHeight(hctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const scheme = SIGNAGE_SCHEMES[p.style] || SIGNAGE_SCHEMES.Caution;
+      hctx.fillStyle = "rgb(128,128,128)";
+      hctx.fillRect(0, 0, size, size);
+      paintSignageContent(hctx, f, p, scheme, "height", size);
+      paintSignageRolledRim(hctx, f, size);
+    },
+    drawSpec(sctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const scheme = SIGNAGE_SCHEMES[p.style] || SIGNAGE_SCHEMES.Caution;
+      const baseV = _byte(50 + clamp01(p.gloss) * 140);
+      sctx.fillStyle = "rgb(" + baseV + "," + baseV + "," + baseV + ")";
+      sctx.fillRect(0, 0, size, size);
+      paintSignageContent(sctx, f, p, scheme, "spec", size);
+    }
+  };
+
+  // group: Plates | insert into GENERATORS array | new helpers: SPECPLATE_METALS (metal
+  // palette table), _spByte, _spRgb, _spRoundRectPath, _spFitFont, _spBuildLayout,
+  // _spPaintFace (shared color/height/spec paint routine for the plate face)
+  //
+  // Uses only the framework helpers already in scope: hashSeed, mulberry32, makeNoise,
+  // makeFbm, clamp01, smoothstep, cachedField. Determinism: all randomness is drawn from
+  // mulberry32(hashSeed(p.seed + "|plate")) inside _build(); no Math.random anywhere.
+
+  /* ---- SpecPlate helpers (local to this generator; prefixed "_sp" to avoid collisions
+     with the sibling "Process" generators' private helpers in the same file) ---- */
+  function _spByte(v) { return v < 0 ? 0 : v > 255 ? 255 : v | 0; }
+  function _spRgb(arr) { return "rgb(" + _spByte(arr[0]) + "," + _spByte(arr[1]) + "," + _spByte(arr[2]) + ")"; }
+
+  // rounded-rect path, centered at the current origin (caller translates/rotates first)
+  function _spRoundRectPath(ctx, w, h, r) {
+    const rr = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+    const x = -w / 2, y = -h / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.lineTo(x + w - rr, y);
+    ctx.arcTo(x + w, y, x + w, y + rr, rr);
+    ctx.lineTo(x + w, y + h - rr);
+    ctx.arcTo(x + w, y + h, x + w - rr, y + h, rr);
+    ctx.lineTo(x + rr, y + h);
+    ctx.arcTo(x, y + h, x, y + h - rr, rr);
+    ctx.lineTo(x, y + rr);
+    ctx.arcTo(x, y, x + rr, y, rr);
+    ctx.closePath();
+  }
+
+  // shrink px until text fits maxWidth (or hits minPx); fontFn(px) -> CSS font string
+  function _spFitFont(ctx, text, maxWidth, maxPx, minPx, fontFn) {
+    let px = Math.max(minPx, Math.round(maxPx));
+    if (!text) return px;
+    ctx.font = fontFn(px);
+    while (px > minPx && ctx.measureText(text).width > maxWidth) {
+      px -= 1;
+      ctx.font = fontFn(px);
+    }
+    return px;
+  }
+
+  // Metal palette: fill (RGB), ink (engraved text colour), oxide tint (weathering), and a
+  // spec (gloss) scale so brass/anodized read a touch less shiny than bare steel/aluminum.
+  const SPECPLATE_METALS = {
+    steel:    { fill: [184, 188, 192], ink: "#20242a", oxideRGB: [86, 66, 44],  specScale: 1.00 },
+    black:    { fill: [42, 45, 48],    ink: "#e6e6e6", oxideRGB: [140, 132, 120], specScale: 0.75 },
+    brass:    { fill: [198, 162, 74],  ink: "#241a06", oxideRGB: [64, 108, 92], specScale: 0.85 },
+    aluminum: { fill: [205, 209, 212], ink: "#24282b", oxideRGB: [90, 72, 48],  specScale: 1.00 }
+  };
+
+  // Text layout shared by all three channels: recomputed per-call from the same ctx's
+  // font metrics so header/model/serial/rows land pixel-identically across color/height/spec.
+  function _spBuildLayout(ctx, f, p, size) {
+    const boxW = f.boxW, boxH = f.boxH;
+    // Content margin must clear the engraved border groove (_spPaintFace uses the
+    // same inset formula below for the groove stroke) or a thick border cuts
+    // straight through the header / bottom data row. 0.7 is the stricter of the
+    // two divisors used further down (header uses *0.75 of pad, rows use *0.7),
+    // so sizing pad off it keeps both the header top and the rows bottom clear.
+    const basePad = Math.min(boxW, boxH) * 0.09;
+    const borderT = clamp01(p.border != null ? p.border : 0.6);
+    const borderInset = Math.min(boxW, boxH) * (0.06 + 0.15 * borderT) + Math.max(1, size * 0.01);
+    const borderGap = Math.min(boxW, boxH) * 0.02;
+    const pad = Math.max(basePad, (borderInset + borderGap) / 0.7);
+    const innerW = Math.max(4, boxW - pad * 2);
+
+    const header = String(p.header != null ? p.header : "").trim();
+    const model = String(p.model != null ? p.model : "").trim();
+    const serial = String(p.serial != null ? p.serial : "").trim();
+
+    let y = -boxH / 2 + pad * 0.75;
+    const items = [];
+
+    if (header) {
+      const maxPx = boxH * 0.22;
+      const px = _spFitFont(ctx, header, innerW * 0.96, maxPx, 7,
+        s => '800 ' + s + 'px "Arial Black", Impact, system-ui, sans-serif');
+      items.push({ text: header, y, font: '800 ' + px + 'px "Arial Black", Impact, system-ui, sans-serif' });
+      y += px * 1.30;
+    }
+    if (model) {
+      const maxPx = boxH * 0.12;
+      const px = _spFitFont(ctx, model, innerW * 0.96, maxPx, 6,
+        s => s + 'px "Consolas","Courier New",monospace');
+      items.push({ text: model, y, font: px + 'px "Consolas","Courier New",monospace' });
+      y += px * 1.35;
+    }
+    if (serial) {
+      const maxPx = boxH * 0.11;
+      const px = _spFitFont(ctx, serial, innerW * 0.96, maxPx, 6,
+        s => s + 'px "Consolas","Courier New",monospace');
+      items.push({ text: serial, y, font: px + 'px "Consolas","Courier New",monospace' });
+      y += px * 1.40;
+    }
+
+    const rows = f.rows || [];
+    const rowsTop = y + boxH * 0.03;
+    const rowsBottom = boxH / 2 - pad * 0.7;
+    const rowsAvail = Math.max(4, rowsBottom - rowsTop);
+    const rowSlot = rows.length > 0 ? rowsAvail / rows.length : 0;
+    const rowPx = Math.max(5, Math.min(rowSlot * 0.62, boxH * 0.075));
+    const rowFont = rowPx + 'px "Consolas","Courier New",monospace';
+    const rowItems = rows.map((row, i) => ({
+      label: row.label, value: row.value,
+      y: rowsTop + rowSlot * (i + 0.5), font: rowFont
+    }));
+
+    return { pad, items, rowItems };
+  }
+
+  // Paints one channel of the plate face. mode: "color" | "height" | "spec".
+  // Handles clip, base fill, brushed streaks, weathering, border groove, engraved text,
+  // and screws -- all in the plate's local (translated + rotated) coordinate space so
+  // vector drawing (not pixel data) automatically follows the rotation transform.
+  function _spPaintFace(ctx, f, p, size, mode, metal) {
+    const boxW = f.boxW, boxH = f.boxH;
+    const gloss = clamp01(p.gloss != null ? p.gloss : 0.55);
+    const specBaseV = 50 + gloss * 150 * metal.specScale;
+
+    ctx.save();
+    ctx.translate(f.cx, f.cy);
+    ctx.rotate(f.rot);
+    ctx.save();
+    _spRoundRectPath(ctx, boxW, boxH, f.radius);
+    ctx.clip();
+
+    // ---- base fill ----
+    if (mode === "color") {
+      ctx.fillStyle = _spRgb(metal.fill);
+    } else if (mode === "height") {
+      ctx.fillStyle = "rgb(128,128,128)";
+    } else {
+      ctx.fillStyle = "rgb(" + _spByte(specBaseV) + "," + _spByte(specBaseV) + "," + _spByte(specBaseV) + ")";
+    }
+    ctx.fillRect(-boxW / 2, -boxH / 2, boxW, boxH);
+
+    // ---- brushed anisotropic streaks (horizontal, in local space) ----
+    if (mode === "color" || mode === "spec") {
+      const rowsN = f.streakRows.length;
+      const segN = 12;
+      const lineW = Math.max(0.6, (boxH / Math.max(1, rowsN)) * 0.95);
+      ctx.lineWidth = lineW;
+      f.streakRows.forEach(row => {
+        const rowY = -boxH / 2 + row.t * boxH;
+        const segW = boxW / segN;
+        for (let s = 0; s < segN; s++) {
+          const micro = row.micro[s];
+          if (mode === "color") {
+            const delta = row.tone * 10 + micro * 14;
+            ctx.strokeStyle = _spRgb([metal.fill[0] + delta, metal.fill[1] + delta, metal.fill[2] + delta]);
+            ctx.globalAlpha = 0.55;
+          } else {
+            const delta = row.tone * 22 + micro * 30;
+            const v = _spByte(specBaseV + delta);
+            ctx.strokeStyle = "rgb(" + v + "," + v + "," + v + ")";
+            ctx.globalAlpha = 0.7;
+          }
+          ctx.beginPath();
+          ctx.moveTo(-boxW / 2 + s * segW, rowY);
+          ctx.lineTo(-boxW / 2 + (s + 1) * segW, rowY);
+          ctx.stroke();
+        }
+      });
+      ctx.globalAlpha = 1;
+    }
+
+    // ---- raised rolled edge (height only) ----
+    if (mode === "height") {
+      const lw1 = Math.max(1, size * 0.008);
+      ctx.lineWidth = lw1;
+      ctx.strokeStyle = "rgb(150,150,150)";
+      _spRoundRectPath(ctx, Math.max(2, boxW - lw1), Math.max(2, boxH - lw1), Math.max(0, f.radius - lw1 * 0.5));
+      ctx.stroke();
+      const lw2 = lw1 * 2.6;
+      ctx.lineWidth = lw1 * 0.8;
+      ctx.strokeStyle = "rgb(116,116,116)";
+      _spRoundRectPath(ctx, Math.max(2, boxW - lw2), Math.max(2, boxH - lw2), Math.max(0, f.radius - lw2 * 0.5));
+      ctx.stroke();
+    }
+
+    // ---- weathering: oxide/tarnish mottle + scuffs (color + spec only) ----
+    const weather = clamp01(p.weather != null ? p.weather : 0.25);
+    if ((mode === "color" || mode === "spec") && weather > 0.01) {
+      f.oxide.forEach(b => {
+        if (b.r <= 0) return;
+        const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+        if (mode === "color") {
+          const c = metal.oxideRGB;
+          grad.addColorStop(0, "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + b.a + ")");
+          grad.addColorStop(1, "rgba(" + c[0] + "," + c[1] + "," + c[2] + ",0)");
+        } else {
+          const v = _spByte(Math.max(10, specBaseV - 85));
+          grad.addColorStop(0, "rgba(" + v + "," + v + "," + v + "," + (b.a * 0.9) + ")");
+          grad.addColorStop(1, "rgba(" + v + "," + v + "," + v + ",0)");
+        }
+        ctx.fillStyle = grad;
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+      });
+      ctx.lineCap = "round";
+      f.scuffs.forEach(sc => {
+        if (sc.len <= 0) return;
+        ctx.lineWidth = sc.w;
+        if (mode === "color") {
+          ctx.strokeStyle = "rgba(255,255,255," + (sc.a * 0.9) + ")";
+        } else {
+          const v = _spByte(Math.min(255, specBaseV + 95));
+          ctx.strokeStyle = "rgba(" + v + "," + v + "," + v + "," + sc.a + ")";
+        }
+        ctx.beginPath();
+        ctx.moveTo(sc.x - Math.cos(sc.ang) * sc.len / 2, sc.y - Math.sin(sc.ang) * sc.len / 2);
+        ctx.lineTo(sc.x + Math.cos(sc.ang) * sc.len / 2, sc.y + Math.sin(sc.ang) * sc.len / 2);
+        ctx.stroke();
+      });
+    }
+
+    // ---- engraved border groove ----
+    const borderT = clamp01(p.border != null ? p.border : 0.6);
+    const inset = Math.min(boxW, boxH) * (0.06 + 0.15 * borderT) + Math.max(1, size * 0.01);
+    const gw = Math.max(1, size * (0.006 + 0.01 * borderT));
+    let grooveColor;
+    if (mode === "color") grooveColor = metal.ink;
+    else if (mode === "height") grooveColor = "rgb(108,108,108)";
+    else grooveColor = "rgb(" + _spByte(Math.max(10, specBaseV - 75)) + "," + _spByte(Math.max(10, specBaseV - 75)) + "," + _spByte(Math.max(10, specBaseV - 75)) + ")";
+    ctx.save();
+    ctx.globalAlpha = mode === "color" ? 0.85 : 1;
+    ctx.strokeStyle = grooveColor;
+    ctx.lineWidth = gw;
+    _spRoundRectPath(ctx, Math.max(4, boxW - inset * 2), Math.max(4, boxH - inset * 2), Math.max(0, f.radius - inset));
+    ctx.stroke();
+    ctx.restore();
+
+    // ---- engraved text: header / model / serial / data rows ----
+    const emboss = clamp01(p.emboss != null ? p.emboss : 0.6);
+    let inkColor;
+    if (mode === "color") inkColor = metal.ink;
+    else if (mode === "height") {
+      const v = _spByte(128 - emboss * 30);
+      inkColor = "rgb(" + v + "," + v + "," + v + ")";
+    } else {
+      const v = _spByte(Math.max(15, specBaseV - 60));
+      inkColor = "rgb(" + v + "," + v + "," + v + ")";
+    }
+    const layout = _spBuildLayout(ctx, f, p, size);
+    ctx.fillStyle = inkColor;
+    ctx.textBaseline = "top";
+    ctx.textAlign = "center";
+    layout.items.forEach(it => {
+      ctx.font = it.font;
+      ctx.fillText(it.text, 0, it.y);
+    });
+    const innerX0 = -boxW / 2 + layout.pad;
+    const innerX1 = boxW / 2 - layout.pad;
+    layout.rowItems.forEach(row => {
+      ctx.font = row.font;
+      ctx.textAlign = "left";
+      ctx.fillText(row.label, innerX0, row.y);
+      ctx.textAlign = "right";
+      ctx.fillText(row.value, innerX1, row.y);
+    });
+
+    ctx.restore(); // clip
+
+    // ---- screws (drawn on top, still in rotated plate space) ----
+    f.screwPts.forEach((pt, i) => {
+      const ang = f.screwAngles[i];
+      const rad = f.screwR;
+      ctx.save();
+      ctx.translate(pt[0], pt[1]);
+      ctx.rotate(ang);
+      if (mode === "color") {
+        const grad = ctx.createRadialGradient(-rad * 0.3, -rad * 0.3, rad * 0.15, 0, 0, rad);
+        grad.addColorStop(0, _spRgb([metal.fill[0] + 15, metal.fill[1] + 15, metal.fill[2] + 15]));
+        grad.addColorStop(0.7, _spRgb([metal.fill[0] - 30, metal.fill[1] - 30, metal.fill[2] - 30]));
+        grad.addColorStop(1, _spRgb([metal.fill[0] - 70, metal.fill[1] - 70, metal.fill[2] - 70]));
+        ctx.fillStyle = grad;
+        ctx.beginPath(); ctx.arc(0, 0, rad, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = _spRgb([metal.fill[0] - 70, metal.fill[1] - 70, metal.fill[2] - 70]);
+        ctx.lineWidth = Math.max(0.6, rad * 0.18);
+        ctx.beginPath(); ctx.moveTo(-rad * 0.55, 0); ctx.lineTo(rad * 0.55, 0); ctx.stroke();
+      } else if (mode === "height") {
+        ctx.fillStyle = "rgb(96,96,96)";
+        ctx.beginPath(); ctx.arc(0, 0, rad, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgb(142,142,142)";
+        ctx.lineWidth = Math.max(0.5, rad * 0.16);
+        ctx.beginPath(); ctx.moveTo(-rad * 0.5, 0); ctx.lineTo(rad * 0.5, 0); ctx.stroke();
+      } else {
+        const v = _spByte(specBaseV * 0.45);
+        ctx.fillStyle = "rgb(" + v + "," + v + "," + v + ")";
+        ctx.beginPath(); ctx.arc(0, 0, rad, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    });
+
+    ctx.restore(); // translate/rotate
+  }
+
+  const SpecPlate = {
+    id: "specplate",
+    name: "Data / Spec Plate",
+    group: "Plates",
+    params: [
+      { key: "metal", label: "Metal", type: "select", default: "steel",
+        options: [
+          { value: "steel", label: "Brushed Steel" },
+          { value: "black", label: "Black Anodized" },
+          { value: "brass", label: "Brass" },
+          { value: "aluminum", label: "Aluminum" }
+        ] },
+      { key: "header", label: "Header", type: "text", default: "TYPE PLATE", placeholder: "PLATE TITLE", maxLength: 24 },
+      { key: "model", label: "Model", type: "text", default: "MODEL MX-500", placeholder: "MODEL LINE", maxLength: 28 },
+      { key: "serial", label: "Serial", type: "text", default: "SN 2024-08421", placeholder: "SERIAL NO.", maxLength: 28 },
+      { key: "rows", label: "Data Rows", min: 2, max: 6, step: 1, default: 5 },
+      { key: "screws", label: "Screws", type: "select", default: "4",
+        options: [
+          { value: "0", label: "None" },
+          { value: "2", label: "2 (Diagonal)" },
+          { value: "4", label: "4 (Corners)" }
+        ] },
+      { key: "border", label: "Border Groove", min: 0, max: 1, step: 0.01, default: 0.6 },
+      { key: "radius", label: "Corner Radius", min: 0, max: 1, step: 0.01, default: 0.3 },
+      { key: "coverage", label: "Coverage", min: 0.2, max: 1, step: 0.01, default: 0.6 },
+      { key: "rotation", label: "Rotation", min: -20, max: 20, step: 1, default: 0 },
+      { key: "weather", label: "Weather", min: 0, max: 1, step: 0.01, default: 0.25 },
+      { key: "emboss", label: "Emboss", min: 0, max: 1, step: 0.01, default: 0.6 },
+      { key: "gloss", label: "Gloss", min: 0, max: 1, step: 0.01, default: 0.55 }
+    ],
+
+    _build(p, size) {
+      const r = mulberry32(hashSeed(p.seed + "|plate"));
+      const cx = size / 2, cy = size / 2;
+      const rot = (p.rotation != null ? p.rotation : 0) * Math.PI / 180;
+      const cov = clamp01(p.coverage != null ? p.coverage : 0.6);
+
+      // landscape-ish aspect, mildly varied per seed so plates don't look identical
+      const aspect = 1.5 + 0.35 * r();
+      let boxW = size * 0.88 * cov;
+      let boxH = boxW / aspect;
+      boxH = Math.max(size * 0.12, Math.min(boxH, size * 0.6));
+      boxW = Math.max(6, boxW);
+      boxH = Math.max(6, boxH);
+      const radius = Math.min(boxW, boxH) * 0.5 * clamp01(p.radius != null ? p.radius : 0.3) * 0.55;
+
+      // recessed pan-head screws
+      const screwR = Math.min(boxW, boxH) * 0.055;
+      const screwInset = screwR * 2.4;
+      const screwsMode = String(p.screws != null ? p.screws : "4");
+      let screwPts = [];
+      if (screwsMode === "2") {
+        screwPts = [
+          [-boxW / 2 + screwInset, -boxH / 2 + screwInset],
+          [ boxW / 2 - screwInset,  boxH / 2 - screwInset]
+        ];
+      } else if (screwsMode === "4") {
+        screwPts = [
+          [-boxW / 2 + screwInset, -boxH / 2 + screwInset],
+          [ boxW / 2 - screwInset, -boxH / 2 + screwInset],
+          [-boxW / 2 + screwInset,  boxH / 2 - screwInset],
+          [ boxW / 2 - screwInset,  boxH / 2 - screwInset]
+        ];
+      }
+      const screwAngles = screwPts.map(() => r() * Math.PI * 2);
+
+      // weathering: scuffs (bright scratches) + oxide/tarnish blotches
+      const weather = clamp01(p.weather != null ? p.weather : 0.25);
+      const nScuff = Math.round(weather * 9);
+      const scuffs = [];
+      for (let i = 0; i < nScuff; i++) {
+        scuffs.push({
+          x: (r() - 0.5) * boxW * 0.86,
+          y: (r() - 0.5) * boxH * 0.86,
+          ang: r() * Math.PI * 2,
+          len: (0.06 + 0.18 * r()) * Math.min(boxW, boxH),
+          w: Math.max(0.5, size * 0.0018 * (0.6 + r())),
+          a: (0.10 + 0.20 * r()) * (0.5 + 0.5 * weather)
+        });
+      }
+      const nOxide = Math.round(1 + weather * 4);
+      const oxide = [];
+      for (let i = 0; i < nOxide; i++) {
+        oxide.push({
+          x: (r() - 0.5) * boxW * 0.82,
+          y: (r() - 0.5) * boxH * 0.82,
+          r: Math.min(boxW, boxH) * (0.10 + 0.20 * r()),
+          a: (0.06 + 0.16 * r()) * weather
+        });
+      }
+
+      // per-row brushed-streak jitter (shared by drawColor + drawSpec so the anisotropic
+      // grain lines up pixel-for-pixel between the two channels)
+      const streakN = Math.max(24, Math.min(140, Math.round(boxH / 3)));
+      const streakRows = [];
+      for (let i = 0; i < streakN; i++) {
+        const micro = [];
+        for (let s = 0; s < 12; s++) micro.push(r() - 0.5);
+        streakRows.push({ t: (i + 0.5) / streakN, tone: r() - 0.5, micro });
+      }
+
+      // data rows: fixed label set, seeded plausible dummy values, up to p.rows
+      const ALL_LABELS = ["VOLTAGE", "POWER kW", "CURRENT A", "RPM", "FREQ Hz", "MADE IN"];
+      const rowCount = Math.max(2, Math.min(6, Math.round(p.rows != null ? p.rows : 5)));
+      const VOLTAGES = [110, 120, 220, 230, 240, 380, 400, 415, 480];
+      const RPMS = [900, 1200, 1450, 1750, 2900, 3450, 3600];
+      const COUNTRIES = ["USA", "GERMANY", "JAPAN", "CHINA", "ITALY", "TAIWAN", "SWEDEN"];
+      const rows = ALL_LABELS.slice(0, rowCount).map(label => {
+        let value;
+        if (label === "VOLTAGE") value = VOLTAGES[Math.floor(r() * VOLTAGES.length)] + " V";
+        else if (label === "POWER kW") value = (0.25 + r() * 74.75).toFixed(1) + " kW";
+        else if (label === "CURRENT A") value = (0.5 + r() * 149.5).toFixed(1) + " A";
+        else if (label === "RPM") value = String(RPMS[Math.floor(r() * RPMS.length)]);
+        else if (label === "FREQ Hz") value = (r() < 0.5 ? "50" : "60") + " Hz";
+        else value = COUNTRIES[Math.floor(r() * COUNTRIES.length)];
+        return { label: label + ":", value };
+      });
+
+      return { cx, cy, rot, boxW, boxH, radius, screwPts, screwAngles, screwR, scuffs, oxide, rows, streakRows };
+    },
+
+    drawColor(ctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const metal = SPECPLATE_METALS[p.metal] || SPECPLATE_METALS.steel;
+      _spPaintFace(ctx, f, p, size, "color", metal);
+    },
+
+    drawHeight(hctx, p, rng, size) {
+      hctx.fillStyle = "rgb(128,128,128)";
+      hctx.fillRect(0, 0, size, size);
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const metal = SPECPLATE_METALS[p.metal] || SPECPLATE_METALS.steel;
+      _spPaintFace(hctx, f, p, size, "height", metal);
+    },
+
+    drawSpec(sctx, p, rng, size) {
+      const metal = SPECPLATE_METALS[p.metal] || SPECPLATE_METALS.steel;
+      const gloss = clamp01(p.gloss != null ? p.gloss : 0.55);
+      const baseV = _spByte(50 + gloss * 150 * metal.specScale);
+      sctx.fillStyle = "rgb(" + baseV + "," + baseV + "," + baseV + ")";
+      sctx.fillRect(0, 0, size, size);
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      _spPaintFace(sctx, f, p, size, "spec", metal);
+    }
+  };
+
+  // group: Marks | insert into GENERATORS array | new helpers: CERTBADGE_STYLES, CERTBADGE_FIELD_COLOR (consts),
+  // certBuildLayout, certArcTextLayout, certBuildBadgePath, certEdgeRadiusMultiplier, certDrawStarPath,
+  // certDrawCenterMark, certShadeColor, certClampByte
+  // (renamed with a "cert" prefix during signage-tool integration to avoid collisions with
+  // sibling generators' helpers in the same file -- originally buildLayout/arcTextLayout/etc.)
+  //
+  // Certification Badge (id "certbadge") -- a generic round compliance/approval seal
+  // (CE/UL/QC-style, no real trademark). Determinism: every draw*() derives its own
+  // mulberry32(hashSeed(p.seed + "|cert")) stream; certBuildLayout() consumes it first
+  // (for the monogram letters) so the same letters/positions line up across all
+  // three channels (color/height/spec) before any channel-specific randomness
+  // (weathering) is drawn on top in drawColor only.
+
+  const CERTBADGE_STYLES = {
+    approved:  { ring: "#1E7A46", accent: "#FFFFFF", word: "APPROVED" },
+    certified: { ring: "#1F5FA8", accent: "#FFFFFF", word: "CERTIFIED" },
+    tested:    { ring: "#C29A2E", accent: "#3A2B05", word: "TESTED" },
+    passedqc:  { ring: "#2FA8B0", accent: "#FFFFFF", word: "PASSED" }
+  };
+  const CERTBADGE_FIELD_COLOR = "#F5F2E9";
+
+  function certClampByte(v) {
+    return Math.max(0, Math.min(255, Math.round(v)));
+  }
+
+  // amt in [-1,1]: negative darkens toward black, positive lightens toward white.
+  function certShadeColor(hex, amt) {
+    const c = hex.replace("#", "");
+    const full = c.length === 3 ? c.split("").map(function (ch) { return ch + ch; }).join("") : c;
+    const num = parseInt(full, 16) || 0;
+    let rr = (num >> 16) & 255, gg = (num >> 8) & 255, bb = num & 255;
+    if (amt < 0) {
+      const f = 1 + amt;
+      rr *= f; gg *= f; bb *= f;
+    } else if (amt > 0) {
+      rr += (255 - rr) * amt;
+      gg += (255 - gg) * amt;
+      bb += (255 - bb) * amt;
+    }
+    return "rgb(" + certClampByte(rr) + "," + certClampByte(gg) + "," + certClampByte(bb) + ")";
+  }
+
+  // Radial multiplier applied to the nominal outer radius as a function of angle
+  // (theta in radians, 0 = top, clockwise), used both for the alpha die-cut path
+  // and for the raised-rim stroke in drawHeight so the bump geometry matches.
+  function certEdgeRadiusMultiplier(edgeType, theta) {
+    if (edgeType === "scalloped") {
+      return 1 + 0.035 * Math.sin(theta * 16);
+    }
+    if (edgeType === "gear") {
+      const s = Math.sin(theta * 20);
+      const tooth = Math.sign(s) * Math.pow(Math.abs(s), 0.35);
+      return 1 + tooth * 0.045;
+    }
+    return 1;
+  }
+
+  // Builds (but does not fill/stroke) the badge outline path in the CURRENT
+  // (already translated+rotated to badge centre) local coordinate space.
+  function certBuildBadgePath(ctx, radius, edgeType) {
+    const segments = 160;
+    ctx.beginPath();
+    for (let i = 0; i <= segments; i++) {
+      const theta = (i / segments) * Math.PI * 2;
+      const rr = radius * certEdgeRadiusMultiplier(edgeType, theta);
+      const x = rr * Math.sin(theta);
+      const y = -rr * Math.cos(theta);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+  }
+
+  // Lays out `text` along a circular arc (radius, centred at centerAngleDeg,
+  // clockwise-from-top convention: 0 = top, 180 = bottom) spanning at most
+  // arcSpanDeg degrees total, reading left-to-right as normally viewed.
+  // flip=true (bottom arc) mirrors the walk direction and un-rotates each glyph
+  // by 180 so it stays upright instead of hanging upside-down from the rim.
+  function certArcTextLayout(text, radius, centerAngleDeg, arcSpanDeg, flip) {
+    const n = text.length;
+    if (n === 0) return [];
+    const rawStep = n > 1 ? arcSpanDeg / (n - 1) : 0;
+    const stepDeg = Math.min(rawStep, 16);
+    const mid = (n - 1) / 2;
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const d = (i - mid) * stepDeg;
+      let theta, rot;
+      if (!flip) {
+        theta = centerAngleDeg + d;
+        rot = theta;
+      } else {
+        theta = centerAngleDeg - d;
+        rot = theta - 180;
+      }
+      const thetaRad = theta * Math.PI / 180;
+      const rotRad = rot * Math.PI / 180;
+      out.push({
+        x: radius * Math.sin(thetaRad),
+        y: -radius * Math.cos(thetaRad),
+        rot: rotRad,
+        ch: text[i]
+      });
+    }
+    return out;
+  }
+
+  function certDrawStarPath(ctx, cx, cy, outerR, innerR, rotationRad) {
+    const spikes = 5;
+    ctx.beginPath();
+    for (let i = 0; i < spikes * 2; i++) {
+      const rad = (i % 2 === 0) ? outerR : innerR;
+      const a = rotationRad + i * Math.PI / spikes;
+      const x = cx + rad * Math.sin(a);
+      const y = cy - rad * Math.cos(a);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+  }
+
+  // Paints (fill or stroke, as appropriate) a bold vector mark centred at (0,0)
+  // in the current local coordinate space. `color` may be any canvas fillStyle/
+  // strokeStyle string, so the same function serves color/height/spec channels.
+  function certDrawCenterMark(ctx, markType, markSize, color, monogram) {
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.strokeStyle = color;
+    if (markType === "star") {
+      certDrawStarPath(ctx, 0, 0, markSize * 0.55, markSize * 0.22, 0);
+      ctx.fill();
+    } else if (markType === "shield") {
+      const w = markSize * 0.5, h = markSize * 0.62;
+      ctx.beginPath();
+      ctx.moveTo(-w, -h * 0.55);
+      ctx.quadraticCurveTo(-w, -h, 0, -h);
+      ctx.quadraticCurveTo(w, -h, w, -h * 0.55);
+      ctx.lineTo(w, h * 0.18);
+      ctx.quadraticCurveTo(w, h * 0.55, 0, h);
+      ctx.quadraticCurveTo(-w, h * 0.55, -w, h * 0.18);
+      ctx.closePath();
+      ctx.fill();
+    } else if (markType === "monogram") {
+      const text = monogram || "CX";
+      const fontPx = Math.max(6, (markSize * 0.85) / Math.max(1, text.length * 0.62));
+      ctx.font = "900 " + fontPx + "px Georgia, \"Times New Roman\", serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, 0, 0);
+    } else {
+      // checkmark (default)
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.lineWidth = Math.max(1, markSize * 0.26);
+      ctx.beginPath();
+      ctx.moveTo(-markSize * 0.5, 0);
+      ctx.lineTo(-markSize * 0.1, markSize * 0.42);
+      ctx.lineTo(markSize * 0.56, -markSize * 0.46);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Pure(ish) geometry builder shared by all three draw*() functions so the
+  // ring/text/star/mark positions register exactly across color, height and
+  // spec. `r` is a caller-supplied mulberry32 stream, consumed here only for
+  // the monogram letters (called first, before any channel-specific rng use).
+  function certBuildLayout(p, size, r) {
+    const style = CERTBADGE_STYLES[p.style] || CERTBADGE_STYLES.approved;
+    const cx = size / 2, cy = size / 2;
+    const rotRad = (p.rotation || 0) * Math.PI / 180;
+
+    const cov = Math.min(1, Math.max(0.2, p.coverage || 0.6));
+    const outerR = size * 0.5 * cov * 0.90;
+
+    const ringAmt = clamp01(p.ring === undefined ? 0.6 : p.ring);
+    const ringFrac = 0.16 + 0.16 * ringAmt;
+    const ringOuter = outerR * 0.97;
+    const ringInner = ringOuter - outerR * ringFrac;
+    const innerR = Math.max(outerR * 0.14, ringInner - outerR * 0.03);
+    const bandWidth = Math.max(1, ringOuter - ringInner);
+    const markSize = innerR * 0.85;
+
+    const topText = (p.topText || "").toUpperCase();
+    const bottomText = (p.bottomText || "").toUpperCase();
+    const textRadius = (ringOuter + ringInner) / 2;
+    const topLayout = certArcTextLayout(topText, textRadius, 0, 130, false);
+    const bottomLayout = certArcTextLayout(bottomText, textRadius, 180, 130, true);
+
+    const starsTotal = Math.max(0, Math.round(p.stars === undefined ? 5 : p.stars));
+    const starRadius = (ringOuter + ringInner) / 2;
+    const starPositions = [];
+    function placeArc(startDeg, endDeg, count) {
+      for (let k = 0; k < count; k++) {
+        const t = count > 1 ? k / (count - 1) : 0.5;
+        const angleDeg = startDeg + (endDeg - startDeg) * (0.12 + t * 0.76);
+        const theta = angleDeg * Math.PI / 180;
+        starPositions.push({
+          x: starRadius * Math.sin(theta),
+          y: -starRadius * Math.cos(theta),
+          rot: theta
+        });
+      }
+    }
+    const half1 = Math.ceil(starsTotal / 2), half2 = Math.floor(starsTotal / 2);
+    placeArc(65, 115, half1);
+    placeArc(245, 295, half2);
+
+    const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const mCount = 2 + Math.floor(r() * 2);
+    let monogram = "";
+    for (let i = 0; i < mCount; i++) monogram += LETTERS[Math.floor(r() * LETTERS.length)];
+
+    const centerWordRaw = (p.centerText && p.centerText.length > 0) ? p.centerText : style.word;
+    const centerWord = (centerWordRaw || "").toUpperCase();
+
+    return {
+      cx: cx, cy: cy, rotRad: rotRad, outerR: outerR,
+      ringOuter: ringOuter, ringInner: ringInner, innerR: innerR,
+      bandWidth: bandWidth, markSize: markSize,
+      topLayout: topLayout, bottomLayout: bottomLayout,
+      starPositions: starPositions, style: style,
+      monogram: monogram, centerWord: centerWord
+    };
+  }
+
+  const CertBadge = {
+    id: "certbadge",
+    name: "Certification Badge",
+    group: "Marks",
+    params: [
+      {
+        key: "style", label: "Style", type: "select",
+        options: [
+          { value: "approved", label: "Approved" },
+          { value: "certified", label: "Certified" },
+          { value: "tested", label: "Tested" },
+          { value: "passedqc", label: "Passed QC" }
+        ],
+        default: "approved"
+      },
+      { key: "topText", label: "Top Text", type: "text", default: "CERTIFIED", placeholder: "CERTIFIED", maxLength: 24 },
+      { key: "bottomText", label: "Bottom Text", type: "text", default: "QUALITY ASSURED", placeholder: "QUALITY ASSURED", maxLength: 28 },
+      {
+        key: "centerMark", label: "Center Mark", type: "select",
+        options: [
+          { value: "checkmark", label: "Checkmark" },
+          { value: "star", label: "Star" },
+          { value: "shield", label: "Shield" },
+          { value: "monogram", label: "Monogram" }
+        ],
+        default: "checkmark"
+      },
+      { key: "centerText", label: "Center Text", type: "text", default: "", placeholder: "ISO 9001", maxLength: 16 },
+      { key: "stars", label: "Stars", min: 0, max: 8, step: 1, default: 5 },
+      { key: "ring", label: "Ring Thickness", min: 0, max: 1, step: 0.01, default: 0.6 },
+      {
+        key: "edge", label: "Edge", type: "select",
+        options: [
+          { value: "smooth", label: "Smooth" },
+          { value: "scalloped", label: "Scalloped" },
+          { value: "gear", label: "Gear" }
+        ],
+        default: "smooth"
+      },
+      { key: "coverage", label: "Coverage", min: 0.2, max: 1, step: 0.01, default: 0.6 },
+      { key: "rotation", label: "Rotation", min: -30, max: 30, step: 1, default: 0 },
+      { key: "weather", label: "Weathering", min: 0, max: 1, step: 0.01, default: 0.2 },
+      { key: "emboss", label: "Emboss", min: 0, max: 1, step: 0.01, default: 0.5 },
+      { key: "gloss", label: "Gloss", min: 0, max: 1, step: 0.01, default: 0.65 }
+    ],
+
+    drawColor(ctx, p, rng, size) {
+      const r = mulberry32(hashSeed(p.seed + "|cert"));
+      const L = certBuildLayout(p, size, r);
+      const style = L.style;
+
+      ctx.save();
+      ctx.translate(L.cx, L.cy);
+      ctx.rotate(L.rotRad);
+
+      // Base die-cut field (also defines the alpha cutout for everything below).
+      certBuildBadgePath(ctx, L.outerR, p.edge);
+      ctx.fillStyle = CERTBADGE_FIELD_COLOR;
+      ctx.fill();
+
+      ctx.save();
+      certBuildBadgePath(ctx, L.outerR, p.edge);
+      ctx.clip();
+
+      // Faint outer rim shade for depth.
+      ctx.lineWidth = Math.max(0.5, L.outerR * 0.02);
+      ctx.strokeStyle = certShadeColor(style.ring, -0.3);
+      certBuildBadgePath(ctx, L.outerR * 0.995, p.edge);
+      ctx.stroke();
+
+      // Ring band.
+      ctx.beginPath();
+      ctx.arc(0, 0, L.ringOuter, 0, Math.PI * 2);
+      ctx.arc(0, 0, L.ringInner, 0, Math.PI * 2, true);
+      ctx.fillStyle = style.ring;
+      ctx.fill("evenodd");
+
+      // Double ring border lines.
+      ctx.lineWidth = Math.max(0.5, L.outerR * (0.010 + 0.02 * clamp01(p.ring)));
+      ctx.strokeStyle = style.accent;
+      ctx.beginPath(); ctx.arc(0, 0, L.ringOuter, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, L.ringInner, 0, Math.PI * 2); ctx.stroke();
+
+      // Centre field disc.
+      ctx.beginPath();
+      ctx.arc(0, 0, L.innerR, 0, Math.PI * 2);
+      ctx.fillStyle = CERTBADGE_FIELD_COLOR;
+      ctx.fill();
+      ctx.lineWidth = Math.max(0.5, L.outerR * 0.006);
+      ctx.strokeStyle = certShadeColor(style.ring, -0.1);
+      ctx.stroke();
+
+      // Curved top / bottom ring text.
+      const fontPx = Math.max(6, L.bandWidth * 0.62);
+      ctx.font = "700 " + fontPx + "px Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = style.accent;
+      for (const g of L.topLayout) {
+        ctx.save(); ctx.translate(g.x, g.y); ctx.rotate(g.rot); ctx.fillText(g.ch, 0, 0); ctx.restore();
+      }
+      for (const g of L.bottomLayout) {
+        ctx.save(); ctx.translate(g.x, g.y); ctx.rotate(g.rot); ctx.fillText(g.ch, 0, 0); ctx.restore();
+      }
+
+      // Star band.
+      for (const s of L.starPositions) {
+        certDrawStarPath(ctx, s.x, s.y, L.outerR * 0.05, L.outerR * 0.021, s.rot);
+        ctx.fillStyle = style.accent;
+        ctx.fill();
+      }
+
+      // Centre mark.
+      certDrawCenterMark(ctx, p.centerMark, L.markSize, style.ring, L.monogram);
+
+      // Centre text (under the mark).
+      if (L.centerWord) {
+        const ctFont = Math.max(5, L.innerR * 0.24);
+        ctx.font = "700 " + ctFont + "px Arial, sans-serif";
+        ctx.fillStyle = style.ring;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(L.centerWord, 0, L.innerR * 0.62);
+      }
+
+      // Weathering: foil scuffs + soft ink-wear patches.
+      const weather = clamp01(p.weather === undefined ? 0.2 : p.weather);
+      if (weather > 0.001) {
+        const scuffN = Math.floor(weather * 35);
+        for (let i = 0; i < scuffN; i++) {
+          const a = r() * Math.PI * 2;
+          const rad = r() * L.outerR;
+          const len = L.outerR * (0.03 + r() * 0.08);
+          const x0 = rad * Math.sin(a), y0 = -rad * Math.cos(a);
+          const a2 = a + (r() - 0.5) * 0.6;
+          const x1 = x0 + Math.cos(a2) * len, y1 = y0 + Math.sin(a2) * len;
+          ctx.strokeStyle = "rgba(255,255,255,0.35)";
+          ctx.lineWidth = Math.max(0.3, L.outerR * 0.004 * r());
+          ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+        }
+        const wearN = Math.floor(weather * 12);
+        ctx.globalCompositeOperation = "destination-out";
+        for (let i = 0; i < wearN; i++) {
+          const a = r() * Math.PI * 2;
+          const rad = L.ringInner + r() * (L.outerR - L.ringInner);
+          const x = rad * Math.sin(a), y = -rad * Math.cos(a);
+          const rr = L.outerR * (0.02 + r() * 0.035);
+          const grad = ctx.createRadialGradient(x, y, 0, x, y, Math.max(0.01, rr));
+          grad.addColorStop(0, "rgba(0,0,0," + (0.25 * weather) + ")");
+          grad.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.fillStyle = grad;
+          ctx.beginPath(); ctx.arc(x, y, rr, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalCompositeOperation = "source-over";
+      }
+
+      ctx.restore(); // clip
+      ctx.restore(); // translate/rotate
+    },
+
+    drawHeight(hctx, p, rng, size) {
+      const r = mulberry32(hashSeed(p.seed + "|cert"));
+      const L = certBuildLayout(p, size, r);
+      const FLAT = 128;
+
+      hctx.fillStyle = "rgb(" + FLAT + "," + FLAT + "," + FLAT + ")";
+      hctx.fillRect(0, 0, size, size);
+
+      hctx.save();
+      hctx.translate(L.cx, L.cy);
+      hctx.rotate(L.rotRad);
+      certBuildBadgePath(hctx, L.outerR, p.edge);
+      hctx.clip();
+
+      const emboss = clamp01(p.emboss === undefined ? 0.5 : p.emboss);
+      const bandV = Math.round(clamp01(0.5 + emboss * 0.30) * 255);
+      const markV = Math.round(clamp01(0.5 + emboss * 0.42) * 255);
+      const rimV = Math.round(clamp01(0.5 + emboss * 0.22) * 255);
+      const lineV = Math.min(255, bandV + 20);
+
+      // Raised rim following the edge profile (scalloped/gear bumps read as relief).
+      hctx.lineWidth = Math.max(0.5, L.outerR * 0.05);
+      hctx.strokeStyle = "rgb(" + rimV + "," + rimV + "," + rimV + ")";
+      certBuildBadgePath(hctx, L.outerR * 0.97, p.edge);
+      hctx.stroke();
+
+      // Ring band plateau.
+      hctx.beginPath();
+      hctx.arc(0, 0, L.ringOuter, 0, Math.PI * 2);
+      hctx.arc(0, 0, L.ringInner, 0, Math.PI * 2, true);
+      hctx.fillStyle = "rgb(" + bandV + "," + bandV + "," + bandV + ")";
+      hctx.fill("evenodd");
+
+      // Border bevel lines, slightly higher than the band.
+      hctx.lineWidth = Math.max(0.5, L.outerR * (0.010 + 0.02 * clamp01(p.ring)));
+      hctx.strokeStyle = "rgb(" + lineV + "," + lineV + "," + lineV + ")";
+      hctx.beginPath(); hctx.arc(0, 0, L.ringOuter, 0, Math.PI * 2); hctx.stroke();
+      hctx.beginPath(); hctx.arc(0, 0, L.ringInner, 0, Math.PI * 2); hctx.stroke();
+
+      // Raised ring text.
+      const fontPx = Math.max(6, L.bandWidth * 0.62);
+      hctx.font = "700 " + fontPx + "px Arial, sans-serif";
+      hctx.textAlign = "center";
+      hctx.textBaseline = "middle";
+      hctx.fillStyle = "rgb(" + markV + "," + markV + "," + markV + ")";
+      for (const g of L.topLayout.concat(L.bottomLayout)) {
+        hctx.save(); hctx.translate(g.x, g.y); hctx.rotate(g.rot); hctx.fillText(g.ch, 0, 0); hctx.restore();
+      }
+
+      // Raised stars.
+      for (const s of L.starPositions) {
+        certDrawStarPath(hctx, s.x, s.y, L.outerR * 0.05, L.outerR * 0.021, s.rot);
+        hctx.fillStyle = "rgb(" + markV + "," + markV + "," + markV + ")";
+        hctx.fill();
+      }
+
+      // Raised centre mark.
+      certDrawCenterMark(hctx, p.centerMark, L.markSize, "rgb(" + markV + "," + markV + "," + markV + ")", L.monogram);
+
+      // Raised centre text (a touch lower relief than the mark).
+      if (L.centerWord) {
+        const ctFont = Math.max(5, L.innerR * 0.24);
+        const textV = Math.round(clamp01(0.5 + emboss * 0.34) * 255);
+        hctx.font = "700 " + ctFont + "px Arial, sans-serif";
+        hctx.fillStyle = "rgb(" + textV + "," + textV + "," + textV + ")";
+        hctx.textAlign = "center";
+        hctx.textBaseline = "middle";
+        hctx.fillText(L.centerWord, 0, L.innerR * 0.62);
+      }
+
+      hctx.restore();
+    },
+
+    drawSpec(sctx, p, rng, size) {
+      const r = mulberry32(hashSeed(p.seed + "|cert"));
+      const L = certBuildLayout(p, size, r);
+      const gloss = clamp01(p.gloss === undefined ? 0.65 : p.gloss);
+
+      const baseV = 86; // neutral outside the badge
+      sctx.fillStyle = "rgb(" + baseV + "," + baseV + "," + baseV + ")";
+      sctx.fillRect(0, 0, size, size);
+
+      sctx.save();
+      sctx.translate(L.cx, L.cy);
+      sctx.rotate(L.rotRad);
+      certBuildBadgePath(sctx, L.outerR, p.edge);
+      sctx.clip();
+
+      const fieldV = Math.round(clamp01(0.42 + gloss * 0.4) * 255);
+      certBuildBadgePath(sctx, L.outerR, p.edge);
+      sctx.fillStyle = "rgb(" + fieldV + "," + fieldV + "," + fieldV + ")";
+      sctx.fill();
+
+      const bandV = Math.round(clamp01(0.5 + gloss * 0.45) * 255);
+      sctx.beginPath();
+      sctx.arc(0, 0, L.ringOuter, 0, Math.PI * 2);
+      sctx.arc(0, 0, L.ringInner, 0, Math.PI * 2, true);
+      sctx.fillStyle = "rgb(" + bandV + "," + bandV + "," + bandV + ")";
+      sctx.fill("evenodd");
+
+      const markV = Math.round(clamp01(0.55 + gloss * 0.45) * 255);
+      certDrawCenterMark(sctx, p.centerMark, L.markSize, "rgb(" + markV + "," + markV + "," + markV + ")", L.monogram);
+
+      // Soft foil highlight streak to sell glossiness.
+      const hlAlpha = 0.12 + gloss * 0.25;
+      const grad = sctx.createRadialGradient(
+        -L.outerR * 0.35, -L.outerR * 0.4, 0,
+        -L.outerR * 0.35, -L.outerR * 0.4, Math.max(0.01, L.outerR * 1.1)
+      );
+      grad.addColorStop(0, "rgba(255,255,255," + hlAlpha + ")");
+      grad.addColorStop(1, "rgba(255,255,255,0)");
+      sctx.fillStyle = grad;
+      certBuildBadgePath(sctx, L.outerR, p.edge);
+      sctx.fill();
+
+      sctx.restore();
+    }
+  };
+
+  // group: Marks | insert into GENERATORS array | new helpers: PIPEMARKER_CONTENTS, pipemarkerGeom, pipemarkerBandPath, pipemarkerArrowPath, pipemarkerFitFont, pipemarkerHazardStripes
+
+  // ASME A13.1 / ANSI Z535-ish colour pairs: field colour + legend (text/arrow) colour.
+  const PIPEMARKER_CONTENTS = {
+    water:            { field: "#1E7A46", text: "#FFFFFF" },
+    compressed_air:   { field: "#1F5FA8", text: "#FFFFFF" },
+    steam:            { field: "#F5C518", text: "#000000" },
+    flammable_gas:    { field: "#F5C518", text: "#000000" },
+    combustible:      { field: "#6B4A2B", text: "#FFFFFF" },
+    chemical_acid:    { field: "#E8792E", text: "#000000" },
+    fire_suppression: { field: "#C4262E", text: "#FFFFFF" },
+    other:            { field: "#7A7A7A", text: "#FFFFFF" }
+  };
+
+  // Shared geometry so colour / height / spec passes agree on where the band, arrows
+  // and text zones sit. Pure function of params + size (no randomness).
+  function pipemarkerGeom(p, size) {
+    const coverage = Math.max(0.3, Math.min(1, Number(p.coverage) || 0.85));
+    const bandHeightFrac = Math.max(0.1, Math.min(0.5, Number(p.bandHeight) || 0.28));
+    const rotation = Math.max(-30, Math.min(30, Number(p.rotation) || 0));
+    const arrowProm = Math.max(0, Math.min(1, Number(p.arrow) || 0));
+
+    const L = Math.max(4, size * coverage);
+    const T = Math.max(4, size * bandHeightFrac);
+    const rot = (rotation * Math.PI) / 180;
+
+    const direction = (p.direction === "left" || p.direction === "both") ? p.direction : "right";
+    const rightActive = direction === "right" || direction === "both";
+    const leftActive = direction === "left" || direction === "both";
+
+    const edgeMargin = T * 0.16;
+    let arrowLen = T * (0.6 + 1.2 * arrowProm);
+    arrowLen = Math.min(arrowLen, L * 0.3, T * 2.4);
+    const arrowHalfH = T * 0.42;
+    const arrowGap = T * 0.16;
+
+    const xRightTip = L / 2 - edgeMargin;
+    const xLeftTip = -L / 2 + edgeMargin;
+
+    const reservedRight = rightActive ? arrowLen + arrowGap : 0;
+    const reservedLeft = leftActive ? arrowLen + arrowGap : 0;
+
+    const textMaxWidth = Math.max(10, L - edgeMargin * 2.2 - reservedRight - reservedLeft);
+    const textCenterX = (reservedLeft - reservedRight) / 2;
+
+    return {
+      L, T, rot, cx: size / 2, cy: size / 2,
+      rightActive, leftActive, xRightTip, xLeftTip,
+      arrowLen, arrowHalfH, textMaxWidth, textCenterX, edgeMargin
+    };
+  }
+
+  // Rounded-rect band outline in local (post translate+rotate) coordinates, centred on 0,0.
+  function pipemarkerBandPath(ctx, L, T) {
+    const rc = Math.max(0, Math.min(T * 0.12, L * 0.03, 14));
+    ctx.beginPath();
+    ctx.moveTo(-L / 2 + rc, -T / 2);
+    ctx.lineTo(L / 2 - rc, -T / 2);
+    ctx.quadraticCurveTo(L / 2, -T / 2, L / 2, -T / 2 + rc);
+    ctx.lineTo(L / 2, T / 2 - rc);
+    ctx.quadraticCurveTo(L / 2, T / 2, L / 2 - rc, T / 2);
+    ctx.lineTo(-L / 2 + rc, T / 2);
+    ctx.quadraticCurveTo(-L / 2, T / 2, -L / 2, T / 2 - rc);
+    ctx.lineTo(-L / 2, -T / 2 + rc);
+    ctx.quadraticCurveTo(-L / 2, -T / 2, -L / 2 + rc, -T / 2);
+    ctx.closePath();
+  }
+
+  // Solid triangular flow-arrow path, tip at xEdge, pointing toward +x (dirSign=1) or -x (dirSign=-1).
+  function pipemarkerArrowPath(ctx, xEdge, dirSign, len, halfH) {
+    const xBase = xEdge - dirSign * len;
+    ctx.beginPath();
+    ctx.moveTo(xBase, -halfH);
+    ctx.lineTo(xEdge, 0);
+    ctx.lineTo(xBase, halfH);
+    ctx.closePath();
+  }
+
+  // Shrinks a bold font until `text` fits within maxW / maxH (px). Returns the chosen size.
+  function pipemarkerFitFont(ctx, text, maxW, maxH, weightPrefix) {
+    let fontPx = Math.max(6, Math.floor(maxH));
+    while (fontPx > 6) {
+      ctx.font = weightPrefix + fontPx + "px Arial, sans-serif";
+      if (ctx.measureText(text).width <= maxW) break;
+      fontPx -= 1;
+    }
+    return Math.max(fontPx, 6);
+  }
+
+  // Diagonal hazard stripes clipped to the two end-zones of the band, black-on-field.
+  function pipemarkerHazardStripes(ctx, L, T, effStripes) {
+    if (effStripes <= 0) return;
+    const zoneW = T * 1.05;
+    [-1, 1].forEach(function (side) {
+      ctx.save();
+      ctx.beginPath();
+      const zx = side * (L / 2 - zoneW / 2);
+      ctx.rect(zx - zoneW / 2, -T / 2 - 2, zoneW, T + 4);
+      ctx.clip();
+      ctx.strokeStyle = "rgba(0,0,0," + (0.5 + 0.35 * effStripes).toFixed(3) + ")";
+      ctx.lineWidth = Math.max(1, T * 0.16);
+      const step = Math.max(2, T * 0.34);
+      for (let x = -L / 2 - T; x < L / 2 + T; x += step) {
+        ctx.beginPath();
+        ctx.moveTo(x, -T);
+        ctx.lineTo(x + T * 1.4, T);
+        ctx.stroke();
+      }
+      ctx.restore();
+    });
+  }
+
+  const PipeMarker = {
+    id: "pipemarker",
+    name: "Pipe / Flow Marker",
+    group: "Marks",
+    params: [
+      {
+        key: "contents", label: "Contents", type: "select", default: "compressed_air",
+        options: [
+          { value: "water", label: "Water" },
+          { value: "compressed_air", label: "Compressed Air" },
+          { value: "steam", label: "Steam" },
+          { value: "flammable_gas", label: "Flammable Gas" },
+          { value: "combustible", label: "Combustible" },
+          { value: "chemical_acid", label: "Chemical / Acid" },
+          { value: "fire_suppression", label: "Fire Suppression" },
+          { value: "other", label: "Other" }
+        ]
+      },
+      { key: "label", label: "Label", type: "text", default: "COMPRESSED AIR", placeholder: "CONTENTS", maxLength: 24 },
+      { key: "sublabel", label: "Sublabel", type: "text", default: "", placeholder: "125 PSI", maxLength: 20 },
+      {
+        key: "direction", label: "Flow Direction", type: "select", default: "right",
+        options: [
+          { value: "right", label: "Right" },
+          { value: "left", label: "Left" },
+          { value: "both", label: "Both" }
+        ]
+      },
+      { key: "arrow", label: "Arrow Prominence", min: 0, max: 1, step: 0.01, default: 0.7 },
+      { key: "bandHeight", label: "Band Thickness", min: 0.1, max: 0.5, step: 0.01, default: 0.28 },
+      { key: "stripes", label: "Hazard Stripes", min: 0, max: 1, step: 0.01, default: 0 },
+      { key: "coverage", label: "Coverage", min: 0.3, max: 1, step: 0.01, default: 0.85 },
+      { key: "rotation", label: "Rotation", min: -30, max: 30, step: 1, default: 0 },
+      { key: "weather", label: "Weathering", min: 0, max: 1, step: 0.01, default: 0.25 },
+      { key: "emboss", label: "Emboss", min: 0, max: 1, step: 0.01, default: 0.35 },
+      { key: "gloss", label: "Gloss", min: 0, max: 1, step: 0.01, default: 0.5 }
+    ],
+
+    drawColor(ctx, p, rng, size) {
+      const contentsKey = PIPEMARKER_CONTENTS[p.contents] ? p.contents : "other";
+      const c = PIPEMARKER_CONTENTS[contentsKey];
+      const weather = Math.max(0, Math.min(1, Number(p.weather) || 0));
+      const stripes = Math.max(0, Math.min(1, Number(p.stripes) || 0));
+      const effStripes = Math.max(stripes, contentsKey === "flammable_gas" ? 0.55 : 0);
+      const g = pipemarkerGeom(p, size);
+      const label = String(p.label || "").toUpperCase().trim();
+      const sublabel = String(p.sublabel || "").toUpperCase().trim();
+
+      ctx.save();
+      ctx.translate(g.cx, g.cy);
+      ctx.rotate(g.rot);
+
+      // Band fill (the die-cut cutout).
+      pipemarkerBandPath(ctx, g.L, g.T);
+      ctx.fillStyle = c.field;
+      ctx.fill();
+
+      // Fade toward a washed-out look with weathering.
+      if (weather > 0) {
+        ctx.save();
+        pipemarkerBandPath(ctx, g.L, g.T);
+        ctx.clip();
+        ctx.globalAlpha = 0.16 * weather;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(-g.L / 2 - 2, -g.T / 2 - 2, g.L + 4, g.T + 4);
+        ctx.restore();
+      }
+
+      // Hazard stripes at the ends.
+      ctx.save();
+      pipemarkerBandPath(ctx, g.L, g.T);
+      ctx.clip();
+      pipemarkerHazardStripes(ctx, g.L, g.T, effStripes);
+      ctx.restore();
+
+      // Flow arrows.
+      ctx.fillStyle = c.text;
+      if (g.rightActive) {
+        pipemarkerArrowPath(ctx, g.xRightTip, 1, g.arrowLen, g.arrowHalfH);
+        ctx.fill();
+      }
+      if (g.leftActive) {
+        pipemarkerArrowPath(ctx, g.xLeftTip, -1, g.arrowLen, g.arrowHalfH);
+        ctx.fill();
+      }
+
+      // Legend text.
+      ctx.save();
+      ctx.translate(g.textCenterX, 0);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = c.text;
+      if (label.length > 0) {
+        const hasSub = sublabel.length > 0;
+        const labelMaxH = hasSub ? g.T * 0.44 : g.T * 0.62;
+        const labelFontPx = pipemarkerFitFont(ctx, label, g.textMaxWidth, labelMaxH, "bold ");
+        ctx.font = "bold " + labelFontPx + "px Arial, sans-serif";
+        ctx.fillText(label, 0, hasSub ? -g.T * 0.16 : 0);
+        if (hasSub) {
+          const subMaxH = g.T * 0.28;
+          const subFontPx = pipemarkerFitFont(ctx, sublabel, g.textMaxWidth * 0.9, subMaxH, "bold ");
+          ctx.font = "bold " + subFontPx + "px Arial, sans-serif";
+          ctx.fillText(sublabel, 0, g.T * 0.26);
+        }
+      }
+      ctx.restore();
+
+      // Weathering: scuffs / edge lift as small destination-out nibbles.
+      if (weather > 0) {
+        ctx.save();
+        pipemarkerBandPath(ctx, g.L, g.T);
+        ctx.clip();
+        ctx.globalCompositeOperation = "destination-out";
+        const count = Math.round(4 + 16 * weather);
+        for (let i = 0; i < count; i++) {
+          const edgeBias = rng() < 0.6 ? 1 : 0.3;
+          const x = (rng() - 0.5) * g.L * edgeBias;
+          const y = (rng() * 2 - 1) * (g.T / 2) * (0.6 + 0.4 * rng());
+          const r = g.T * (0.04 + 0.1 * rng());
+          ctx.globalAlpha = (0.12 + 0.35 * rng()) * weather;
+          ctx.beginPath();
+          ctx.ellipse(x, y, r, r * 0.6, rng() * Math.PI, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      ctx.restore();
+    },
+
+    drawHeight(hctx, p, rng, size) {
+      const emboss = Math.max(0, Math.min(1, Number(p.emboss) || 0));
+      const stripesRaw = Math.max(0, Math.min(1, Number(p.stripes) || 0));
+      const contentsKey = PIPEMARKER_CONTENTS[p.contents] ? p.contents : "other";
+      const effStripes = Math.max(stripesRaw, contentsKey === "flammable_gas" ? 0.55 : 0);
+      const g = pipemarkerGeom(p, size);
+      const label = String(p.label || "").toUpperCase().trim();
+      const sublabel = String(p.sublabel || "").toUpperCase().trim();
+
+      hctx.save();
+      hctx.fillStyle = "rgb(128,128,128)";
+      hctx.fillRect(0, 0, size, size);
+      hctx.restore();
+
+      hctx.save();
+      hctx.translate(g.cx, g.cy);
+      hctx.rotate(g.rot);
+
+      // Printed vinyl band: nearly flat, very slightly raised over the tile background.
+      const bandBase = 128 + Math.round(4 + 4 * emboss);
+      pipemarkerBandPath(hctx, g.L, g.T);
+      hctx.fillStyle = "rgb(" + bandBase + "," + bandBase + "," + bandBase + ")";
+      hctx.fill();
+
+      // Rolled edge highlight.
+      const edgeVal = Math.min(255, bandBase + Math.round(18 * emboss));
+      hctx.save();
+      pipemarkerBandPath(hctx, g.L, g.T);
+      hctx.lineWidth = Math.max(1, g.T * 0.05);
+      hctx.strokeStyle = "rgb(" + edgeVal + "," + edgeVal + "," + edgeVal + ")";
+      hctx.stroke();
+      hctx.restore();
+
+      // Faint stripe ridging.
+      if (effStripes > 0) {
+        hctx.save();
+        pipemarkerBandPath(hctx, g.L, g.T);
+        hctx.clip();
+        const ridgeVal = Math.min(255, bandBase + Math.round(10 * emboss));
+        hctx.strokeStyle = "rgb(" + ridgeVal + "," + ridgeVal + "," + ridgeVal + ")";
+        hctx.globalAlpha = 0.5 * effStripes;
+        hctx.lineWidth = Math.max(1, g.T * 0.1);
+        const step = Math.max(2, g.T * 0.34);
+        [-1, 1].forEach(function (side) {
+          const zx = side * (g.L / 2 - g.T * 0.5);
+          for (let x = zx - g.T * 0.6; x < zx + g.T * 0.6; x += step) {
+            hctx.beginPath();
+            hctx.moveTo(x, -g.T);
+            hctx.lineTo(x + g.T * 1.4, g.T);
+            hctx.stroke();
+          }
+        });
+        hctx.restore();
+      }
+
+      // Embossed arrows + legend.
+      const arrowVal = Math.min(255, bandBase + Math.round(26 * emboss));
+      hctx.fillStyle = "rgb(" + arrowVal + "," + arrowVal + "," + arrowVal + ")";
+      if (g.rightActive) {
+        pipemarkerArrowPath(hctx, g.xRightTip, 1, g.arrowLen, g.arrowHalfH);
+        hctx.fill();
+      }
+      if (g.leftActive) {
+        pipemarkerArrowPath(hctx, g.xLeftTip, -1, g.arrowLen, g.arrowHalfH);
+        hctx.fill();
+      }
+
+      hctx.save();
+      hctx.translate(g.textCenterX, 0);
+      hctx.textAlign = "center";
+      hctx.textBaseline = "middle";
+      if (label.length > 0) {
+        const hasSub = sublabel.length > 0;
+        const labelMaxH = hasSub ? g.T * 0.44 : g.T * 0.62;
+        const labelFontPx = pipemarkerFitFont(hctx, label, g.textMaxWidth, labelMaxH, "bold ");
+        hctx.font = "bold " + labelFontPx + "px Arial, sans-serif";
+        const labelVal = Math.min(255, bandBase + Math.round(22 * emboss));
+        hctx.fillStyle = "rgb(" + labelVal + "," + labelVal + "," + labelVal + ")";
+        hctx.fillText(label, 0, hasSub ? -g.T * 0.16 : 0);
+        if (hasSub) {
+          const subMaxH = g.T * 0.28;
+          const subFontPx = pipemarkerFitFont(hctx, sublabel, g.textMaxWidth * 0.9, subMaxH, "bold ");
+          hctx.font = "bold " + subFontPx + "px Arial, sans-serif";
+          const subVal = Math.min(255, bandBase + Math.round(16 * emboss));
+          hctx.fillStyle = "rgb(" + subVal + "," + subVal + "," + subVal + ")";
+          hctx.fillText(sublabel, 0, g.T * 0.26);
+        }
+      }
+      hctx.restore();
+
+      hctx.restore();
+    },
+
+    drawSpec(sctx, p, rng, size) {
+      const gloss = Math.max(0, Math.min(1, Number(p.gloss) || 0));
+      const g = pipemarkerGeom(p, size);
+      const label = String(p.label || "").toUpperCase().trim();
+      const sublabel = String(p.sublabel || "").toUpperCase().trim();
+
+      sctx.save();
+      sctx.fillStyle = "rgb(70,70,70)";
+      sctx.fillRect(0, 0, size, size);
+      sctx.restore();
+
+      sctx.save();
+      sctx.translate(g.cx, g.cy);
+      sctx.rotate(g.rot);
+
+      const bandVal = Math.max(0, Math.min(255, Math.round(90 + 140 * gloss)));
+      pipemarkerBandPath(sctx, g.L, g.T);
+      sctx.fillStyle = "rgb(" + bandVal + "," + bandVal + "," + bandVal + ")";
+      sctx.fill();
+
+      // Soft diagonal sheen streak.
+      sctx.save();
+      pipemarkerBandPath(sctx, g.L, g.T);
+      sctx.clip();
+      const grad = sctx.createLinearGradient(-g.L / 2, -g.T / 2, g.L / 2, g.T / 2);
+      const sheenAlpha = (0.2 + 0.4 * gloss).toFixed(3);
+      grad.addColorStop(0, "rgba(255,255,255,0)");
+      grad.addColorStop(0.5, "rgba(255,255,255," + sheenAlpha + ")");
+      grad.addColorStop(1, "rgba(255,255,255,0)");
+      sctx.fillStyle = grad;
+      sctx.fillRect(-g.L / 2 - 2, -g.T / 2 - 2, g.L + 4, g.T + 4);
+      sctx.restore();
+
+      // Text / arrows read slightly duller than the vinyl substrate.
+      const inkVal = Math.max(0, Math.min(255, Math.round(bandVal - 25 - 15 * gloss)));
+      sctx.fillStyle = "rgb(" + inkVal + "," + inkVal + "," + inkVal + ")";
+      if (g.rightActive) {
+        pipemarkerArrowPath(sctx, g.xRightTip, 1, g.arrowLen, g.arrowHalfH);
+        sctx.fill();
+      }
+      if (g.leftActive) {
+        pipemarkerArrowPath(sctx, g.xLeftTip, -1, g.arrowLen, g.arrowHalfH);
+        sctx.fill();
+      }
+
+      sctx.save();
+      sctx.translate(g.textCenterX, 0);
+      sctx.textAlign = "center";
+      sctx.textBaseline = "middle";
+      sctx.fillStyle = "rgb(" + inkVal + "," + inkVal + "," + inkVal + ")";
+      if (label.length > 0) {
+        const hasSub = sublabel.length > 0;
+        const labelMaxH = hasSub ? g.T * 0.44 : g.T * 0.62;
+        const labelFontPx = pipemarkerFitFont(sctx, label, g.textMaxWidth, labelMaxH, "bold ");
+        sctx.font = "bold " + labelFontPx + "px Arial, sans-serif";
+        sctx.fillText(label, 0, hasSub ? -g.T * 0.16 : 0);
+        if (hasSub) {
+          const subMaxH = g.T * 0.28;
+          const subFontPx = pipemarkerFitFont(sctx, sublabel, g.textMaxWidth * 0.9, subMaxH, "bold ");
+          sctx.font = "bold " + subFontPx + "px Arial, sans-serif";
+          sctx.fillText(sublabel, 0, g.T * 0.26);
+        }
+      }
+      sctx.restore();
+
+      sctx.restore();
+    }
+  };
+
+  // group: Tags | insert into GENERATORS array | new helpers: tagLotoGeometry, tagLotoPath,
+  // tagLotoWeatherLayout, tagLotoWrapText, tagLotoFitFont, tagLotoPerimeterPoint
+  // (STYLE_COLORS_LOTO / STYLE_WORDS_LOTO below are plain data tables, not functions)
+
+  function tagLotoGeometry(p, size) {
+    const cx = size / 2, cy = size / 2;
+    const cov = clamp01(p.coverage != null ? p.coverage : 0.6);
+    let tagH = size * (cov > 0 ? cov : 0.6);
+    if (!(tagH > 0)) tagH = size * 0.6;
+    let tagW = tagH * 0.62;
+    const maxDim = size * 0.98;
+    if (tagH > maxDim) {
+      const s = maxDim / tagH;
+      tagH *= s;
+      tagW *= s;
+    }
+    if (tagW < 4) tagW = 4;
+    if (tagH < 4) tagH = 4;
+    const chamfer = tagW * 0.14;
+    const bottomR = tagW * 0.12;
+    const holeFrac = clamp01(p.hole != null ? p.hole : 0.22);
+    const holeR = Math.max(1.5, tagW * holeFrac * 0.5);
+    const topMargin = Math.max(tagH * 0.14, holeR * 3.3);
+    const headerH = tagH * 0.19;
+    const holeY = -tagH / 2 + topMargin * 0.5;
+    const rotDeg = p.rotation != null ? p.rotation : -6;
+    const rot = (rotDeg * Math.PI) / 180;
+    return { cx: cx, cy: cy, tagW: tagW, tagH: tagH, chamfer: chamfer, bottomR: bottomR,
+      topMargin: topMargin, headerH: headerH, holeR: holeR, holeY: holeY, rot: rot };
+  }
+
+  // Builds the tag silhouette path (centered at local origin): angled/chamfered
+  // top corners (classic hang-tag look) and rounded bottom corners.
+  function tagLotoPath(ctx, geo) {
+    const hw = geo.tagW / 2, hh = geo.tagH / 2, c = geo.chamfer, rB = geo.bottomR;
+    ctx.beginPath();
+    ctx.moveTo(-hw + c, -hh);
+    ctx.lineTo(hw - c, -hh);
+    ctx.lineTo(hw, -hh + c);
+    ctx.lineTo(hw, hh - rB);
+    ctx.quadraticCurveTo(hw, hh, hw - rB, hh);
+    ctx.lineTo(-hw + rB, hh);
+    ctx.quadraticCurveTo(-hw, hh, -hw, hh - rB);
+    ctx.lineTo(-hw, -hh + c);
+    ctx.closePath();
+  }
+
+  // Deterministic weathering layout shared across drawColor/drawHeight/drawSpec so
+  // smudges, edge nibbles and the curled corner land in the same place in every channel.
+  function tagLotoWeatherLayout(p) {
+    const wr = mulberry32(hashSeed(p.seed + "|loto-weather"));
+    const smudges = [];
+    const n = 3 + Math.floor(wr() * 3);
+    for (let i = 0; i < n; i++) {
+      smudges.push({ x: (wr() * 2 - 1) * 0.7, y: (wr() * 2 - 1) * 0.82, r: 0.06 + wr() * 0.16, a: wr() });
+    }
+    const notches = [];
+    const nn = 3 + Math.floor(wr() * 4);
+    for (let i = 0; i < nn; i++) {
+      notches.push({ t: wr(), depth: 0.3 + wr() * 0.7, size: 0.02 + wr() * 0.035 });
+    }
+    const curlCorner = Math.floor(wr() * 4); // 0 TL, 1 TR, 2 BR, 3 BL
+    const curlAmt = wr();
+    return { smudges: smudges, notches: notches, curlCorner: curlCorner, curlAmt: curlAmt };
+  }
+
+  // Greedy word-wrap against the current ctx.font, capped at maxLines.
+  function tagLotoWrapText(ctx, text, maxWidth, maxLines) {
+    const words = String(text).split(/\s+/).filter(Boolean);
+    const lines = [];
+    let cur = "";
+    for (let i = 0; i < words.length; i++) {
+      const w = words[i];
+      const test = cur ? cur + " " + w : w;
+      if (cur && ctx.measureText(test).width > maxWidth) {
+        lines.push(cur);
+        cur = w;
+        if (lines.length >= maxLines) return lines;
+      } else {
+        cur = test;
+      }
+    }
+    if (cur) lines.push(cur);
+    if (lines.length > maxLines) lines.length = maxLines;
+    return lines;
+  }
+
+  // Shrinks font size until text fits maxWidth (or hits minPx). Sets ctx.font as a
+  // side effect and returns the chosen pixel size.
+  function tagLotoFitFont(ctx, text, weightPrefix, startPx, minPx, maxWidth) {
+    let fs = Math.max(minPx, startPx);
+    ctx.font = weightPrefix + fs + "px sans-serif";
+    while (fs > minPx && ctx.measureText(text).width > maxWidth) {
+      fs -= 1;
+      ctx.font = weightPrefix + fs + "px sans-serif";
+    }
+    return fs;
+  }
+
+  // Approximate point on the tag's rectangular perimeter for scattering edge wear;
+  // t in [0,1) walks top -> right -> bottom -> left. Good enough for small nibbles.
+  function tagLotoPerimeterPoint(geo, t) {
+    const hw = geo.tagW / 2, hh = geo.tagH / 2;
+    const perim = 2 * (geo.tagW + geo.tagH);
+    let d = (((t % 1) + 1) % 1) * perim;
+    if (d < geo.tagW) return { x: -hw + d, y: -hh };
+    d -= geo.tagW;
+    if (d < geo.tagH) return { x: hw, y: -hh + d };
+    d -= geo.tagH;
+    if (d < geo.tagW) return { x: hw - d, y: hh };
+    d -= geo.tagW;
+    return { x: -hw, y: hh - d };
+  }
+
+  const STYLE_COLORS_LOTO = {
+    dno:     { header: "#c81e1e", headerText: "#ffffff", accent: "#c81e1e", body: "#f7f4ec" },
+    danger:  { header: "#b3151a", headerText: "#ffffff", accent: "#b3151a", body: "#f7f4ec" },
+    oos:     { header: "#7a1010", headerText: "#ffffff", accent: "#7a1010", body: "#f2efe6" },
+    caution: { header: "#f2c218", headerText: "#151208", accent: "#8a6d00", body: "#fbf6df" },
+    notice:  { header: "#1b4f9c", headerText: "#ffffff", accent: "#1b4f9c", body: "#eef3fa" }
+  };
+
+  const STYLE_WORDS_LOTO = {
+    dno:     { header: "DANGER", sub: "DO NOT OPERATE" },
+    danger:  { header: "DANGER", sub: "HAZARD - KEEP CLEAR" },
+    oos:     { header: "OUT OF SERVICE", sub: "DO NOT USE" },
+    caution: { header: "CAUTION", sub: "WATCH YOUR STEP" },
+    notice:  { header: "NOTICE", sub: "AUTHORIZED PERSONNEL ONLY" }
+  };
+
+  const LotoTag = {
+    id: "lototag",
+    name: "Lockout Tag",
+    group: "Tags",
+    params: [
+      { key: "style", label: "Style", type: "select", default: "dno", options: [
+        { value: "dno", label: "Do Not Operate" },
+        { value: "danger", label: "Danger" },
+        { value: "oos", label: "Out of Service" },
+        { value: "caution", label: "Caution" },
+        { value: "notice", label: "Notice" }
+      ] },
+      { key: "header", label: "Header", type: "text", default: "DANGER", placeholder: "DANGER", maxLength: 24 },
+      { key: "subhead", label: "Subhead", type: "text", default: "DO NOT OPERATE", placeholder: "DO NOT OPERATE", maxLength: 28 },
+      { key: "body", label: "Body text", type: "text", default: "This lock/tag may only be removed by the person who installed it.", placeholder: "Body copy", maxLength: 140 },
+      { key: "fields", label: "Fill-in fields", min: 0, max: 3, step: 1, default: 2 },
+      { key: "hole", label: "Grommet hole size", min: 0.1, max: 0.4, step: 0.01, default: 0.22 },
+      { key: "holeRing", label: "Grommet reinforcement", min: 0, max: 1, step: 0.01, default: 0.6 },
+      { key: "border", label: "Border rule", min: 0, max: 1, step: 0.01, default: 0.6 },
+      { key: "coverage", label: "Coverage", min: 0.2, max: 1, step: 0.01, default: 0.6 },
+      { key: "rotation", label: "Rotation", min: -25, max: 25, step: 1, default: -6 },
+      { key: "weather", label: "Weathering", min: 0, max: 1, step: 0.01, default: 0.35 },
+      { key: "emboss", label: "Emboss", min: 0, max: 1, step: 0.01, default: 0.25 },
+      { key: "gloss", label: "Gloss", min: 0, max: 1, step: 0.01, default: 0.2 }
+    ],
+
+    drawColor(ctx, p, rng, size) {
+      const geo = tagLotoGeometry(p, size);
+      const style = STYLE_COLORS_LOTO[p.style] || STYLE_COLORS_LOTO.dno;
+      const words = STYLE_WORDS_LOTO[p.style] || STYLE_WORDS_LOTO.dno;
+      const wl = tagLotoWeatherLayout(p);
+      const weather = clamp01(p.weather != null ? p.weather : 0.35);
+      const borderAmt = clamp01(p.border != null ? p.border : 0.6);
+      const fieldsN = Math.max(0, Math.min(3, Math.round(p.fields != null ? p.fields : 2)));
+      const r = mulberry32(hashSeed(p.seed + "|loto"));
+
+      let header = (p.header != null ? String(p.header) : "").trim();
+      let subhead = (p.subhead != null ? String(p.subhead) : "").trim();
+      if (header === "" || header.toUpperCase() === "DANGER") header = words.header;
+      if (subhead === "" || subhead.toUpperCase() === "DO NOT OPERATE") subhead = words.sub;
+      header = header.toUpperCase().slice(0, 24);
+      subhead = subhead.toUpperCase().slice(0, 28);
+      const bodyText = (p.body != null ? String(p.body) : "").trim();
+
+      ctx.save();
+      ctx.translate(geo.cx, geo.cy);
+      ctx.rotate(geo.rot);
+
+      const hw = geo.tagW / 2, hh = geo.tagH / 2;
+
+      ctx.save();
+      tagLotoPath(ctx, geo);
+      ctx.clip();
+
+      // cardstock body
+      ctx.fillStyle = style.body;
+      ctx.fillRect(-hw, -hh, geo.tagW, geo.tagH);
+
+      // faint paper grain
+      ctx.save();
+      ctx.globalAlpha = 0.05;
+      for (let i = 0; i < 40; i++) {
+        const gx = -hw + r() * geo.tagW;
+        const gy = -hh + r() * geo.tagH;
+        ctx.fillStyle = r() > 0.5 ? "#000000" : "#ffffff";
+        ctx.fillRect(gx, gy, 1.5, 1.5);
+      }
+      ctx.restore();
+
+      // header band
+      const bandTop = -hh + geo.topMargin;
+      ctx.fillStyle = style.header;
+      ctx.fillRect(-hw, bandTop, geo.tagW, geo.headerH);
+      ctx.strokeStyle = style.accent;
+      ctx.lineWidth = Math.max(1, geo.tagW * 0.008);
+      ctx.beginPath();
+      ctx.moveTo(-hw, bandTop + geo.headerH);
+      ctx.lineTo(hw, bandTop + geo.headerH);
+      ctx.stroke();
+
+      if (header) {
+        ctx.fillStyle = style.headerText;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        tagLotoFitFont(ctx, header, "bold ", geo.headerH * 0.62, 6, geo.tagW * 0.86);
+        ctx.fillText(header, 0, bandTop + geo.headerH * 0.54);
+      }
+
+      let cursorY = bandTop + geo.headerH + geo.tagH * 0.045;
+
+      if (subhead) {
+        ctx.fillStyle = style.accent;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        const subFs = tagLotoFitFont(ctx, subhead, "bold ", geo.tagH * 0.088, 6, geo.tagW * 0.88);
+        ctx.fillText(subhead, 0, cursorY);
+        cursorY += subFs * 1.3;
+      }
+
+      // reserve a block at the bottom for fill-in fields, flow body text above it
+      const fieldRowH = geo.tagH * 0.085;
+      const fieldsBlockH = fieldsN > 0 ? fieldsN * fieldRowH + geo.tagH * 0.03 : 0;
+      const bottomPad = geo.tagH * 0.035;
+      const fieldsTop = hh - bottomPad - fieldsBlockH;
+
+      if (bodyText) {
+        const bodyFont = Math.max(geo.tagH * 0.032, 6);
+        const bodyLineH = bodyFont * 1.3;
+        const availH = Math.max(0, fieldsTop - cursorY - geo.tagH * 0.02);
+        const maxLines = Math.max(0, Math.floor(availH / bodyLineH));
+        if (maxLines > 0) {
+          ctx.font = bodyFont + "px sans-serif";
+          const lines = tagLotoWrapText(ctx, bodyText, geo.tagW * 0.84, maxLines);
+          ctx.fillStyle = "#242118";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "top";
+          let ly = cursorY + geo.tagH * 0.02;
+          for (let i = 0; i < lines.length; i++) {
+            ctx.fillText(lines[i], 0, ly);
+            ly += bodyLineH;
+          }
+        }
+      }
+
+      if (fieldsN > 0) {
+        const labels = ["SIGNED BY", "DATE", "DEPT"];
+        ctx.textAlign = "left";
+        ctx.textBaseline = "alphabetic";
+        const labelFs = geo.tagH * 0.04;
+        ctx.font = "bold " + labelFs + "px sans-serif";
+        let fy = fieldsTop + geo.tagH * 0.02;
+        for (let i = 0; i < fieldsN; i++) {
+          const label = labels[i] + ":";
+          ctx.fillStyle = "#3a3527";
+          ctx.fillText(label, -hw + geo.tagW * 0.08, fy + fieldRowH * 0.62);
+          ctx.strokeStyle = "#8a8370";
+          ctx.lineWidth = Math.max(1, geo.tagW * 0.006);
+          ctx.beginPath();
+          ctx.moveTo(-hw + geo.tagW * 0.08 + ctx.measureText(label).width + geo.tagW * 0.03, fy + fieldRowH * 0.62);
+          ctx.lineTo(hw - geo.tagW * 0.08, fy + fieldRowH * 0.62);
+          ctx.stroke();
+          fy += fieldRowH;
+        }
+      }
+
+      // smudges / grime
+      if (weather > 0.02) {
+        for (let i = 0; i < wl.smudges.length; i++) {
+          const s = wl.smudges[i];
+          const sx = s.x * hw, sy = s.y * hh;
+          const rad = s.r * Math.min(hw, hh);
+          const a = 0.14 * weather * (0.4 + 0.6 * s.a);
+          const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, rad);
+          g.addColorStop(0, "rgba(70,58,38," + a + ")");
+          g.addColorStop(1, "rgba(70,58,38,0)");
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(sx, sy, rad, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // curled / dog-eared corner crease
+      if (weather > 0.15) {
+        const corners = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]];
+        const c0 = corners[wl.curlCorner];
+        const insetX = c0[0] > 0 ? -1 : 1;
+        const insetY = c0[1] > 0 ? -1 : 1;
+        const foldLen = Math.min(hw, hh) * 0.3 * (0.5 + 0.5 * wl.curlAmt) * weather;
+        ctx.save();
+        ctx.globalAlpha = 0.22 * weather;
+        ctx.fillStyle = "#000000";
+        ctx.beginPath();
+        ctx.moveTo(c0[0], c0[1]);
+        ctx.lineTo(c0[0] + insetX * foldLen, c0[1]);
+        ctx.lineTo(c0[0], c0[1] + insetY * foldLen);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 0.3 * weather;
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = Math.max(1, geo.tagW * 0.006);
+        ctx.beginPath();
+        ctx.moveTo(c0[0] + insetX * foldLen, c0[1]);
+        ctx.lineTo(c0[0], c0[1] + insetY * foldLen);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // grommet reinforcement ring (metal eyelet) - painted before the hole is punched
+      const ringAmt = clamp01(p.holeRing != null ? p.holeRing : 0.6);
+      if (ringAmt > 0.02) {
+        const ringOuter = geo.holeR * (1 + 0.55 * ringAmt);
+        const g = ctx.createLinearGradient(-ringOuter, geo.holeY - ringOuter, ringOuter, geo.holeY + ringOuter);
+        g.addColorStop(0, "#dfe1e3");
+        g.addColorStop(0.5, "#9a9da1");
+        g.addColorStop(1, "#797d81");
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(0, geo.holeY, ringOuter, 0, Math.PI * 2);
+        ctx.arc(0, geo.holeY, geo.holeR, 0, Math.PI * 2, true);
+        ctx.fillStyle = g;
+        ctx.fill("evenodd");
+        ctx.strokeStyle = "rgba(60,62,64,0.6)";
+        ctx.lineWidth = Math.max(1, geo.tagW * 0.006);
+        ctx.beginPath();
+        ctx.arc(0, geo.holeY, geo.holeR, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      ctx.restore(); // pop interior clip
+
+      // border rule, on the true tag edge
+      if (borderAmt > 0.02) {
+        tagLotoPath(ctx, geo);
+        ctx.lineWidth = Math.max(1, geo.tagW * 0.02 * borderAmt);
+        ctx.strokeStyle = style.accent;
+        ctx.stroke();
+      }
+
+      // punch the grommet hole - true alpha cutout, clears anything painted above
+      ctx.save();
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.beginPath();
+      ctx.arc(0, geo.holeY, geo.holeR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // edge wear nibbles - also true cutouts, done last so nothing paints back over them
+      if (weather > 0.1) {
+        ctx.save();
+        ctx.globalCompositeOperation = "destination-out";
+        const cnt = Math.round(wl.notches.length * weather);
+        for (let i = 0; i < cnt; i++) {
+          const nch = wl.notches[i];
+          const pt = tagLotoPerimeterPoint(geo, nch.t);
+          const rr = nch.size * Math.min(geo.tagW, geo.tagH) * weather * nch.depth * 1.6;
+          ctx.globalAlpha = 0.45 + 0.45 * nch.depth;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, rr, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      ctx.restore(); // undo translate/rotate
+    },
+
+    drawHeight(hctx, p, rng, size) {
+      const geo = tagLotoGeometry(p, size);
+      const wl = tagLotoWeatherLayout(p);
+      const weather = clamp01(p.weather != null ? p.weather : 0.35);
+      const emboss = clamp01(p.emboss != null ? p.emboss : 0.25);
+      const ringAmt = clamp01(p.holeRing != null ? p.holeRing : 0.6);
+      const r = mulberry32(hashSeed(p.seed + "|loto-h"));
+
+      hctx.save();
+      hctx.fillStyle = "rgb(128,128,128)";
+      hctx.fillRect(0, 0, size, size);
+
+      hctx.translate(geo.cx, geo.cy);
+      hctx.rotate(geo.rot);
+
+      const hw = geo.tagW / 2, hh = geo.tagH / 2;
+
+      hctx.save();
+      tagLotoPath(hctx, geo);
+      hctx.clip();
+
+      // near-flat cardstock, marginally proud of the background
+      hctx.fillStyle = "rgb(131,131,131)";
+      hctx.fillRect(-hw, -hh, geo.tagW, geo.tagH);
+
+      // faint paper grain
+      hctx.save();
+      for (let i = 0; i < 30; i++) {
+        const gx = -hw + r() * geo.tagW;
+        const gy = -hh + r() * geo.tagH;
+        const v = 129 + Math.round((r() - 0.5) * 4);
+        hctx.globalAlpha = 0.4;
+        hctx.fillStyle = "rgb(" + v + "," + v + "," + v + ")";
+        hctx.fillRect(gx, gy, 2, 2);
+      }
+      hctx.restore();
+
+      // ink sits marginally proud of the stock
+      const bandTop = -hh + geo.topMargin;
+      const inkV = 128 + Math.round(4 * emboss);
+      hctx.fillStyle = "rgb(" + inkV + "," + inkV + "," + inkV + ")";
+      hctx.fillRect(-hw, bandTop, geo.tagW, geo.headerH);
+
+      // curled corner lifts height locally
+      if (weather > 0.1) {
+        const corners = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]];
+        const c0 = corners[wl.curlCorner];
+        const foldR = Math.min(hw, hh) * 0.34 * (0.4 + 0.6 * wl.curlAmt) * weather;
+        const liftV = 128 + Math.round(34 * (0.4 + 0.6 * emboss) * weather * wl.curlAmt);
+        const g = hctx.createRadialGradient(c0[0], c0[1], 0, c0[0], c0[1], foldR);
+        g.addColorStop(0, "rgb(" + liftV + "," + liftV + "," + liftV + ")");
+        g.addColorStop(1, "rgb(128,128,128)");
+        hctx.fillStyle = g;
+        hctx.beginPath();
+        hctx.arc(c0[0], c0[1], foldR, 0, Math.PI * 2);
+        hctx.fill();
+      }
+
+      hctx.restore(); // pop interior clip
+
+      // slightly rolled tag edge: soft shadow just inside the border, highlight further in
+      tagLotoPath(hctx, geo);
+      hctx.lineWidth = Math.max(1, geo.tagW * 0.02);
+      hctx.strokeStyle = "rgb(119,119,119)";
+      hctx.stroke();
+      tagLotoPath(hctx, geo);
+      hctx.lineWidth = Math.max(0.5, geo.tagW * 0.008);
+      hctx.strokeStyle = "rgb(137,137,137)";
+      hctx.stroke();
+
+      // grommet reinforcement ring: raised metal eyelet (~160 at full emboss)
+      if (ringAmt > 0.02) {
+        const ringOuter = geo.holeR * (1 + 0.55 * ringAmt);
+        const ringV = 128 + Math.round(32 * (0.5 + 0.5 * emboss) * ringAmt);
+        hctx.save();
+        hctx.beginPath();
+        hctx.arc(0, geo.holeY, ringOuter, 0, Math.PI * 2);
+        hctx.arc(0, geo.holeY, geo.holeR, 0, Math.PI * 2, true);
+        hctx.fillStyle = "rgb(" + ringV + "," + ringV + "," + ringV + ")";
+        hctx.fill("evenodd");
+        hctx.restore();
+      }
+
+      // hole itself: flat, no relief
+      hctx.fillStyle = "rgb(128,128,128)";
+      hctx.beginPath();
+      hctx.arc(0, geo.holeY, geo.holeR, 0, Math.PI * 2);
+      hctx.fill();
+
+      // edge wear: shallow dips
+      if (weather > 0.1) {
+        const cnt = Math.round(wl.notches.length * weather);
+        for (let i = 0; i < cnt; i++) {
+          const nch = wl.notches[i];
+          const pt = tagLotoPerimeterPoint(geo, nch.t);
+          const rr = nch.size * Math.min(geo.tagW, geo.tagH) * weather * nch.depth * 1.4;
+          const dv = 128 - Math.round(10 * nch.depth);
+          const g2 = hctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, rr);
+          g2.addColorStop(0, "rgb(" + dv + "," + dv + "," + dv + ")");
+          g2.addColorStop(1, "rgba(128,128,128,0)");
+          hctx.fillStyle = g2;
+          hctx.beginPath();
+          hctx.arc(pt.x, pt.y, rr, 0, Math.PI * 2);
+          hctx.fill();
+        }
+      }
+
+      hctx.restore(); // undo translate/rotate
+    },
+
+    drawSpec(sctx, p, rng, size) {
+      const geo = tagLotoGeometry(p, size);
+      const wl = tagLotoWeatherLayout(p);
+      const gloss = clamp01(p.gloss != null ? p.gloss : 0.2);
+      const ringAmt = clamp01(p.holeRing != null ? p.holeRing : 0.6);
+      const weather = clamp01(p.weather != null ? p.weather : 0.35);
+      const r = mulberry32(hashSeed(p.seed + "|loto-s"));
+
+      const baseV = Math.round(22 + gloss * 26);
+
+      sctx.save();
+      sctx.fillStyle = "rgb(" + baseV + "," + baseV + "," + baseV + ")";
+      sctx.fillRect(0, 0, size, size);
+
+      sctx.translate(geo.cx, geo.cy);
+      sctx.rotate(geo.rot);
+
+      const hw = geo.tagW / 2, hh = geo.tagH / 2;
+
+      sctx.save();
+      tagLotoPath(sctx, geo);
+      sctx.clip();
+
+      const paperV = Math.round(baseV + 14 + gloss * 10);
+      sctx.fillStyle = "rgb(" + paperV + "," + paperV + "," + paperV + ")";
+      sctx.fillRect(-hw, -hh, geo.tagW, geo.tagH);
+
+      // faint sheen variance in the stock
+      sctx.save();
+      for (let i = 0; i < 20; i++) {
+        const gx = -hw + r() * geo.tagW;
+        const gy = -hh + r() * geo.tagH;
+        const v = Math.max(0, Math.min(255, Math.round(paperV + (r() - 0.5) * 12)));
+        sctx.globalAlpha = 0.25;
+        sctx.fillStyle = "rgb(" + v + "," + v + "," + v + ")";
+        sctx.fillRect(gx, gy, 3, 3);
+      }
+      sctx.restore();
+
+      // printed ink band: slightly duller than bare stock
+      const bandTop = -hh + geo.topMargin;
+      const inkV = Math.max(0, paperV - 10);
+      sctx.fillStyle = "rgb(" + inkV + "," + inkV + "," + inkV + ")";
+      sctx.fillRect(-hw, bandTop, geo.tagW, geo.headerH);
+
+      // smudges dull the surface slightly
+      if (weather > 0.02) {
+        for (let i = 0; i < wl.smudges.length; i++) {
+          const s = wl.smudges[i];
+          const sx = s.x * hw, sy = s.y * hh;
+          const rad = s.r * Math.min(hw, hh);
+          const dv = Math.max(0, paperV - 16);
+          const g2 = sctx.createRadialGradient(sx, sy, 0, sx, sy, rad);
+          g2.addColorStop(0, "rgba(" + dv + "," + dv + "," + dv + "," + (0.4 * weather) + ")");
+          g2.addColorStop(1, "rgba(" + dv + "," + dv + "," + dv + ",0)");
+          sctx.fillStyle = g2;
+          sctx.beginPath();
+          sctx.arc(sx, sy, rad, 0, Math.PI * 2);
+          sctx.fill();
+        }
+      }
+
+      sctx.restore(); // pop interior clip
+
+      // grommet metal ring: noticeably shinier than the matte cardstock
+      if (ringAmt > 0.02) {
+        const ringOuter = geo.holeR * (1 + 0.55 * ringAmt);
+        const hi = Math.min(255, Math.round(190 + gloss * 55));
+        const lo = Math.round(90 + gloss * 40);
+        const g = sctx.createLinearGradient(-ringOuter, geo.holeY - ringOuter, ringOuter, geo.holeY + ringOuter);
+        g.addColorStop(0, "rgb(" + lo + "," + lo + "," + lo + ")");
+        g.addColorStop(0.5, "rgb(" + hi + "," + hi + "," + hi + ")");
+        g.addColorStop(1, "rgb(" + lo + "," + lo + "," + lo + ")");
+        sctx.save();
+        sctx.beginPath();
+        sctx.arc(0, geo.holeY, ringOuter, 0, Math.PI * 2);
+        sctx.arc(0, geo.holeY, geo.holeR, 0, Math.PI * 2, true);
+        sctx.fillStyle = g;
+        sctx.fill("evenodd");
+        sctx.restore();
+      }
+
+      // hole: neutral matte, matches the background baseline
+      sctx.fillStyle = "rgb(" + baseV + "," + baseV + "," + baseV + ")";
+      sctx.beginPath();
+      sctx.arc(0, geo.holeY, geo.holeR, 0, Math.PI * 2);
+      sctx.fill();
+
+      sctx.restore(); // undo translate/rotate
+    }
+  };
+
+  const GENERATORS = [Signage, SpecPlate, CertBadge, PipeMarker, LotoTag];
+  const GEN_BY_ID = {};
+  GENERATORS.forEach(g => GEN_BY_ID[g.id] = g);
+
+  /* =========================================================
+     CHANNEL DERIVATION ENGINE
+     Runs the active generator's draw* methods, then derives the
+     four export channels from what they paint.
+     ========================================================= */
+  function newCanvas(size) {
+    const c = document.createElement("canvas");
+    c.width = size; c.height = size;
+    return c;
+  }
+  function greyFromCanvas(ctx, size) {
+    const d = ctx.getImageData(0, 0, size, size).data;
+    const out = new Float32Array(size * size);
+    for (let i = 0; i < out.length; i++) out[i] = d[i * 4] / 255; // R channel
+    return out;
+  }
+
+  // Sobel height->normal (from the sibling tool). Wraps toroidally.
+  function heightToNormalMap(data, size, strength) {
+    const out = new Uint8ClampedArray(size * size * 4);
+    const at = (x, y) => data[((y + size) % size) * size + ((x + size) % size)];
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const l = at(x - 1, y), rr = at(x + 1, y), u = at(x, y - 1), dn = at(x, y + 1);
+        const dx = (l - rr) * strength, dy = (u - dn) * strength;
+        const len = Math.sqrt(dx * dx + dy * dy + 1);
+        const idx = (y * size + x) * 4;
+        out[idx]     = Math.round((dx / len * 0.5 + 0.5) * 255);
+        out[idx + 1] = Math.round((dy / len * 0.5 + 0.5) * 255);
+        out[idx + 2] = Math.round((1 / len * 0.5 + 0.5) * 255);
+        out[idx + 3] = 255;
+      }
+    }
+    return out;
+  }
+
+  // Produces the full channel set at `size`.
+  function computeChannels(gen, params, globals, size) {
+    const rngSeed = hashSeed(params.seed);
+
+    // --- opacity: the RGBA cutout ---
+    const colorCanvas = newCanvas(size);
+    const cctx = colorCanvas.getContext("2d");
+    cctx.clearRect(0, 0, size, size);
+    gen.drawColor(cctx, params, mulberry32(rngSeed), size);
+    const colorImage = cctx.getImageData(0, 0, size, size);
+
+    // --- height -> bump ---
+    const hCanvas = newCanvas(size);
+    const hctx = hCanvas.getContext("2d");
+    gen.drawHeight(hctx, params, mulberry32(rngSeed), size);
+    const height = greyFromCanvas(hctx, size);
+
+    const depth = globals.bumpDepth;
+    const bump = new Float32Array(size * size);
+    for (let i = 0; i < bump.length; i++) {
+      let v = clamp01((height[i] - 0.5) * depth + 0.5); // mid-grey 128 = flat
+      if (globals.invertBump) v = 1 - v;
+      bump[i] = v;
+    }
+
+    // --- spec ---
+    let specRaw;
+    if (typeof gen.drawSpec === "function") {
+      const sCanvas = newCanvas(size);
+      const sctx = sCanvas.getContext("2d");
+      gen.drawSpec(sctx, params, mulberry32(rngSeed), size);
+      specRaw = greyFromCanvas(sctx, size);
+    } else {
+      // derive from coverage (alpha) + height when a generator has no spec:
+      // covered + raised -> shinier; matte base elsewhere.
+      specRaw = new Float32Array(size * size);
+      const cd = colorImage.data;
+      for (let i = 0; i < specRaw.length; i++) {
+        const cov = cd[i * 4 + 3] / 255;
+        specRaw[i] = clamp01(0.4 + cov * 0.3 + (height[i] - 0.5) * 0.4);
+      }
+    }
+    const specStrength = globals.specStrength;
+    const spec = new Float32Array(size * size);
+    for (let i = 0; i < spec.length; i++) spec[i] = clamp01(specRaw[i] * specStrength);
+
+    // --- normal (from bump) ---
+    const normal = heightToNormalMap(bump, size, 2.2 * depth);
+
+    return { size, colorImage, bump, spec, normal };
+  }
+
+  // paint a Float32 grey field to a canvas (opaque)
+  function paintGrey(canvas, data, size) {
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    const img = ctx.createImageData(size, size);
+    for (let i = 0; i < data.length; i++) {
+      const v = Math.round(data[i] * 255);
+      img.data[i * 4] = v; img.data[i * 4 + 1] = v; img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+  function paintRGBA(canvas, imageData, size) {
+    canvas.width = size; canvas.height = size;
+    canvas.getContext("2d").putImageData(imageData, 0, 0);
+  }
+  function paintNormal(canvas, normal, size) {
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    const img = ctx.createImageData(size, size);
+    img.data.set(normal);
+    ctx.putImageData(img, 0, 0);
+  }
+
+  /* =========================================================
+     STATE
+     ========================================================= */
+  const PREVIEW_SIZE = 512;
+  const GLOBAL_DEFS = [
+    { key: "bumpDepth",   label: "Bump Depth",    min: 0.2, max: 4, step: 0.05, default: 1.4, type: "range" },
+    { key: "specStrength", label: "Spec Strength", min: 0,  max: 2, step: 0.02, default: 1.0, type: "range" },
+    { key: "invertBump",  label: "Invert Bump",   type: "check", default: false }
+  ];
+
+  const state = {
+    genId: GENERATORS[0].id,
+    params: {},        // per-current-generator param values
+    seed: randomSeedString(),
+    globals: {},
+    tab: "opacity",
+    checker: true,
+    includeNormal: false,
+    basename: "label_01"
+  };
+  function resetParamsFor(gen) {
+    state.params = {};
+    gen.params.forEach(pd => state.params[pd.key] = pd.default);
+  }
+  GLOBAL_DEFS.forEach(g => state.globals[g.key] = g.default);
+  resetParamsFor(GEN_BY_ID[state.genId]);
+
+  // combined param object handed to generators (params + seed)
+  function activeParams() {
+    return Object.assign({ seed: state.seed }, state.params);
+  }
+
+  let lastChannels = null; // cached preview channels
+
+  /* =========================================================
+     DOM refs
+     ========================================================= */
+  const libList = document.getElementById("lib-list");
+  const presetList = document.getElementById("preset-list");
+  const paramPanel = document.getElementById("param-panel");
+  const globalPanel = document.getElementById("global-panel");
+  const genTitle = document.getElementById("gen-title");
+  const seedInput = document.getElementById("seed-input");
+  const basenameInput = document.getElementById("basename-input");
+  const resSelect = document.getElementById("res-select");
+  const stage = document.getElementById("stage");
+  const previewCanvas = document.getElementById("preview-canvas");
+  const statusLine = document.getElementById("status-line");
+  const statChannel = document.getElementById("stat-channel");
+  const statAlpha = document.getElementById("stat-alpha");
+  const checkerToggle = document.getElementById("checker-toggle");
+  const opacityBgWrap = document.getElementById("opacity-bg-toggle-wrap");
+  const includeNormalCb = document.getElementById("include-normal");
+
+  /* =========================================================
+     LIBRARY
+     ========================================================= */
+  function buildLibrary() {
+    libList.innerHTML = "";
+    const groups = {};
+    GENERATORS.forEach(g => { (groups[g.group] = groups[g.group] || []).push(g); });
+    Object.keys(groups).forEach(grp => {
+      const gl = document.createElement("div");
+      gl.className = "lib-group-label";
+      gl.textContent = grp;
+      libList.appendChild(gl);
+      groups[grp].forEach(g => {
+        const btn = document.createElement("button");
+        btn.className = "lib-item" + (g.id === state.genId ? " active" : "");
+        btn.dataset.gen = g.id;
+        btn.innerHTML = '<span class="li-name">' + g.name + '</span>';
+        btn.addEventListener("click", () => selectGenerator(g.id));
+        libList.appendChild(btn);
+      });
+    });
+  }
+  function selectGenerator(id) {
+    if (!GEN_BY_ID[id]) return;
+    state.genId = id;
+    resetParamsFor(GEN_BY_ID[id]);
+    buildLibrary();
+    buildParamPanel();
+    render();
+  }
+
+  /* =========================================================
+     PARAM PANEL
+     ========================================================= */
+  function makeSliderRow(def, value, onInput) {
+    const row = document.createElement("div");
+    row.className = "param-row";
+    const label = document.createElement("label");
+    label.textContent = def.label;
+    const input = document.createElement("input");
+    input.type = "range";
+    input.min = def.min; input.max = def.max; input.step = def.step; input.value = value;
+    const val = document.createElement("span");
+    val.className = "param-value";
+    const fmt = v => (def.step < 1 ? Number(v).toFixed(2) : String(Math.round(v)));
+    val.textContent = fmt(value);
+    input.addEventListener("input", () => {
+      val.textContent = fmt(input.value);
+      onInput(parseFloat(input.value));
+    });
+    row.appendChild(label); row.appendChild(input); row.appendChild(val);
+    return row;
+  }
+  function makeCheckRow(def, value, onChange) {
+    const row = document.createElement("div");
+    row.className = "param-row";
+    const label = document.createElement("label");
+    label.textContent = def.label;
+    const input = document.createElement("input");
+    input.type = "checkbox"; input.checked = !!value;
+    input.addEventListener("change", () => onChange(input.checked));
+    row.appendChild(label); row.appendChild(input);
+    return row;
+  }
+  // def.options: array of plain strings, or {value,label} objects.
+  function makeSelectRow(def, value, onChange) {
+    const row = document.createElement("div");
+    row.className = "param-row";
+    const label = document.createElement("label");
+    label.textContent = def.label;
+    const select = document.createElement("select");
+    (def.options || []).forEach(opt => {
+      const o = document.createElement("option");
+      if (typeof opt === "string") { o.value = opt; o.textContent = opt; }
+      else { o.value = opt.value; o.textContent = opt.label != null ? opt.label : opt.value; }
+      select.appendChild(o);
+    });
+    select.value = value;
+    select.addEventListener("change", () => onChange(select.value));
+    row.appendChild(label); row.appendChild(select);
+    return row;
+  }
+  function makeTextRow(def, value, onInput) {
+    const row = document.createElement("div");
+    row.className = "param-row";
+    const label = document.createElement("label");
+    label.textContent = def.label;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = value != null ? value : "";
+    input.spellcheck = false;
+    if (def.placeholder) input.placeholder = def.placeholder;
+    if (def.maxLength) input.maxLength = def.maxLength;
+    input.addEventListener("input", () => onInput(input.value));
+    row.appendChild(label); row.appendChild(input);
+    return row;
+  }
+
+  function buildParamPanel() {
+    const gen = GEN_BY_ID[state.genId];
+    genTitle.textContent = gen.name + " — Parameters";
+    paramPanel.innerHTML = "";
+    gen.params.forEach(def => {
+      const onChange = v => { state.params[def.key] = v; render(); };
+      let row;
+      if (def.type === "select") row = makeSelectRow(def, state.params[def.key], onChange);
+      else if (def.type === "text") row = makeTextRow(def, state.params[def.key], onChange);
+      else if (def.type === "check") row = makeCheckRow(def, state.params[def.key], onChange);
+      else row = makeSliderRow(def, state.params[def.key], onChange);
+      paramPanel.appendChild(row);
+    });
+  }
+
+  function buildGlobalPanel() {
+    globalPanel.innerHTML = "";
+    GLOBAL_DEFS.forEach(def => {
+      if (def.type === "check") {
+        globalPanel.appendChild(makeCheckRow(def, state.globals[def.key], v => {
+          state.globals[def.key] = v; render();
+        }));
+      } else {
+        globalPanel.appendChild(makeSliderRow(def, state.globals[def.key], v => {
+          state.globals[def.key] = v; render();
+        }));
+      }
+    });
+  }
+
+  /* =========================================================
+     PREVIEW / RENDER
+     ========================================================= */
+  function updateStageBg() {
+    stage.classList.remove("checker", "midgrey");
+    if (state.tab === "opacity") {
+      stage.classList.add(state.checker ? "checker" : "midgrey");
+      opacityBgWrap.style.display = "";
+    } else {
+      opacityBgWrap.style.display = "none";
+    }
+  }
+
+  function render() {
+    const gen = GEN_BY_ID[state.genId];
+    const ch = computeChannels(gen, activeParams(), state.globals, PREVIEW_SIZE);
+    lastChannels = ch;
+    updateStageBg();
+
+    if (state.tab === "opacity") {
+      paintRGBA(previewCanvas, ch.colorImage, ch.size);
+      // alpha stats
+      let minA = 255, maxA = 0, sum = 0;
+      const d = ch.colorImage.data;
+      for (let i = 3; i < d.length; i += 4) { const a = d[i]; if (a < minA) minA = a; if (a > maxA) maxA = a; sum += a; }
+      const px = d.length / 4;
+      statAlpha.innerHTML = "alpha <b>" + minA + "–" + maxA + "</b> · mean <b>" + (sum / px / 255).toFixed(2) + "</b>";
+    } else if (state.tab === "bump") {
+      paintGrey(previewCanvas, ch.bump, ch.size);
+      statAlpha.innerHTML = channelRange("bump", ch.bump);
+    } else if (state.tab === "spec") {
+      paintGrey(previewCanvas, ch.spec, ch.size);
+      statAlpha.innerHTML = channelRange("spec", ch.spec);
+    } else if (state.tab === "normal") {
+      paintNormal(previewCanvas, ch.normal, ch.size);
+      statAlpha.innerHTML = "RGB normal map";
+    }
+    statChannel.innerHTML = "channel <b>" + state.tab + "</b> · " + PREVIEW_SIZE + "px preview";
+  }
+  function channelRange(name, data) {
+    let mn = 1, mx = 0;
+    for (let i = 0; i < data.length; i++) { if (data[i] < mn) mn = data[i]; if (data[i] > mx) mx = data[i]; }
+    return name + " range <b>" + mn.toFixed(2) + "–" + mx.toFixed(2) + "</b>";
+  }
+
+  /* =========================================================
+     EXPORT
+     ========================================================= */
+  function downloadCanvas(canvas, filename) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(blob => {
+        if (!blob) { reject(new Error("toBlob failed")); return; }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+        resolve();
+      }, "image/png");
+    });
+  }
+  function channelCanvas(ch, which) {
+    const c = newCanvas(ch.size);
+    if (which === "opacity") paintRGBA(c, ch.colorImage, ch.size);
+    else if (which === "bump") paintGrey(c, ch.bump, ch.size);
+    else if (which === "spec") paintGrey(c, ch.spec, ch.size);
+    else if (which === "normal") paintNormal(c, ch.normal, ch.size);
+    return c;
+  }
+  async function exportChannels(list) {
+    const size = parseInt(resSelect.value, 10);
+    const gen = GEN_BY_ID[state.genId];
+    statusLine.textContent = "Rendering " + size + "px…";
+    // compute at export resolution
+    const ch = computeChannels(gen, activeParams(), state.globals, size);
+    const base = (state.basename || "label").trim().replace(/\s+/g, "_") || "label";
+    let n = 0;
+    for (const which of list) {
+      const canvas = channelCanvas(ch, which);
+      await downloadCanvas(canvas, base + "_" + which + ".png");
+      n++;
+    }
+    statusLine.textContent = "Exported " + n + " channel" + (n > 1 ? "s" : "") + " at " + size + "×" + size + " px.";
+  }
+
+  /* =========================================================
+     PRESETS  (= the growing library) — localStorage
+     ========================================================= */
+  const PRESET_INDEX = "labelpreset:index";
+  function presetGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function presetSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+  function presetRemove(k) { try { localStorage.removeItem(k); } catch (e) {} }
+  function presetNames() {
+    try { const a = JSON.parse(presetGet(PRESET_INDEX) || "[]"); return Array.isArray(a) ? a : []; }
+    catch (e) { return []; }
+  }
+  function setPresetNames(arr) { presetSet(PRESET_INDEX, JSON.stringify(arr)); }
+
+  function savePreset() {
+    const gen = GEN_BY_ID[state.genId];
+    const suggested = gen.name + " " + state.seed;
+    const name = (window.prompt("Preset name:", suggested) || "").trim();
+    if (!name) return;
+    const obj = {
+      generatorId: state.genId,
+      params: Object.assign({}, state.params),
+      seed: state.seed,
+      globals: Object.assign({}, state.globals),
+      name: name
+    };
+    presetSet("labelpreset:" + name, JSON.stringify(obj));
+    const names = presetNames();
+    if (names.indexOf(name) === -1) { names.push(name); setPresetNames(names); }
+    buildPresetList();
+    statusLine.textContent = 'Saved preset "' + name + '".';
+  }
+  function loadPreset(name) {
+    const raw = presetGet("labelpreset:" + name);
+    if (!raw) return;
+    let obj; try { obj = JSON.parse(raw); } catch (e) { return; }
+    if (!GEN_BY_ID[obj.generatorId]) return;
+    state.genId = obj.generatorId;
+    resetParamsFor(GEN_BY_ID[state.genId]);
+    Object.assign(state.params, obj.params || {});
+    state.seed = obj.seed != null ? String(obj.seed) : state.seed;
+    Object.assign(state.globals, obj.globals || {});
+    seedInput.value = state.seed;
+    buildLibrary(); buildParamPanel(); buildGlobalPanel();
+    render();
+    statusLine.textContent = 'Loaded preset "' + name + '".';
+  }
+  function deletePreset(name) {
+    presetRemove("labelpreset:" + name);
+    setPresetNames(presetNames().filter(n => n !== name));
+    buildPresetList();
+  }
+  function buildPresetList() {
+    presetList.innerHTML = "";
+    const names = presetNames();
+    if (!names.length) {
+      const e = document.createElement("div");
+      e.className = "preset-empty";
+      e.textContent = "No saved presets yet. Save one to grow the library.";
+      presetList.appendChild(e);
+      return;
+    }
+    names.forEach(name => {
+      const row = document.createElement("div");
+      row.className = "preset-row";
+      const load = document.createElement("button");
+      load.className = "pr-name"; load.textContent = name; load.title = "Load " + name;
+      load.addEventListener("click", () => loadPreset(name));
+      const del = document.createElement("button");
+      del.className = "btn"; del.textContent = "×"; del.title = "Delete " + name;
+      del.style.padding = "7px 9px";
+      del.addEventListener("click", () => { if (confirm('Delete preset "' + name + '"?')) deletePreset(name); });
+      row.appendChild(load); row.appendChild(del);
+      presetList.appendChild(row);
+    });
+  }
+
+  /* =========================================================
+     WIRE UP
+     ========================================================= */
+  document.getElementById("tab-row").addEventListener("click", e => {
+    const b = e.target.closest(".tab-btn"); if (!b) return;
+    state.tab = b.dataset.tab;
+    document.querySelectorAll(".tab-btn").forEach(x => x.classList.toggle("active", x === b));
+    render();
+  });
+  checkerToggle.addEventListener("change", () => { state.checker = checkerToggle.checked; updateStageBg(); });
+  seedInput.addEventListener("input", () => { state.seed = seedInput.value; render(); });
+  document.getElementById("randomize-btn").addEventListener("click", () => {
+    state.seed = randomSeedString(); seedInput.value = state.seed; render();
+  });
+  basenameInput.addEventListener("input", () => { state.basename = basenameInput.value; });
+  includeNormalCb.addEventListener("change", () => { state.includeNormal = includeNormalCb.checked; });
+  resSelect.addEventListener("change", () => {});
+
+  document.querySelectorAll("[data-export]").forEach(btn => {
+    btn.addEventListener("click", () => exportChannels([btn.dataset.export]));
+  });
+  document.getElementById("export-set-btn").addEventListener("click", () => {
+    const list = ["opacity", "bump", "spec"];
+    if (state.includeNormal) list.push("normal");
+    exportChannels(list);
+  });
+  document.getElementById("save-preset-btn").addEventListener("click", savePreset);
+
+  /* =========================================================
+     INIT
+     ========================================================= */
+  seedInput.value = state.seed;
+  basenameInput.value = state.basename;
+  buildLibrary();
+  buildParamPanel();
+  buildGlobalPanel();
+  buildPresetList();
+  render();
+
+  // expose a tiny hook for headless verification
+  window.__labelgen = {
+    state,
+    computeChannels: (size) => computeChannels(GEN_BY_ID[state.genId], activeParams(), state.globals, size || PREVIEW_SIZE),
+    selectGenerator,
+    setParam: (k, v) => { state.params[k] = v; render(); },
+    GENERATORS
+  };
+})();
+</script>
+</body>
+</html>
