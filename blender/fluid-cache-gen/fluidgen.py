@@ -31,13 +31,13 @@ RES  = {"preview": 48, "final": 160}                   # FLIP resolution_max
 # preset = domain size (m), inflow (loc, radius, velocity m/s), collider, frames, look
 PRESETS = {
     "jet":    dict(dom=(3.0,1.4,1.4), dloc=(0.3,0,0.1),
-                   inflow=((-1.2,0,0.35), 0.06, (7.0,0,-0.6)),
+                   inflow=((-1.0,0,0.35), 0.12, (7.0,0,-0.6)),
                    collider="ground", gz=-0.6, frames=(1,80),  visc=0.0, tension=0.0),
     "pipe":   dict(dom=(3.0,1.0,1.0), dloc=(0,0,0),
                    inflow=((-1.0,0,0.06), 0.11, (3.0,0,0)),
                    collider="pipe",   gz=0.0,  frames=(1,90),  visc=0.0, tension=0.0),
     "drip":   dict(dom=(0.9,0.9,2.2), dloc=(0,0,0.2),
-                   inflow=((0,0,0.85), 0.032, (0,0,-0.05)),
+                   inflow=((0,0,0.85), 0.08, (0,0,-0.05)),
                    collider="ground", gz=-0.9, frames=(1,110), visc=0.0, tension=0.9),
     "splash": dict(dom=(1.7,1.7,1.7), dloc=(0,0,0.2),
                    inflow=((0,0,0.7), 0.12, (0,0,-4.0)),
@@ -50,7 +50,7 @@ def reset():
 
 def add_domain(size, loc, res):
     bpy.ops.mesh.primitive_cube_add(size=1, location=loc)
-    d = bpy.context.active_object; d.name = "Domain"; d.scale = size
+    d = bpy.context.view_layer.objects.active; d.name = "Domain"; d.scale = size
     m = d.modifiers.new("Fluid", 'FLUID'); m.fluid_type = 'DOMAIN'
     ds = m.domain_settings; ds.domain_type = 'LIQUID'
     ds.resolution_max = res; ds.use_mesh = True; ds.cache_type = 'ALL'
@@ -65,7 +65,7 @@ def set_look(ds, visc, tension):
 
 def add_inflow(loc, radius, vel):
     bpy.ops.mesh.primitive_ico_sphere_add(radius=radius, location=loc, subdivisions=3)
-    o = bpy.context.active_object; o.name = "Inflow"; o.hide_render = True
+    o = bpy.context.view_layer.objects.active; o.name = "Inflow"; o.hide_render = True
     m = o.modifiers.new("Fluid", 'FLUID'); m.fluid_type = 'FLOW'
     fs = m.flow_settings; fs.flow_type = 'LIQUID'; fs.flow_behavior = 'INFLOW'
     fs.use_initial_velocity = True; fs.velocity_coord = vel
@@ -82,7 +82,7 @@ def add_collider(kind, gz):
         bpy.ops.mesh.primitive_cylinder_add(radius=0.26, depth=2.6, vertices=48,
                                             end_fill_type='NOTHING',
                                             rotation=(0, math.radians(90), 0))
-    effector(bpy.context.active_object)
+    effector(bpy.context.view_layer.objects.active)
 
 # ---------------------------------------------------------------- bake + export
 def bake(domain):

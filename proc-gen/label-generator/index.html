@@ -428,6 +428,34 @@
     ctx.putImageData(img, 0, 0);
   }
 
+  // separable box blur (two passes = near-gaussian). Used by Stamped Serial to
+  // turn a hard glyph mask into a sloped punch profile instead of a flat cutout.
+  function boxBlur(src, size, radius) {
+    if (radius < 1) return src;
+    const tmp = new Float32Array(size * size);
+    const out = new Float32Array(size * size);
+    const norm = 1 / (radius * 2 + 1);
+    for (let y = 0; y < size; y++) {
+      let acc = 0;
+      for (let x = -radius; x <= radius; x++) acc += src[y * size + Math.min(size - 1, Math.max(0, x))];
+      for (let x = 0; x < size; x++) {
+        tmp[y * size + x] = acc * norm;
+        const addX = Math.min(size - 1, x + radius + 1), subX = Math.max(0, x - radius);
+        acc += src[y * size + addX] - src[y * size + subX];
+      }
+    }
+    for (let x = 0; x < size; x++) {
+      let acc = 0;
+      for (let y = -radius; y <= radius; y++) acc += tmp[Math.min(size - 1, Math.max(0, y)) * size + x];
+      for (let y = 0; y < size; y++) {
+        out[y * size + x] = acc * norm;
+        const addY = Math.min(size - 1, y + radius + 1), subY = Math.max(0, y - radius);
+        acc += tmp[addY * size + x] - tmp[subY * size + x];
+      }
+    }
+    return out;
+  }
+
   /* ---------- 1. FINGERPRINT (group "Contact") ----------
      Ridge flow is a zero-pole model: a CORE (ridges recurve around it) plus a
      DELTA (the triangular meeting point) drive a swirl field, so ridges form
@@ -976,7 +1004,592 @@
     drawSpec(sctx, p, rng, size) { reliefSpec(sctx, cachedField(this, p, size, () => this._build(p, size)), size, rl => 0.26 + (rl - 0.5) * 0.18); }
   };
 
-  const GENERATORS = [Fingerprint, Scuff, Turned, Cast, Ground, Erode];
+  /* ---------- 7. PAINT STROKES (group "Wear") ----------
+     Hand-brushed or spray-daubed paint patch: thick tapered strokes laid down
+     on a mini offscreen canvas (same segment technique as Scuff's streaks,
+     wider and fewer), a soft placement patch, drip trails hanging from the
+     lower edge of some strokes, and a chip mask that punches worn-away holes
+     back to bare substrate so it reads as applied-then-abraded rather than a
+     flat fill. */
+  const Paint = {
+    id: "paint", name: "Paint Strokes", group: "Wear",
+    params: [
+      { key: "tone",         label: "Tone",          type: "select", default: "Safety Red",
+        options: ["Safety Red", "Safety Yellow", "Industrial Blue", "Matte Black", "Primer Grey", "White"] },
+      { key: "strokeCount",  label: "Stroke Count",  min: 1,   max: 24,  step: 1,    default: 6 },
+      { key: "strokeLength", label: "Stroke Length", min: 0.1, max: 1,   step: 0.01, default: 0.55 },
+      { key: "thickness",    label: "Thickness",     min: 0.1, max: 1,   step: 0.01, default: 0.5 },
+      { key: "brushiness",   label: "Brushiness",    min: 0,   max: 1,   step: 0.01, default: 0.4 },
+      { key: "patchSize",    label: "Patch Size",    min: 0.1, max: 1,   step: 0.01, default: 0.6 },
+      { key: "drip",         label: "Drip",          min: 0,   max: 1,   step: 0.01, default: 0.25 },
+      { key: "chip",         label: "Chip / Wear",   min: 0,   max: 1,   step: 0.01, default: 0.3 },
+      { key: "gloss",        label: "Gloss",         min: 0,   max: 1,   step: 0.01, default: 0.45 },
+      { key: "distortion",   label: "Distortion",    min: 0,   max: 1,   step: 0.01, default: 0.25 }
+    ],
+    _tones: {
+      "Safety Red":      [176, 34, 40],
+      "Safety Yellow":   [222, 176, 32],
+      "Industrial Blue": [40, 78, 130],
+      "Matte Black":     [26, 26, 28],
+      "Primer Grey":     [128, 130, 132],
+      "White":           [222, 224, 222]
+    },
+    _build(p, size) {
+      const r = mulberry32(hashSeed(p.seed + "|paint"));
+      const cx = size * (0.4 + 0.2 * r()), cy = size * (0.4 + 0.2 * r());
+      const patchR = size * (0.18 + 0.34 * p.patchSize);
+      const edgeN = makeNoise(size, size, size / 5.5, r);
+      const chipN = makeFbm(size, size, size / 9, r);
+
+      const patch = new Float32Array(size * size);
+      for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+        const i = y * size + x, dx = x - cx, dy = y - cy;
+        const rr = patchR * (0.72 + 0.5 * edgeN(x, y));
+        patch[i] = smoothstep(rr, rr * 0.4, Math.hypot(dx, dy));
+      }
+
+      const sc = document.createElement("canvas");
+      sc.width = size; sc.height = size;
+      const sctx = sc.getContext("2d");
+      sctx.clearRect(0, 0, size, size);
+      sctx.lineCap = "round";
+      sctx.strokeStyle = "#ffffff";
+      const nStrokes = Math.max(1, Math.round(p.strokeCount));
+      const lenBase = size * (0.12 + 0.6 * p.strokeLength);
+      const widthBase = size * (0.02 + 0.09 * p.thickness);
+      const warpAmt = size * (0.01 + 0.08 * p.distortion);
+      const warp = makeFbm(size, size, size / 6, r);
+      const SEG = 10;
+      for (let k = 0; k < nStrokes; k++) {
+        const ang = r() * Math.PI * 2, rad = patchR * Math.sqrt(r()) * 0.85;
+        const ox = cx + Math.cos(ang) * rad, oy = cy + Math.sin(ang) * rad;
+        const dir = r() * Math.PI * 2;
+        const ax = Math.cos(dir), ay = Math.sin(dir);
+        const nx = -ay, ny = ax;
+        const len = lenBase * (0.5 + r());
+        const w0 = widthBase * (0.6 + 0.8 * r());
+        sctx.globalAlpha = 1;
+        let prevX = null, prevY = null, prevW = 0;
+        for (let sN = 0; sN <= SEG; sN++) {
+          const t = sN / SEG;
+          const along = (t - 0.35) * len;
+          const wob = (warp(ox + along, oy) - 0.5) * warpAmt * 2;
+          const bristle = p.brushiness * (r() - 0.5) * w0 * 0.6;
+          const X = ox + ax * along + nx * wob;
+          const Y = oy + ay * along + ny * wob;
+          const taper = Math.sin(Math.min(1, t / 0.15) * Math.PI * 0.5) *
+                        Math.sin(Math.min(1, (1 - t) / 0.3) * Math.PI * 0.5);
+          const wgt = Math.max(0.5, w0 * taper + bristle);
+          if (prevX !== null) {
+            sctx.lineWidth = (prevW + wgt) * 0.5;
+            sctx.beginPath(); sctx.moveTo(prevX, prevY); sctx.lineTo(X, Y); sctx.stroke();
+          }
+          if (p.drip > 0.02 && r() < 0.16 * p.drip) {
+            const dripLen = size * (0.02 + 0.14 * p.drip) * (0.4 + r());
+            const dw = Math.max(0.4, wgt * 0.35);
+            sctx.globalAlpha = 0.8;
+            for (let dsN = 1; dsN <= 6; dsN++) {
+              const dt = dsN / 6;
+              sctx.lineWidth = dw * (1 - dt * 0.8);
+              sctx.beginPath();
+              sctx.moveTo(X, Y + dripLen * (dt - 1 / 6));
+              sctx.lineTo(X + (r() - 0.5) * dw, Y + dripLen * dt);
+              sctx.stroke();
+            }
+            sctx.globalAlpha = 1;
+          }
+          prevX = X; prevY = Y; prevW = wgt;
+        }
+      }
+      const sImg = sctx.getImageData(0, 0, size, size).data;
+      const paintMask = new Float32Array(size * size);
+      for (let i = 0; i < paintMask.length; i++) paintMask[i] = sImg[i * 4 + 3] / 255;
+
+      const cover = new Float32Array(size * size);
+      for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+        const i = y * size + x;
+        const chipHole = p.chip > 0.01 ? smoothstep(0.35, 0.75, chipN(x, y)) * p.chip : 0;
+        cover[i] = clamp01(paintMask[i] * patch[i] * (1 - chipHole));
+      }
+      return { cover, size };
+    },
+    drawColor(ctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const base = this._tones[p.tone] || this._tones["Safety Red"];
+      const img = ctx.createImageData(size, size), d = img.data;
+      for (let i = 0; i < f.cover.length; i++) {
+        const j = i * 4;
+        d[j] = base[0]; d[j + 1] = base[1]; d[j + 2] = base[2];
+        d[j + 3] = Math.round(f.cover[i] * 255);
+      }
+      ctx.putImageData(img, 0, 0);
+    },
+    drawHeight(hctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const img = hctx.createImageData(size, size), d = img.data;
+      for (let i = 0; i < f.cover.length; i++) {
+        const v = Math.round(clamp01(0.5 + f.cover[i] * 0.12) * 255);
+        const j = i * 4;
+        d[j] = d[j + 1] = d[j + 2] = v; d[j + 3] = 255;
+      }
+      hctx.putImageData(img, 0, 0);
+    },
+    drawSpec(sctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const glossTarget = clamp01(0.15 + p.gloss * 0.8);
+      const img = sctx.createImageData(size, size), d = img.data;
+      for (let i = 0; i < f.cover.length; i++) {
+        const v = Math.round(clamp01(0.5 + (glossTarget - 0.5) * f.cover[i]) * 255);
+        const j = i * 4;
+        d[j] = d[j + 1] = d[j + 2] = v; d[j + 3] = 255;
+      }
+      sctx.putImageData(img, 0, 0);
+    }
+  };
+
+  /* ---------- 8. GRIME / STAINS (group "Wear") ----------
+     Layered stain blotches: several soft, noise-warped stain pools placed
+     inside a patch, deepest-blotch-wins so overlaps don't over-darken, each
+     optionally trailing a gravity-biased streak running downward (a leak/run
+     mark). Height barely rises -- grime sits ON the surface, it doesn't dent
+     it -- and spec goes duller wherever the stain sits. */
+  const Grime = {
+    id: "grime", name: "Grime / Stains", group: "Wear",
+    params: [
+      { key: "tone",        label: "Tone",         type: "select", default: "Dirt Brown",
+        options: ["Dirt Brown", "Rust Orange", "Water Grey", "Soot Black", "Mildew Green"] },
+      { key: "blotchCount", label: "Blotch Count", min: 1,   max: 12,  step: 1,    default: 4 },
+      { key: "blotchSize",  label: "Blotch Size",  min: 0.1, max: 1,   step: 0.01, default: 0.5 },
+      { key: "softness",    label: "Softness",     min: 0,   max: 1,   step: 0.01, default: 0.55 },
+      { key: "streakiness", label: "Streakiness",  min: 0,   max: 1,   step: 0.01, default: 0.35 },
+      { key: "darkness",    label: "Darkness",     min: 0.1, max: 1,   step: 0.01, default: 0.6 },
+      { key: "coarse",      label: "Coarseness",   min: 0,   max: 1,   step: 0.01, default: 0.5 },
+      { key: "coverage",    label: "Coverage",     min: 0.15,max: 1,   step: 0.01, default: 0.5 },
+      { key: "distortion",  label: "Distortion",   min: 0,   max: 1,   step: 0.01, default: 0.3 }
+    ],
+    _tones: {
+      "Dirt Brown":   [70, 54, 38],
+      "Rust Orange":  [122, 62, 30],
+      "Water Grey":   [70, 76, 80],
+      "Soot Black":   [24, 24, 26],
+      "Mildew Green": [58, 70, 46]
+    },
+    _build(p, size) {
+      const r = mulberry32(hashSeed(p.seed + "|grime"));
+      const cx = size * 0.5, cy = size * 0.5;
+      const patchR = size * (0.28 + 0.62 * p.coverage);
+      const edgeN = makeNoise(size, size, size / 5, r);
+      const texA = makeFbm(size, size, size / (5 + 30 * (1 - p.coarse)), r);
+      const nB = Math.max(1, Math.round(p.blotchCount));
+      const stain = new Float32Array(size * size);
+      const warpAmt = size * (0.01 + 0.1 * p.distortion);
+      const warp = makeFbm(size, size, size / 6, r);
+
+      for (let k = 0; k < nB; k++) {
+        const a = r() * Math.PI * 2, rad = patchR * Math.sqrt(r()) * 0.8;
+        const bx = cx + Math.cos(a) * rad, by = cy + Math.sin(a) * rad;
+        const bR = size * (0.05 + 0.16 * p.blotchSize) * (0.6 + 0.8 * r());
+        const edgeSoft = 0.3 + 0.65 * p.softness;
+        const streakLen = p.streakiness > 0.02 ? bR * (1 + 5 * p.streakiness) * (0.5 + r()) : 0;
+        const streakDrift = (r() - 0.5) * bR * 0.6;
+
+        const x0 = Math.max(0, Math.floor(bx - bR * 2 - 2));
+        const x1 = Math.min(size - 1, Math.ceil(bx + bR * 2 + 2));
+        const y0 = Math.max(0, Math.floor(by - bR * 1.2 - 2));
+        const y1 = Math.min(size - 1, Math.ceil(by + bR + streakLen + 2));
+        for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+          const i = y * size + x;
+          const wx = x + (warp(x, y) - 0.5) * warpAmt;
+          const wy = y + (warp(y, x) - 0.5) * warpAmt;
+          const dx = wx - bx, dy = wy - by;
+          let d;
+          if (dy > 0 && streakLen > 0) {
+            const t = clamp01(dy / streakLen);
+            const cxAt = dx - streakDrift * t;
+            d = Math.hypot(cxAt, dy * 0.15) / (bR * (1 - 0.55 * t));
+          } else {
+            d = Math.hypot(dx, dy) / bR;
+          }
+          const noisy = d + (texA(x, y) - 0.5) * edgeSoft;
+          const m = clamp01(1 - smoothstep(1 - edgeSoft * 0.5, 1.15, noisy));
+          if (m > stain[i]) stain[i] = m;
+        }
+      }
+      const cover = new Float32Array(size * size);
+      for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+        const i = y * size + x;
+        const rr = patchR * (0.95 + 0.3 * edgeN(x, y));
+        const patchMask = smoothstep(rr, rr * 0.6, Math.hypot(x - cx, y - cy));
+        cover[i] = clamp01(stain[i] * patchMask);
+      }
+      return { cover, size };
+    },
+    drawColor(ctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const base = this._tones[p.tone] || this._tones["Dirt Brown"];
+      const img = ctx.createImageData(size, size), d = img.data;
+      for (let i = 0; i < f.cover.length; i++) {
+        const j = i * 4;
+        d[j] = base[0]; d[j + 1] = base[1]; d[j + 2] = base[2];
+        d[j + 3] = Math.round(clamp01(f.cover[i] * p.darkness * 1.3) * 255);
+      }
+      ctx.putImageData(img, 0, 0);
+    },
+    drawHeight(hctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const img = hctx.createImageData(size, size), d = img.data;
+      for (let i = 0; i < f.cover.length; i++) {
+        const v = Math.round(clamp01(0.5 + f.cover[i] * 0.06) * 255);
+        const j = i * 4;
+        d[j] = d[j + 1] = d[j + 2] = v; d[j + 3] = 255;
+      }
+      hctx.putImageData(img, 0, 0);
+    },
+    drawSpec(sctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const img = sctx.createImageData(size, size), d = img.data;
+      for (let i = 0; i < f.cover.length; i++) {
+        const v = Math.round(clamp01(0.5 - f.cover[i] * 0.3) * 255);
+        const j = i * 4;
+        d[j] = d[j + 1] = d[j + 2] = v; d[j + 3] = 255;
+      }
+      sctx.putImageData(img, 0, 0);
+    }
+  };
+
+  /* ---------- 9. STAMPED SERIAL (group "Marking") ----------
+     A hand-stamped alphanumeric serial: monospace characters are struck one
+     at a time with a small per-character position/rotation jitter (real
+     punch stamps never land perfectly level), plus an optional grooved
+     border box. Depth comes from blurring the rendered glyph mask -- flat in
+     a stroke's interior, sloped at its edges -- the same silhouette a punch
+     actually leaves, rather than a hard-edged cutout. */
+  const Stamped = {
+    id: "stamped", name: "Stamped Serial", group: "Marking",
+    params: [
+      { key: "text",      label: "Serial",     type: "text",   default: "SN-004821", maxLength: 24 },
+      { key: "tone",      label: "Metal",      type: "select", default: "Steel",
+        options: ["Steel", "Brass", "Black Oxide"] },
+      { key: "direction", label: "Direction",  type: "select", default: "Debossed",
+        options: ["Debossed", "Embossed"] },
+      { key: "charSize",  label: "Char Size",  min: 0.02, max: 0.12, step: 0.005, default: 0.06 },
+      { key: "spacing",   label: "Spacing",    min: 0.6,  max: 1.8,  step: 0.02,  default: 1.1 },
+      { key: "depth",     label: "Depth",      min: 0.1,  max: 1,    step: 0.01,  default: 0.6 },
+      { key: "jitter",    label: "Jitter",     min: 0,    max: 1,    step: 0.01,  default: 0.3 },
+      { key: "box",       label: "Border Box", type: "check",  default: true },
+      { key: "rotation",  label: "Rotation",   min: 0,    max: 360,  step: 1,     default: 0 }
+    ],
+    _tones: {
+      "Steel":       [150, 152, 156],
+      "Brass":       [176, 148, 78],
+      "Black Oxide": [40, 40, 42]
+    },
+    _build(p, size) {
+      const r = mulberry32(hashSeed(p.seed + "|stamp"));
+      const text = ((p.text || "SERIAL").toUpperCase().slice(0, 24)) || "SERIAL";
+      const charH = size * p.charSize;
+      const advance = charH * 0.72 * p.spacing;
+      const textW = advance * text.length;
+      const boxPad = charH * 0.55;
+      const rot = p.rotation * Math.PI / 180;
+
+      const mc = document.createElement("canvas");
+      mc.width = size; mc.height = size;
+      const mctx = mc.getContext("2d");
+      mctx.clearRect(0, 0, size, size);
+      mctx.fillStyle = "#ffffff";
+      mctx.textBaseline = "middle";
+      mctx.textAlign = "center";
+      mctx.font = "700 " + Math.round(charH) + "px 'Space Mono', ui-monospace, Consolas, monospace";
+      mctx.save();
+      mctx.translate(size / 2, size / 2);
+      mctx.rotate(rot);
+      let cxAt = -textW / 2 + advance / 2;
+      for (let k = 0; k < text.length; k++) {
+        const ch = text[k];
+        if (ch !== " ") {
+          const jx = (r() - 0.5) * charH * 0.10 * p.jitter;
+          const jy = (r() - 0.5) * charH * 0.10 * p.jitter;
+          const jr = (r() - 0.5) * 0.25 * p.jitter;
+          mctx.save();
+          mctx.translate(cxAt + jx, jy);
+          mctx.rotate(jr);
+          mctx.fillText(ch, 0, 0);
+          mctx.restore();
+        }
+        cxAt += advance;
+      }
+      if (p.box) {
+        mctx.strokeStyle = "#ffffff";
+        mctx.lineWidth = Math.max(1, charH * 0.10);
+        mctx.strokeRect(-textW / 2 - boxPad, -charH * 0.75, textW + boxPad * 2, charH * 1.5);
+      }
+      mctx.restore();
+
+      const raw = mctx.getImageData(0, 0, size, size).data;
+      let mask = new Float32Array(size * size);
+      for (let i = 0; i < mask.length; i++) mask[i] = raw[i * 4 + 3] / 255;
+      const blurR = Math.max(1, Math.round(charH * 0.06));
+      mask = boxBlur(mask, size, blurR);
+      mask = boxBlur(mask, size, blurR);
+
+      const cover = new Float32Array(size * size);
+      const halfW = textW / 2 + boxPad * 1.6, halfH = charH * 1.1 + boxPad * 1.2;
+      const cosNR = Math.cos(-rot), sinNR = Math.sin(-rot);
+      for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+        const i = y * size + x;
+        const lx = x - size / 2, ly = y - size / 2;
+        const rx = lx * cosNR - ly * sinNR;
+        const ry = lx * sinNR + ly * cosNR;
+        const d = Math.max(Math.abs(rx) / halfW, Math.abs(ry) / halfH);
+        cover[i] = smoothstep(1.18, 0.85, d);
+      }
+      return { mask, cover, size };
+    },
+    drawColor(ctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const base = this._tones[p.tone] || this._tones.Steel;
+      const sign = p.direction === "Embossed" ? 1 : -1;
+      const img = ctx.createImageData(size, size), d = img.data;
+      for (let i = 0; i < f.mask.length; i++) {
+        const sh = sign * f.mask[i] * p.depth * 90;
+        const j = i * 4;
+        d[j] = _byte(base[0] + sh); d[j + 1] = _byte(base[1] + sh); d[j + 2] = _byte(base[2] + sh);
+        d[j + 3] = Math.round(clamp01(f.cover[i]) * 255);
+      }
+      ctx.putImageData(img, 0, 0);
+    },
+    drawHeight(hctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const sign = p.direction === "Embossed" ? 1 : -1;
+      const img = hctx.createImageData(size, size), d = img.data;
+      for (let i = 0; i < f.mask.length; i++) {
+        const v = Math.round(clamp01(0.5 + sign * f.mask[i] * p.depth * 0.4) * 255);
+        const j = i * 4;
+        d[j] = d[j + 1] = d[j + 2] = v; d[j + 3] = 255;
+      }
+      hctx.putImageData(img, 0, 0);
+    },
+    drawSpec(sctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const img = sctx.createImageData(size, size), d = img.data;
+      for (let i = 0; i < f.mask.length; i++) {
+        const rim = 1 - Math.abs(f.mask[i] - 0.5) * 2;
+        const v = Math.round(clamp01(0.5 + rim * 0.3 * clamp01(f.cover[i])) * 255);
+        const j = i * 4;
+        d[j] = d[j + 1] = d[j + 2] = v; d[j + 3] = 255;
+      }
+      sctx.putImageData(img, 0, 0);
+    }
+  };
+
+  /* ---------- 10. WATER RINGS (group "Wear") ----------
+     Condensation / cup-ring marks: 1-4 rings, each a thin mineral-deposit rim
+     (an annulus, radius jittered by noise so it's not a perfect circle) with
+     a faint residue fill inside. Rings are placed with a controllable spread
+     and combined by keeping the strongest rim/fill at each pixel, so
+     overlapping rings read as a believable stacked-cup-mark cluster. The rim
+     etches in as a slightly raised deposit (bump) and reads duller/matte
+     (mineral) in spec. */
+  const WaterRing = {
+    id: "waterring", name: "Water Rings", group: "Wear",
+    params: [
+      { key: "ringCount",    label: "Ring Count",    min: 1,   max: 4,   step: 1,    default: 2 },
+      { key: "ringSize",     label: "Ring Size",     min: 0.1, max: 1,   step: 0.01, default: 0.5 },
+      { key: "rimThickness", label: "Rim Thickness", min: 0.05,max: 1,   step: 0.01, default: 0.3 },
+      { key: "rimDarkness",  label: "Rim Darkness",  min: 0,   max: 1,   step: 0.01, default: 0.6 },
+      { key: "centerTint",   label: "Center Tint",   min: 0,   max: 1,   step: 0.01, default: 0.2 },
+      { key: "irregularity", label: "Irregularity",  min: 0,   max: 1,   step: 0.01, default: 0.25 },
+      { key: "spread",       label: "Spread",        min: 0,   max: 1,   step: 0.01, default: 0.4 },
+      { key: "distortion",   label: "Distortion",    min: 0,   max: 1,   step: 0.01, default: 0.15 }
+    ],
+    _build(p, size) {
+      const r = mulberry32(hashSeed(p.seed + "|ring"));
+      const cx = size * 0.5, cy = size * 0.5;
+      const spreadR = size * 0.22 * p.spread;
+      const ringR = size * (0.06 + 0.22 * p.ringSize);
+      const irrN = makeFbm(size, size, size / 6, r);
+      const warp = makeFbm(size, size, size / 5, r);
+      const warpAmt = size * (0.005 + 0.05 * p.distortion);
+      const nR = Math.max(1, Math.round(p.ringCount));
+      const rim = new Float32Array(size * size);
+      const fill = new Float32Array(size * size);
+
+      for (let k = 0; k < nR; k++) {
+        const a = r() * Math.PI * 2, rad = spreadR * Math.sqrt(r());
+        const rx = cx + Math.cos(a) * rad, ry = cy + Math.sin(a) * rad;
+        const thisR = ringR * (0.7 + 0.6 * r());
+        const thick = thisR * (0.06 + 0.22 * p.rimThickness);
+        const x0 = Math.max(0, Math.floor(rx - thisR * 1.4 - 2));
+        const x1 = Math.min(size - 1, Math.ceil(rx + thisR * 1.4 + 2));
+        const y0 = Math.max(0, Math.floor(ry - thisR * 1.4 - 2));
+        const y1 = Math.min(size - 1, Math.ceil(ry + thisR * 1.4 + 2));
+        for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+          const i = y * size + x;
+          const wx = x + (warp(x, y) - 0.5) * warpAmt;
+          const wy = y + (warp(y, x) - 0.5) * warpAmt;
+          const dist = Math.hypot(wx - rx, wy - ry);
+          const jitter = 1 + (irrN(x, y) - 0.5) * 0.5 * p.irregularity;
+          const rimD = Math.abs(dist - thisR * jitter);
+          const rimM = clamp01(1 - smoothstep(thick * 0.4, thick * 1.6, rimD));
+          if (rimM > rim[i]) rim[i] = rimM;
+          const fillM = smoothstep(thisR * jitter, thisR * jitter * 0.2, dist);
+          if (fillM > fill[i]) fill[i] = fillM;
+        }
+      }
+      return { rim, fill, size };
+    },
+    drawColor(ctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const img = ctx.createImageData(size, size), d = img.data;
+      for (let i = 0; i < f.rim.length; i++) {
+        const a = clamp01(f.rim[i] * (0.35 + 0.65 * p.rimDarkness) + f.fill[i] * p.centerTint * 0.3);
+        const j = i * 4;
+        d[j] = 92; d[j + 1] = 96; d[j + 2] = 88;
+        d[j + 3] = Math.round(a * 255);
+      }
+      ctx.putImageData(img, 0, 0);
+    },
+    drawHeight(hctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const img = hctx.createImageData(size, size), d = img.data;
+      for (let i = 0; i < f.rim.length; i++) {
+        const v = Math.round(clamp01(0.5 + f.rim[i] * 0.1 + f.fill[i] * 0.015) * 255);
+        const j = i * 4;
+        d[j] = d[j + 1] = d[j + 2] = v; d[j + 3] = 255;
+      }
+      hctx.putImageData(img, 0, 0);
+    },
+    drawSpec(sctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const img = sctx.createImageData(size, size), d = img.data;
+      for (let i = 0; i < f.rim.length; i++) {
+        const v = Math.round(clamp01(0.5 - f.rim[i] * 0.35 - f.fill[i] * 0.08) * 255);
+        const j = i * 4;
+        d[j] = d[j + 1] = d[j + 2] = v; d[j + 3] = 255;
+      }
+      sctx.putImageData(img, 0, 0);
+    }
+  };
+
+  /* ---------- 11. OIL SMEAR (group "Wear") ----------
+     Wet, glossy smear: directional streaks (same beating-sine technique as
+     Ground's grit, wider and sparser) confined to a soft elliptical patch,
+     each optionally trailing a thin drip running with gravity off the
+     smear's low edge. Reads translucent and dark; spec spikes bright
+     wherever the smear sits (wet oil is shiny even where the base metal is
+     matte). */
+  const OilSmear = {
+    id: "oilsmear", name: "Oil Smear", group: "Wear",
+    params: [
+      { key: "tone",        label: "Tone",         type: "select", default: "Motor Black",
+        options: ["Motor Black", "Amber Oil", "Grease Grey"] },
+      { key: "direction",   label: "Direction",    min: 0,   max: 360, step: 1,    default: 35 },
+      { key: "smearLength", label: "Smear Length", min: 0.1, max: 1,   step: 0.01, default: 0.5 },
+      { key: "smearWidth",  label: "Smear Width",  min: 0.1, max: 1,   step: 0.01, default: 0.4 },
+      { key: "streakiness", label: "Streakiness",  min: 0,   max: 1,   step: 0.01, default: 0.5 },
+      { key: "intensity",   label: "Intensity",    min: 0.1, max: 1,   step: 0.01, default: 0.6 },
+      { key: "gloss",       label: "Wet Gloss",    min: 0,   max: 1,   step: 0.01, default: 0.75 },
+      { key: "drip",        label: "Drip",         min: 0,   max: 1,   step: 0.01, default: 0.3 },
+      { key: "distortion",  label: "Distortion",   min: 0,   max: 1,   step: 0.01, default: 0.35 }
+    ],
+    _tones: {
+      "Motor Black": [22, 20, 18],
+      "Amber Oil":   [92, 58, 20],
+      "Grease Grey": [48, 46, 44]
+    },
+    _build(p, size) {
+      const r = mulberry32(hashSeed(p.seed + "|oil"));
+      const cx = size * (0.4 + 0.2 * r()), cy = size * (0.4 + 0.2 * r());
+      const patchRX = size * (0.1 + 0.42 * p.smearLength);
+      const patchRY = size * (0.06 + 0.22 * p.smearWidth);
+      const ang = p.direction * Math.PI / 180, ca = Math.cos(ang), sa = Math.sin(ang);
+      const edgeN = makeNoise(size, size, size / 6, r);
+      const phaseF = makeFbm(size, size, size / 4, r);
+      const warpAmt = size * (0.01 + 0.08 * p.distortion);
+      const warp = makeFbm(size, size, size / 5, r);
+
+      const cover = new Float32Array(size * size);
+      for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+        const i = y * size + x;
+        const wx = x + (warp(x, y) - 0.5) * warpAmt, wy = y + (warp(y, x) - 0.5) * warpAmt;
+        const dx = wx - cx, dy = wy - cy;
+        const along = dx * ca + dy * sa;
+        const across = -dx * sa + dy * ca;
+        const eEdge = 1 + 0.5 * (edgeN(x, y) - 0.5);
+        const alongN = along / (patchRX * eEdge), acrossN = across / (patchRY * eEdge);
+        let m = clamp01(1 - Math.hypot(alongN, acrossN));
+        if (p.streakiness > 0.02) {
+          const streak = 0.5 + 0.5 * Math.sin(across * (0.15 + 1.5 * p.streakiness) + phaseF(x, y) * 4);
+          m *= (1 - p.streakiness * 0.5) + p.streakiness * 0.5 * streak;
+        }
+        cover[i] = m;
+      }
+
+      if (p.drip > 0.02) {
+        const nDrips = Math.round(3 + 10 * p.drip);
+        for (let k = 0; k < nDrips; k++) {
+          const t = r() * 2 - 1;
+          const ox = cx + ca * (t * patchRX * 0.8) - sa * (patchRY * 0.7);
+          const oy = cy + sa * (t * patchRX * 0.8) + ca * (patchRY * 0.7);
+          const len = size * (0.03 + 0.22 * p.drip) * (0.4 + r());
+          const w = size * (0.003 + 0.01 * r());
+          const steps = Math.max(14, Math.ceil(len)); // >=1 stamp/px so the trail stays unbroken
+          // one smooth wander per drip (not re-rolled per step) so the trail
+          // reads as a continuous rivulet instead of a scattered scribble
+          const wobAmp = w * (0.6 + 1.2 * r()), wobFreq = 3 + 5 * r(), wobPhase = r() * Math.PI * 2;
+          for (let s = 0; s <= steps; s++) {
+            const dt = s / steps;
+            const px = Math.round(ox + Math.sin(dt * wobFreq + wobPhase) * wobAmp);
+            const py = Math.round(oy + len * dt);
+            if (px < 0 || px >= size || py < 0 || py >= size) continue;
+            const fall = 1 - dt;
+            for (let bx = -1; bx <= 1; bx++) {
+              const xx = px + bx; if (xx < 0 || xx >= size) continue;
+              const idx = py * size + xx;
+              const v = fall * (1 - Math.abs(bx) * 0.4);
+              if (v > cover[idx]) cover[idx] = v;
+            }
+          }
+        }
+      }
+      return { cover, size };
+    },
+    drawColor(ctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const base = this._tones[p.tone] || this._tones["Motor Black"];
+      const img = ctx.createImageData(size, size), d = img.data;
+      for (let i = 0; i < f.cover.length; i++) {
+        const j = i * 4;
+        d[j] = base[0]; d[j + 1] = base[1]; d[j + 2] = base[2];
+        d[j + 3] = Math.round(clamp01(f.cover[i] * p.intensity * 1.2) * 255);
+      }
+      ctx.putImageData(img, 0, 0);
+    },
+    drawHeight(hctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const img = hctx.createImageData(size, size), d = img.data;
+      for (let i = 0; i < f.cover.length; i++) {
+        const v = Math.round(clamp01(0.5 + f.cover[i] * 0.03) * 255);
+        const j = i * 4;
+        d[j] = d[j + 1] = d[j + 2] = v; d[j + 3] = 255;
+      }
+      hctx.putImageData(img, 0, 0);
+    },
+    drawSpec(sctx, p, rng, size) {
+      const f = cachedField(this, p, size, () => this._build(p, size));
+      const wet = clamp01(0.5 + p.gloss * 0.5);
+      const img = sctx.createImageData(size, size), d = img.data;
+      for (let i = 0; i < f.cover.length; i++) {
+        const v = Math.round(clamp01(0.5 + (wet - 0.5) * 2 * f.cover[i]) * 255);
+        const j = i * 4;
+        d[j] = d[j + 1] = d[j + 2] = v; d[j + 3] = 255;
+      }
+      sctx.putImageData(img, 0, 0);
+    }
+  };
+
+  const GENERATORS = [Fingerprint, Scuff, Paint, Grime, Stamped, WaterRing, OilSmear, Turned, Cast, Ground, Erode];
   const GEN_BY_ID = {};
   GENERATORS.forEach(g => GEN_BY_ID[g.id] = g);
 

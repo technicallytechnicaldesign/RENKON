@@ -82,7 +82,7 @@ def add_grid(size_m, loc, subdiv):
     # (more -> finer displacement). Square, so no object scale to bake in.
     bpy.ops.mesh.primitive_grid_add(x_subdivisions=subdiv, y_subdivisions=subdiv,
                                     size=size_m, location=loc)
-    g = bpy.context.active_object
+    g = bpy.context.view_layer.objects.active
     g.name = "Surface"
     return g
 
@@ -141,7 +141,7 @@ def build_flow(g, lk, f0, f1):
     _try(tex, "noise_scale", lk["noise_scale"])
     _try(tex, "noise_depth", lk["noise_depth"])
     bpy.ops.object.empty_add(type='PLAIN_AXES', location=(0, 0, 0))
-    drv = bpy.context.active_object
+    drv = bpy.context.view_layer.objects.active
     drv.name = "FlowDriver"
     dx, dy, dz = lk["drift"]
     drv.location = (0.0, 0.0, 0.0); drv.keyframe_insert(data_path="location", frame=f0)
