@@ -11,6 +11,158 @@ Versioning: informal `vN` milestones tagged in git as `paramgen-vN`.
 
 ## [Unreleased]
 
+### Added — Overlay Asset Customizer: FN/VIBE tag filter (HANDOFF_BRIEF_v3 §3, Task B)
+Builds the two-axis function×vibe tag filter on top of the 69-asset base the
+previous entry below just landed. With 8 categories the type grid was at the
+limit the brief called out — this gives a shot-builder a second way in:
+"something dramatic that means flow" instead of only "browse Wildcards, then
+browse Fluid Flow."
+
+- **Taxonomy tagging**: every one of the 69 manifest entries now carries a
+  `tags: { fn: [...], vibe: [...] }` field — 8 `fn` values (point, label,
+  direction, flow, state, atmosphere, chrome, transition) crossed with 6
+  `vibe` values (precise, organic, ambient, dramatic, playful, retro-tech).
+  Category defaults from the brief's table cover most assets; the brief's
+  named exceptions were hand-applied (Status Chip +state; Hazard Strobe /
+  Redline Gauge `fn:state`; Cardiac Trace `fn:state, vibe:dramatic+retro-tech`;
+  Terminal Type `fn:label, vibe:retro-tech+playful`; Hatch Sweep and Divider /
+  Technical Rule +transition; Sonar Corner / Node Mesh +retro-tech; Topo
+  Contours / Particle Drift / Bubble Rise vibe:organic; Warp Tunnel
+  `fn:transition`; Spark Shower / Arc Discharge `fn:state`; Orbit Atoms
+  `fn:point, vibe:playful+retro-tech`), plus judgment calls for the two
+  Wildcards the brief left open (Glitch Slice → `fn:state,
+  vibe:dramatic+retro-tech`; Hologram Beam → `fn:atmosphere,
+  vibe:dramatic+retro-tech`) and for Bubble Rise, read as an override to
+  `vibe:organic` alone (dropping Splashes' default `playful`) rather than an
+  addition, since the brief calling it out only makes sense as a departure
+  from the category default.
+- **14 hand-authored icons** (`TAG_ICONS`, 16×16 viewBox, stroke-only,
+  `stroke="currentColor"`, no fills except the `point` tag's center dot) —
+  one per taxonomy tag, kept distinct at 16px per the brief's concepts:
+  crosshair dot, tag outline, arrow, nested waves, warning triangle,
+  scattered dots + arc, corner brackets, and offset frames for the 8 `fn`
+  icons; ruler ticks, droplet, crescent + dots, lightning bolt, four-point
+  spark, and a CRT screen with a scanline for the 6 `vibe` icons. Kept in one
+  map next to `TAG_AXES`, the taxonomy definition.
+- **Chip bar on the landing view** (`buildTagFilterBar`): two labeled rows,
+  FUNCTION and VIBE, reusing the texture tool's `.filter-chip` /
+  `.pattern-group-label` / `.pattern-filter-row` classes verbatim so the
+  grammar matches exactly — accent fill + accent border when active, outline
+  structural when not. The one behavioral difference from that existing
+  pattern: these chips are multi-select (OR within an axis, AND across axes)
+  instead of the texture tool's single-active-chip group filter.
+- **Filtered flat grid reuses the subtype-grid card renderer**, per the
+  brief. Extracted `buildAssetCard()` out of `renderSubtypeGrid` so the
+  per-category grid and the new flat filtered grid build identical cards;
+  filtered-view cards get an extra small `.subtype-cat-tag` badge naming
+  which category each result came from. Zero-result state renders
+  "Nothing matches — try dropping a chip." in place of the grid.
+- **Hash persistence, adapted to the router's real (not brief-era) shape.**
+  The brief's draft warned the router "currently splits only on `/`" and
+  would need `?query` parsing bolted on — confirmed still true in the live
+  file, and now handled: `navigate()` splits `parts[0]` on the first `?`
+  before matching a `TOOLS` id, parses the remainder with a small
+  `parseHashQuery()` (comma-joined multi-value per key, e.g.
+  `fn=flow,direction`), and threads the resulting `query` object through
+  `tool.mount(main, subpath, query)` into `mountOverlayKit` →
+  `renderTypeGrid`. Filters live at `#overlay-kit?fn=flow&vibe=dramatic`;
+  toggling a chip just sets `location.hash` to the next state and lets the
+  existing `hashchange` listener re-render, so back/forward and bookmarking
+  both work with no extra plumbing.
+- **Verified** via the repo's headless-Edge iframe-driver pattern: the chip
+  bar renders 14 chips across FUNCTION/VIBE rows on the landing view (8
+  category tiles behind it, untouched, when no chip is active); clicking
+  Dramatic filters to exactly the 8 Wildcards assets tagged `dramatic` (no
+  other category represented), with `.active` applied to that one chip and
+  no others; navigating to `#overlay-kit?fn=flow` filters to the 17
+  Fluid-Flow + Splashes assets tagged `flow`; loading
+  `index.html#overlay-kit?fn=flow` fresh in a brand-new iframe (not a
+  same-document hash change) reproduces the identical 17-result, chip-active
+  state, confirming the hash genuinely round-trips on load rather than only
+  reacting to in-page navigation; `fn=chrome&vibe=dramatic` — confirmed empty
+  first (Frame's `chrome` assets are always `vibe:precise`, never
+  `dramatic`) — renders the zero-result message instead of an empty grid.
+  Zero JS errors across every run. Script parse-checked with `new
+  Function`; all 14 `TAG_ICONS` strings XML-parsed cleanly; every one of the
+  69 manifest entries confirmed to carry non-empty `tags.fn` and
+  `tags.vibe` (max 3 tags per axis, per the brief's cap).
+
+### Added — Overlay Asset Customizer: Backgrounds + Wildcards categories, 25 new assets (44 → 69)
+Ports the 25 assets that grew on the stranded `02_WORK/overlay_toolkit/toolkit.html`
+snapshot into the live manifest, per `HANDOFF_BRIEF_v3.md` (Task A, integration
+only — the §3 function×vibe filter system is a separate, not-yet-started piece
+of work). The kit goes from 44 assets / 6 categories to **69 assets / 8
+categories**.
+
+- **Two new categories.** **Backgrounds** (10 assets, 640×360 16:9 full-frame
+  ambient layers — Blueprint Drift, Topo Contours, Particle Drift, Hex Cell
+  Glow, Laminar Streams, Sonar Corner, Instrument Tape, Oscilloscope Strip,
+  Hatch Sweep, Node Mesh) and **Wildcards** (10 assets, the loud foreground-FX
+  drawer — Glitch Slice, Hologram Beam, Warp Tunnel, Cardiac Trace, Hazard
+  Strobe, Spark Shower, Arc Discharge, Terminal Type, Redline Gauge, Orbit
+  Atoms) join the type grid, wired through the exact same `CATEGORIES` entry
+  shape (`slug`/`label`/`blurb`) every existing category already uses — no
+  special-casing needed in the router, subtype grid, or customize view.
+- **Five more folded into existing categories**: Manifold Merge (Fluid Flow),
+  Status Chip (Callouts, editable text), Press Fit (Arrows), Hex Lock (Pings),
+  Bubble Rise (Splashes) — inserted at the end of each category's existing
+  run of manifest entries, so same-category assets stay contiguous the way
+  the file already organizes them.
+- **Every manifest entry copied verbatim** — same `id`/`name`/`file`/
+  `category`/`engine`/`loop`/`durationMs`/`paramPreset`/`svg()` shape the live
+  file already uses; the palette, param sliders (`opacity`/`thickness`/
+  `speed`/`roundness`), custom-text mechanism, PNG export, and Export Frames
+  all picked the new assets up with zero extra wiring, exactly as the brief
+  predicted.
+- **One real divergence from the brief's stated assumption**: the brief
+  claimed the live file already had a `caution` palette role (from an earlier
+  task, RNK-0011) so the ported assets — which use `var(--c-caution)` for
+  alarm/status color (Status Chip's LED, Hazard Strobe, Redline Gauge) —
+  would need no palette work. That role was never actually added to this
+  file's `PALETTE_ROLES`/`:root`. Added it here: `--c-caution: #E0342B` in
+  `:root`, and a matching `{ key: "caution", cssVar: "--c-caution", label:
+  "Caution", hex: "#E0342B" }` entry in `PALETTE_ROLES` (same hex the
+  toolkit snapshot and its `--c-caution` custom property already used) — the
+  palette panel is generic over `PALETTE_ROLES.forEach`, so this one entry
+  is the whole fix; it now shows as a 7th swatch (Structural/Fluid/Accent/
+  Leader/Panel BG/Label Text/Caution) with Save/Load/Reset all working
+  unchanged.
+- **No grid CSS changes.** Backgrounds' 640×360 (16:9) assets are wider than
+  the kit's other viewBoxes, and the brief flagged this as a possible
+  accommodation. Both the subtype grid (`.mini-stage`, `max-width:100%;
+  height:auto`, no fixed aspect) and the customize view (`.large-stage svg`,
+  `max-width:min(260px,100%); max-height:180px`) already scale by intrinsic
+  aspect ratio inside a flexible container — verified headless that a
+  Backgrounds asset renders at full width with no clipping or overflow, so
+  no CSS was touched.
+- Gotchas from the brief's §4 that showed up verbatim in the ported code
+  (kept as-is, not reworked): Glitch Slice's `.fxg_band { animation: 2.2s
+  steps(1) infinite; ... }` shorthand-then-`animation-name` pattern; Sonar
+  Corner's `transform-origin: 0px 360px` without `transform-box: fill-box`;
+  Backgrounds/Wildcards' `animation-delay: calc(-Ns / var(--s-mult,1))`
+  negative-delay-scaled-by-speed convention (vs. Topo Contours' intentionally
+  bare, unscaled `-3s`/`-6s`/`-9s` delays); `--s-mult` only ever set for
+  `engine: "css"` assets, never for the SMIL ones (Blueprint Drift, Particle
+  Drift, Instrument Tape, Oscilloscope Strip, Spark Shower, Orbit Atoms),
+  which instead get speed via full re-render on slider release, same as every
+  pre-existing SMIL asset.
+- **Verified**: a hand-rolled mechanical validation loop (parse-check the
+  full app script via `new Function`, `eval` just the `ASSETS` array slice in
+  Node, call every one of the 25 new assets' `svg()` functions, tag-balance +
+  bare-attribute-check the output) passes clean — all `data-text-slot`
+  attributes in the ported code were already `="true"` (the bug class the
+  brief warned about was pre-fixed in the source). Headless Edge
+  (`--headless=new --allow-file-access-from-files --dump-dom`, driven through
+  the real `index.html` via an iframe driver page, per this doc's own
+  verification pattern): 8 category tiles render with Backgrounds/Wildcards
+  both correctly tagged "10 variants"; both new categories' subtype grids
+  render 10/10 live SVGs with zero JS errors; drilling into a sampled asset
+  from each (`bg-topo-contours`, `fx-glitch-slice`) and the folded-in
+  `splash-bubble-rise` all reach the customize screen with a populated
+  `.large-stage svg` and working param/export controls; the Splashes subtype
+  grid now lists 8 cards including Bubble Rise; the palette panel's 7th
+  swatch (Caution) is present and wired.
+
 ### Changed — Title bar redesign: integrated toolbar, closed-by-default panels
 Two changes, both site-wide (`assets/menu.js` + all four pages' header CSS):
 

@@ -3,11 +3,16 @@
 A single-file, no-build browser tool for the rendering & overlay compositing
 pipeline. Two procedural/parametric generators under one shell:
 
-1. **Overlay Asset Customizer** — live gallery of 44 SVG overlays (fluid flow,
-   splashes, callouts, arrows, pings, frame chrome). Type → subtype → customize
-   drill-down, global palette control, per-asset opacity/thickness/speed/roundness
-   sliders, custom text on labeled assets, PNG export. (GIF export is present but
-   currently broken — see below.)
+1. **Overlay Asset Customizer** — live gallery of 69 SVG overlays across 8
+   categories (fluid flow, splashes, callouts, arrows, pings, frame chrome,
+   backgrounds, wildcards). Type → subtype → customize drill-down, global
+   palette control (7 roles, including a `caution` red for alarm/status
+   assets), per-asset opacity/thickness/speed/roundness sliders, custom text
+   on labeled assets, PNG and frame-sequence export. Every asset also carries
+   a two-axis `fn`/`vibe` tag (what job it does × how it feels); a FN/VIBE
+   chip bar on the landing view filters the whole library across categories
+   (OR within an axis, AND across axes — "flow AND dramatic"), with the
+   active filter bookmarkable in the URL hash (`#overlay-kit?fn=flow&vibe=dramatic`).
 2. **Texture & Bump Map Generator** — procedural grayscale texture/height maps
    (noise, grid, scratches, splotches) with a simulated-relief bump preview and
    PNG export. Static output for now; animated maps are the next milestone.
@@ -34,7 +39,11 @@ is self-contained.
   (`paramgen-vN`).
 - Adding a new overlay asset is a single object in the `ASSETS` array — the grids,
   palette wiring, sliders, and export all pick it up from the manifest
-  automatically (see handoff brief §4).
+  automatically (see handoff brief §4). Give it a `tags: { fn: [...], vibe: [...] }`
+  field too (1–2 tags per axis, 3 max) — the FN/VIBE chip bar and filtered grid
+  are generic over `TAG_AXES`/`TAG_ICONS`, so a tagged asset shows up in filter
+  results with no other wiring. New tag values need a `TAG_ICONS` entry (16×16,
+  stroke-only) and a slot in `TAG_AXES`.
 
 ## Known issue
 

@@ -1,0 +1,1755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hydroform &mdash; RENKON</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap"></noscript>
+<style>
+  :root {
+    --bg: #0C141D;
+    --panel-bg: #14202C;
+    --panel-bg-raised: #182635;
+    --line: #22303E;
+    --text: #ECF2F6;
+    --muted: #6E7E8C;
+
+    --c-structural: #002F67;   /* base/structural, NOT a brand accent */
+    --c-fluid: #4FD1D9;        /* flow teal */
+    --c-accent: #F08A3C;       /* safety orange — interactive/points only */
+    --stage-bg: #060a10;       /* dark canvas/preview backdrop */
+    --c-hud-text: #ECF2F6;     /* fixed-light text for chips pinned to a dark backdrop in both themes */
+    --c-hud-muted: #6E7E8C;    /* fixed-light muted text, same reasoning */
+
+    --font-display: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "Space Mono", ui-monospace, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  button, input, select { font-family: inherit; }
+  button { cursor: pointer; border-radius: 0; }
+  button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible {
+    outline: 2px solid var(--c-accent); outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+  }
+
+  /* sticky app header */
+  #app-header {
+    display: flex; align-items: center; gap: 20px;
+    padding: 14px 28px; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; background: var(--bg); z-index: 20;
+  }
+  #app-header .brand { display: flex; align-items: center; gap: 11px; color: var(--text); text-decoration: none; flex: none; }
+  #app-header .brand .mark { width: 26px; height: 26px; flex: none; color: var(--c-accent); }
+  #app-header .brand .mark svg { display: block; width: 100%; height: 100%; }
+  #app-header .wordmark { font-family: var(--font-display); font-size: 14px; letter-spacing: 0.28em; font-weight: 700; text-decoration: none; flex: none; }
+  #app-header .wordmark b { color: var(--c-accent); font-weight: 700; }
+  #app-header .crumbs {
+    font-family: var(--font-mono);
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+    flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #app-header .mark { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.08em; flex: none; }
+
+  #app-main { padding: 22px 28px 40px; max-width: 1600px; margin: 0 auto; }
+  .page-head { margin-bottom: 16px; }
+  .page-head h1 { font-family: var(--font-display); font-size: 16px; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 6px; font-weight: 700; }
+  .page-head p { color: var(--muted); font-size: 12px; margin: 0; max-width: 84ch; line-height: 1.6; }
+
+  /* ============ HYDROFORM app shell (reskinned; engine untouched) ============ */
+  .app {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 344px;
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    height: calc(100vh - 208px);
+    min-height: 560px;
+  }
+
+  .stage {
+    position: relative;
+    min-width: 0;
+    overflow: hidden;
+    background: var(--stage-bg);
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+    touch-action: none;
+  }
+
+  .topbar {
+    position: absolute;
+    z-index: 5;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 12px;
+    pointer-events: none;
+  }
+
+  .status-cluster {
+    display: flex;
+    gap: 16px;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    background: rgba(6, 10, 16, 0.72);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--c-hud-muted);
+  }
+  .status-cluster b { color: var(--c-fluid); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+
+  .hint {
+    position: absolute;
+    z-index: 5;
+    left: 16px;
+    bottom: 16px;
+    padding: 7px 11px;
+    border: 1px solid var(--line);
+    background: rgba(6, 10, 16, 0.72);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    color: var(--c-hud-muted);
+    pointer-events: none;
+    max-width: 62%;
+    line-height: 1.5;
+  }
+
+  .panel {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--panel-bg);
+  }
+
+  .panel-head {
+    padding: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .panel-head h2 {
+    margin: 0 0 5px;
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .panel-head p {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+
+  .toolbar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    padding: 1px;
+    background: var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .btn {
+    font-family: var(--font-mono);
+    min-height: 38px;
+    padding: 8px 10px;
+    border: 0;
+    background: var(--panel-bg);
+    color: var(--text);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: color .15s ease, background .15s ease;
+  }
+  .btn:hover { color: var(--c-accent); background: var(--panel-bg-raised); }
+  .btn.primary { color: var(--c-accent); }
+  .btn.primary:hover { background: var(--c-accent); color: var(--bg); }
+
+  .controls {
+    min-height: 0;
+    overflow-y: auto;
+    padding: 6px 16px 18px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+  }
+
+  details {
+    border-bottom: 1px solid var(--line);
+    padding: 4px 0 10px;
+  }
+  details:last-child { border-bottom: 0; }
+  summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 2px;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; color: var(--muted); font-size: 15px; font-weight: 400; }
+  details[open] summary::after { content: "–"; }
+
+  .control {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 5px 10px;
+    align-items: center;
+    padding: 6px 2px;
+  }
+  .control label { font-size: 12px; color: var(--text); }
+  .value {
+    min-width: 54px;
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--c-fluid);
+    font-variant-numeric: tabular-nums;
+  }
+
+  input[type="range"] {
+    grid-column: 1 / -1;
+    width: 100%;
+    accent-color: var(--c-accent);
+    cursor: pointer;
+  }
+
+  select, input[type="number"], input[type="text"] {
+    width: 100%;
+    height: 38px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: 0;
+    outline: none;
+    color: var(--text);
+    background: var(--panel-bg);
+    font-size: 12px;
+  }
+  select:focus-visible, input[type="number"]:focus-visible, input[type="text"]:focus-visible {
+    border-color: var(--c-accent);
+  }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 4px 0 8px;
+  }
+  .field label {
+    display: block;
+    margin-bottom: 6px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+  }
+
+  .color-field {
+    display: grid;
+    grid-template-columns: 42px 1fr;
+    gap: 8px;
+    align-items: center;
+  }
+  input[type="color"] {
+    width: 42px;
+    height: 38px;
+    padding: 3px;
+    border: 1px solid var(--line);
+    border-radius: 0;
+    background: var(--panel-bg);
+    cursor: pointer;
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 2px;
+    font-size: 12px;
+    color: var(--text);
+  }
+  .toggle-row input[type="checkbox"] {
+    width: 16px; height: 16px;
+    accent-color: var(--c-accent);
+    cursor: pointer;
+  }
+
+  .mode-card {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 12px;
+    margin: 3px 0 10px;
+    border: 1px solid var(--line);
+    background: var(--panel-bg-raised);
+  }
+  .mode-card small { color: var(--muted); line-height: 1.45; font-size: 11px; }
+
+  .footer-note {
+    padding: 12px 16px 14px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    border-top: 1px solid var(--line);
+    line-height: 1.6;
+  }
+
+  .material-note {
+    display: block;
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.45;
+  }
+
+  /* presentation / fullscreen states (class toggles driven by the engine) */
+  .app.ui-hidden { grid-template-columns: minmax(0, 1fr); }
+  .app.ui-hidden .panel { display: none; }
+
+  .app.is-fullscreen {
+    height: 100%;
+    border: 0;
+    gap: 0;
+    background: var(--stage-bg);
+  }
+  .app.is-fullscreen .stage { border: 0; }
+
+  .app.presentation-clean .topbar,
+  .app.presentation-clean .hint {
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity .25s ease, transform .25s ease;
+  }
+
+  .presentation-dock {
+    position: absolute;
+    z-index: 8;
+    right: 16px;
+    bottom: 16px;
+    display: flex;
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    opacity: .32;
+    transition: opacity .2s ease;
+  }
+  .presentation-dock:hover,
+  .app.ui-hidden .presentation-dock,
+  .app.is-fullscreen .presentation-dock { opacity: .96; }
+
+  .dock-btn {
+    font-family: var(--font-mono);
+    min-width: 38px;
+    height: 34px;
+    padding: 0 11px;
+    border: 0;
+    color: var(--c-hud-text);
+    background: rgba(6, 16, 23, 0.86);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .dock-btn:hover { color: var(--c-accent); background: var(--panel-bg-raised); }
+
+  .app:not(.ui-hidden) #floatingUiBtn .show-label { display: none; }
+  .app.ui-hidden #floatingUiBtn .hide-label { display: none; }
+
+  .hydraulic-readout {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    margin-top: 10px;
+    background: var(--line);
+    border: 1px solid var(--line);
+  }
+  .hydraulic-readout > div {
+    padding: 9px 10px;
+    background: var(--panel-bg);
+  }
+  .hydraulic-readout small {
+    display: block;
+    font-family: var(--font-mono);
+    color: var(--muted);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .hydraulic-readout b {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--c-fluid);
+    font-variant-numeric: tabular-nums;
+  }
+  .model-note {
+    display: block;
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.45;
+  }
+
+  @media (max-width: 1024px) {
+    #app-main { padding: 16px; }
+    .app {
+      grid-template-columns: 1fr;
+      grid-template-rows: minmax(460px, 62vh) auto;
+      height: auto;
+    }
+    .panel { max-height: none; }
+    .controls { overflow: visible; }
+    .app.ui-hidden { grid-template-rows: minmax(80vh, 1fr); }
+    .hint { max-width: 78%; }
+  }
+</style>
+<script src="../../assets/theme.js"></script>
+<script src="../../assets/reveal.js"></script>
+</head>
+<body>
+  <header id="app-header">
+    <a class="brand" href="../../index.html" aria-label="RENKON home">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round">
+          <circle cx="50" cy="50" r="44"/>
+          <g transform="rotate(0 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(72 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(144 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(216 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(288 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <circle cx="50" cy="50" r="8.5"/>
+        </svg>
+      </span>
+      <span class="wordmark">RENK<b>O</b>N</span>
+    </a>
+    <div class="crumbs">Parametric Assets / Hydroform</div>
+    <div class="mark">FLUID · CANVAS</div>
+  </header>
+
+  <main id="app-main">
+    <div class="page-head">
+      <h1>Hydroform</h1>
+      <p>Deterministic, real-time Canvas fluid study &mdash; impact splashes, pressurized jets, vertical fountains,
+         and pipe / process-flow networks with a studio glass-tube turntable mode. Every seed is a repeatable variation.
+         Keys: <b>H</b> hide UI &middot; <b>T</b> turntable &middot; <b>F</b> fullscreen &middot; <b>Space</b> pause &middot; <b>R</b> replay.</p>
+    </div>
+
+    <div class="app" id="app">
+      <section class="stage" id="stage">
+        <canvas id="canvas" aria-label="Water simulation canvas"></canvas>
+        <div class="topbar">
+          <div class="status-cluster">
+            <span>FPS <b id="fps">60</b></span>
+            <span>PARTICLES <b id="particleReadout">0</b></span>
+            <span>SEED <b id="seedReadout">2048</b></span>
+          </div>
+        </div>
+        <div class="hint">Pipe mode: choose Straight pipe for minimal flow · H hides UI · T rotates · F fullscreen · Space pauses · R replays</div>
+        <div class="presentation-dock" aria-label="Presentation controls">
+          <button class="dock-btn" id="floatingTurntableBtn" title="Toggle turntable">↻ Rotate</button>
+          <button class="dock-btn" id="floatingUiBtn" title="Hide or show controls"><span class="hide-label">Hide UI</span><span class="show-label">Show UI</span></button>
+          <button class="dock-btn" id="floatingFullscreenBtn" title="Toggle fullscreen">⛶ Fullscreen</button>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <div class="panel-head">
+          <h2>Water Generator</h2>
+          <p>Shape a deterministic, real-time water study. Every seed creates a repeatable variation.</p>
+        </div>
+
+        <div class="toolbar">
+          <button class="btn primary" id="replayBtn">↻ Replay</button>
+          <button class="btn" id="randomBtn">✦ Randomize</button>
+          <button class="btn" id="pauseBtn">Ⅱ Pause</button>
+          <button class="btn" id="exportBtn">↓ Export PNG</button>
+          <button class="btn" id="turntableBtn">↻ Turntable</button>
+          <button class="btn" id="hideUiBtn">◫ Hide UI</button>
+          <button class="btn" id="fullscreenBtn">⛶ Fullscreen</button>
+        </div>
+
+        <div class="controls">
+          <details open>
+            <summary>Generator</summary>
+            <div class="mode-card">
+              <select id="mode">
+                <option value="splash">Impact splash</option>
+                <option value="jet">Pressurized side jet</option>
+                <option value="fountain">Vertical fountain</option>
+                <option value="pipe">Pipe flow</option>
+              </select>
+              <small id="modeHelp">A crown-shaped impact with a dense central plume and secondary droplets.</small>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="seed">Seed</label>
+                <input id="seed" type="number" min="1" max="999999" step="1" value="2048" />
+              </div>
+              <div class="field">
+                <label for="preset">Preset</label>
+                <select id="preset">
+                  <option value="custom">Custom</option>
+                  <option value="clean">Clean studio</option>
+                  <option value="violent">Violent impact</option>
+                  <option value="silky">Silky jet</option>
+                  <option value="mist">Fine mist</option>
+                  <option value="process">Process line</option>
+                  <option value="simplepipe">Simple straight pipe</option>
+                  <option value="studio">Studio glass tube</option>
+                </select>
+              </div>
+            </div>
+            <div class="toggle-row">
+              <span>Auto replay</span>
+              <input id="autoReplay" type="checkbox" checked>
+            </div>
+          </details>
+
+          <details open>
+            <summary>Flow</summary>
+            <div class="control"><label for="pressure">Pressure / launch speed</label><span class="value" data-for="pressure"></span><input id="pressure" type="range" min="0" max="100" value="56" step="1"></div>
+            <div class="control"><label for="spread">Spread</label><span class="value" data-for="spread"></span><input id="spread" type="range" min="0" max="100" value="36" step="1"></div>
+            <div class="control"><label for="angle">Jet angle</label><span class="value" data-for="angle"></span><input id="angle" type="range" min="5" max="88" value="24" step="1"></div>
+            <div class="control"><label for="nozzle">Nozzle / source width</label><span class="value" data-for="nozzle"></span><input id="nozzle" type="range" min="1" max="100" value="28" step="1"></div>
+            <div class="control"><label for="density">Particle density</label><span class="value" data-for="density"></span><input id="density" type="range" min="200" max="2400" value="1550" step="50"></div>
+          </details>
+
+          <details open>
+            <summary>Pipe system</summary>
+            <div class="field-row">
+              <div class="field">
+                <label for="pipeNetwork">Network</label>
+                <select id="pipeNetwork">
+                  <option value="straight">Straight pipe</option>
+                  <option value="single">Single run</option>
+                  <option value="tee">Tee branch</option>
+                  <option value="manifold">Manifold</option>
+                  <option value="loop">Bypass loop</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="pipeMaterial">Pipe material</label>
+                <select id="pipeMaterial">
+                  <option value="metal">Industrial metal</option>
+                  <option value="glass">Transparent glass</option>
+                  <option value="frosted">Frosted glass</option>
+                  <option value="acrylic">Clear acrylic</option>
+                  <option value="chrome">Polished chrome</option>
+                  <option value="smoked">Smoked glass</option>
+                  <option value="cutaway">Technical cutaway</option>
+                </select>
+                <small class="material-note">Glass and acrylic reveal the internal flow; chrome uses luminous flow diagnostics.</small>
+              </div>
+            </div>
+            <div class="control"><label for="pipeDiameter">Pipe diameter</label><span class="value" data-for="pipeDiameter"></span><input id="pipeDiameter" type="range" min="10" max="100" value="52" step="1"></div>
+            <div class="control"><label for="pipeFill">Pipe fill</label><span class="value" data-for="pipeFill"></span><input id="pipeFill" type="range" min="10" max="100" value="78" step="1"></div>
+            <div class="control"><label for="pipeComplexity">Route complexity</label><span class="value" data-for="pipeComplexity"></span><input id="pipeComplexity" type="range" min="10" max="100" value="54" step="1"></div>
+            <div class="control"><label for="branchCount">Manifold branches</label><span class="value" data-for="branchCount"></span><input id="branchCount" type="range" min="2" max="5" value="3" step="1"></div>
+            <div class="control"><label for="flowSpeed">Internal flow speed</label><span class="value" data-for="flowSpeed"></span><input id="flowSpeed" type="range" min="0" max="100" value="62" step="1"></div>
+            <div class="control"><label for="bubbleRate">Bubbles / entrainment</label><span class="value" data-for="bubbleRate"></span><input id="bubbleRate" type="range" min="0" max="100" value="36" step="1"></div>
+            <div class="control"><label for="pumpPower">Pump power</label><span class="value" data-for="pumpPower"></span><input id="pumpPower" type="range" min="0" max="100" value="72" step="1"></div>
+            <div class="control"><label for="valveCount">Valve count</label><span class="value" data-for="valveCount"></span><input id="valveCount" type="range" min="0" max="6" value="2" step="1"></div>
+            <div class="control"><label for="valveOpening">Valve opening</label><span class="value" data-for="valveOpening"></span><input id="valveOpening" type="range" min="0" max="100" value="82" step="1"></div>
+            <div class="hydraulic-readout" aria-label="Illustrative hydraulic readout">
+              <div><small>Pump pressure</small><b id="pressureInReadout">—</b></div>
+              <div><small>Outlet pressure</small><b id="pressureOutReadout">—</b></div>
+              <div><small>Pressure loss</small><b id="pressureLossReadout">—</b></div>
+              <div><small>Est. flow</small><b id="flowReadout">—</b></div>
+            </div>
+            <small class="model-note">Illustrative visual model: losses respond to length, bends, diameter, branches, speed, and valve restriction.</small>
+          </details>
+
+          <details open>
+            <summary>Fluid behavior</summary>
+            <div class="control"><label for="gravity">Gravity</label><span class="value" data-for="gravity"></span><input id="gravity" type="range" min="20" max="220" value="100" step="1"></div>
+            <div class="control"><label for="drag">Air drag</label><span class="value" data-for="drag"></span><input id="drag" type="range" min="0" max="100" value="18" step="1"></div>
+            <div class="control"><label for="tension">Surface tension</label><span class="value" data-for="tension"></span><input id="tension" type="range" min="0" max="100" value="62" step="1"></div>
+            <div class="control"><label for="turbulence">Turbulence</label><span class="value" data-for="turbulence"></span><input id="turbulence" type="range" min="0" max="100" value="22" step="1"></div>
+            <div class="control"><label for="wind">Wind</label><span class="value" data-for="wind"></span><input id="wind" type="range" min="-100" max="100" value="0" step="1"></div>
+            <div class="control"><label for="droplet">Droplet scale</label><span class="value" data-for="droplet"></span><input id="droplet" type="range" min="10" max="100" value="34" step="1"></div>
+          </details>
+
+          <details open>
+            <summary>Look development</summary>
+            <div class="field-row">
+              <div class="field">
+                <label>Water</label>
+                <div class="color-field"><input id="waterColor" type="color" value="#4fd1d9"><input id="waterHex" type="text" value="#4fd1d9" maxlength="7"></div>
+              </div>
+              <div class="field">
+                <label>Background</label>
+                <div class="color-field"><input id="bgColor" type="color" value="#060a10"><input id="bgHex" type="text" value="#060a10" maxlength="7"></div>
+              </div>
+            </div>
+            <div class="control"><label for="opacity">Water opacity</label><span class="value" data-for="opacity"></span><input id="opacity" type="range" min="10" max="100" value="64" step="1"></div>
+            <div class="control"><label for="highlight">Highlight intensity</label><span class="value" data-for="highlight"></span><input id="highlight" type="range" min="0" max="100" value="62" step="1"></div>
+            <div class="control"><label for="trail">Motion streak</label><span class="value" data-for="trail"></span><input id="trail" type="range" min="0" max="100" value="24" step="1"></div>
+            <div class="control"><label for="perspective">Depth / perspective</label><span class="value" data-for="perspective"></span><input id="perspective" type="range" min="0" max="100" value="42" step="1"></div>
+            <div class="toggle-row"><span>Studio presentation</span><input id="presentationMode" type="checkbox"></div>
+            <div class="toggle-row"><span>Turntable animation</span><input id="turntable" type="checkbox"></div>
+            <div class="control"><label for="turntableSpeed">Turntable speed</label><span class="value" data-for="turntableSpeed"></span><input id="turntableSpeed" type="range" min="1" max="100" value="34" step="1"></div>
+            <div class="toggle-row"><span>Surface & ripples</span><input id="surface" type="checkbox" checked></div>
+            <div class="toggle-row"><span>Specular sparkle</span><input id="sparkle" type="checkbox" checked></div>
+            <div class="toggle-row"><span>Transparent PNG export</span><input id="transparentExport" type="checkbox"></div>
+          </details>
+        </div>
+        <div class="footer-note">Standalone Canvas 2D simulation · no libraries · settings remain editable in the source.</div>
+      </aside>
+    </div>
+  </main>
+
+<script>
+(() => {
+  'use strict';
+
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d', { alpha: true });
+  const stage = document.getElementById('stage');
+  const app = document.getElementById('app');
+  const fpsEl = document.getElementById('fps');
+  const particleEl = document.getElementById('particleReadout');
+  const seedReadout = document.getElementById('seedReadout');
+  const modeHelp = document.getElementById('modeHelp');
+
+  const ids = [
+    'mode','seed','preset','autoReplay','pressure','spread','angle','nozzle','density',
+    'pipeNetwork','pipeMaterial','pipeDiameter','pipeFill','pipeComplexity','branchCount','flowSpeed','bubbleRate','pumpPower','valveCount','valveOpening',
+    'gravity','drag','tension','turbulence','wind','droplet','waterColor','waterHex',
+    'bgColor','bgHex','opacity','highlight','trail','perspective','presentationMode','turntable','turntableSpeed','surface','sparkle','transparentExport'
+  ];
+  const ui = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
+
+  const settings = {
+    mode: 'splash', seed: 2048, autoReplay: true,
+    pressure: 56, spread: 36, angle: 24, nozzle: 28, density: 1550,
+    pipeNetwork: 'single', pipeMaterial: 'metal', pipeDiameter: 52, pipeFill: 78, pipeComplexity: 54, branchCount: 3,
+    flowSpeed: 62, bubbleRate: 36, pumpPower: 72, valveCount: 2, valveOpening: 82,
+    gravity: 100, drag: 18, tension: 62, turbulence: 22, wind: 0, droplet: 34,
+    waterColor: '#4fd1d9', bgColor: '#060a10', opacity: 64, highlight: 62,
+    trail: 24, perspective: 42, presentationMode: false, turntable: false, turntableSpeed: 34, surface: true, sparkle: true, transparentExport: false
+  };
+
+  const presets = {
+    clean:   { mode:'splash', pressure:58, spread:40, angle:24, nozzle:28, density:1300, pipeNetwork:'single', pipeMaterial:'glass', pipeDiameter:52, pipeFill:78, pipeComplexity:54, branchCount:3, flowSpeed:62, bubbleRate:36, pumpPower:72, valveCount:2, valveOpening:82, gravity:100, drag:20, tension:74, turbulence:10, wind:0, droplet:52, opacity:70, highlight:86, trail:25, perspective:38, waterColor:'#a7efff', bgColor:'#071119' },
+    violent: { mode:'splash', pressure:92, spread:76, angle:28, nozzle:66, density:2200, pipeNetwork:'tee', pipeMaterial:'cutaway', pipeDiameter:50, pipeFill:88, pipeComplexity:62, branchCount:3, flowSpeed:78, bubbleRate:58, pumpPower:92, valveCount:3, valveOpening:68, gravity:118, drag:12, tension:40, turbulence:72, wind:9, droplet:38, opacity:82, highlight:68, trail:54, perspective:55, waterColor:'#7cdfff', bgColor:'#03070a' },
+    silky:   { mode:'jet', pressure:74, spread:9, angle:20, nozzle:43, density:1800, pipeNetwork:'single', pipeMaterial:'glass', pipeDiameter:44, pipeFill:84, pipeComplexity:40, branchCount:2, flowSpeed:74, bubbleRate:18, pumpPower:76, valveCount:1, valveOpening:94, gravity:82, drag:9, tension:90, turbulence:4, wind:0, droplet:62, opacity:68, highlight:92, trail:74, perspective:35, waterColor:'#b2f2ff', bgColor:'#050d13' },
+    mist:    { mode:'fountain', pressure:55, spread:73, angle:82, nozzle:52, density:2350, pipeNetwork:'manifold', pipeMaterial:'glass', pipeDiameter:52, pipeFill:64, pipeComplexity:56, branchCount:4, flowSpeed:58, bubbleRate:72, pumpPower:62, valveCount:4, valveOpening:76, gravity:68, drag:65, tension:18, turbulence:58, wind:18, droplet:22, opacity:42, highlight:75, trail:18, perspective:60, waterColor:'#b9f5ff', bgColor:'#07131a' },
+    process: { mode:'pipe', pressure:66, spread:18, angle:10, nozzle:34, density:1600, pipeNetwork:'manifold', pipeMaterial:'cutaway', pipeDiameter:68, pipeFill:86, pipeComplexity:58, branchCount:3, flowSpeed:78, bubbleRate:28, pumpPower:84, valveCount:4, valveOpening:78, gravity:92, drag:10, tension:76, turbulence:24, wind:0, droplet:50, opacity:70, highlight:88, trail:56, perspective:32, presentationMode:false, turntable:false, turntableSpeed:34, waterColor:'#9beaff', bgColor:'#08111a' },
+    simplepipe: { mode:'pipe', pressure:30, spread:8, angle:8, nozzle:24, density:1200, pipeNetwork:'straight', pipeMaterial:'glass', pipeDiameter:58, pipeFill:88, pipeComplexity:10, branchCount:2, flowSpeed:72, bubbleRate:18, pumpPower:0, valveCount:0, valveOpening:100, gravity:86, drag:8, tension:84, turbulence:8, wind:0, droplet:54, opacity:68, highlight:90, trail:58, perspective:18, presentationMode:false, turntable:false, turntableSpeed:34, waterColor:'#a9efff', bgColor:'#081019' },
+    studio: { mode:'pipe', pressure:22, spread:4, angle:8, nozzle:22, density:1000, pipeNetwork:'straight', pipeMaterial:'glass', pipeDiameter:64, pipeFill:92, pipeComplexity:10, branchCount:2, flowSpeed:66, bubbleRate:10, pumpPower:0, valveCount:0, valveOpening:100, gravity:82, drag:6, tension:92, turbulence:4, wind:0, droplet:60, opacity:58, highlight:100, trail:52, perspective:8, presentationMode:true, turntable:true, turntableSpeed:28, waterColor:'#b6f4ff', bgColor:'#eef4f8' }
+  };
+
+  const state = {
+    particles: [], ripples: [], splashes: [], paused: false,
+    burstAge: 0, emissionAccumulator: 0, pipeEmissionAccumulator: 0, lastTime: performance.now(),
+    fpsFrames: 0, fpsTimer: 0, fps: 60, targetX: 0, rng: null,
+    width: 0, height: 0, dpr: 1, waterline: 0, scale: 1,
+    cycle: 0, nozzlePulse: 0,
+    pipe: { runs: [], valves: [], junctions: [], pressure: { inlet:0, outlet:0, loss:0, flow:0 }, pumpPhase:0 },
+    turntableAngle: 0, uiHidden: false
+  };
+
+  function hashSeed(n) {
+    n = Number(n) || 1;
+    n = Math.abs(Math.floor(n)) % 2147483647;
+    return n || 1;
+  }
+
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function() {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  const rand = () => state.rng();
+  const range = (a,b) => a + (b-a) * rand();
+  const signed = (m=1) => (rand()*2-1)*m;
+  const clamp = (v,a,b) => Math.max(a, Math.min(b,v));
+  const lerp = (a,b,t) => a + (b-a)*t;
+
+  function hexToRgb(hex) {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return m ? { r:parseInt(m[1],16), g:parseInt(m[2],16), b:parseInt(m[3],16) } : {r:143,g:232,b:255};
+  }
+
+  function rgba(rgb, a) { return `rgba(${rgb.r},${rgb.g},${rgb.b},${a})`; }
+  function brighten(rgb, amt) {
+    return { r: Math.round(lerp(rgb.r,255,amt)), g:Math.round(lerp(rgb.g,255,amt)), b:Math.round(lerp(rgb.b,255,amt)) };
+  }
+
+  function resize() {
+    const r = stage.getBoundingClientRect();
+    state.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    state.width = Math.max(1, r.width);
+    state.height = Math.max(1, r.height);
+    canvas.width = Math.floor(state.width * state.dpr);
+    canvas.height = Math.floor(state.height * state.dpr);
+    canvas.style.width = `${state.width}px`;
+    canvas.style.height = `${state.height}px`;
+    ctx.setTransform(state.dpr,0,0,state.dpr,0,0);
+    state.waterline = state.height * (settings.mode === 'fountain' ? .79 : settings.mode === 'pipe' ? .88 : .72);
+    state.scale = Math.min(state.width, state.height) * .24;
+  }
+
+  function project(p) {
+    const depth = settings.perspective / 100;
+    const useTurntable = settings.mode === 'pipe';
+    const yaw = useTurntable ? state.turntableAngle : 0;
+    const c = Math.cos(yaw), s = Math.sin(yaw);
+    const rx = p.x * c - p.z * s;
+    const rz = p.x * s + p.z * c;
+    const perspective = 1 / (1 + Math.max(-.7, rz) * .18 * depth);
+    return {
+      x: state.width * .5 + state.targetX * state.scale + rx * state.scale * perspective,
+      y: state.waterline - p.y * state.scale * perspective + rz * state.scale * .16 * depth,
+      s: perspective,
+      depth: rz
+    };
+  }
+
+  function addParticle(x,y,z,vx,vy,vz,r,life,type='drop') {
+    if (state.particles.length >= 2900) return;
+    state.particles.push({
+      x,y,z,vx,vy,vz,r,
+      age:0, life, type,
+      phase: range(0, Math.PI*2),
+      prevX:x, prevY:y, prevZ:z,
+      hit:false,
+      sparkle: rand()
+    });
+  }
+
+  function addRipple(x,z,strength=1) {
+    if (!settings.surface || (settings.mode==='pipe' && settings.presentationMode)) return;
+    state.ripples.push({ x, z, age:0, life:range(1.0,1.8), radius:range(.02,.08), strength });
+    if (state.ripples.length > 28) state.ripples.shift();
+  }
+
+  function catmullRom(p0,p1,p2,p3,t) {
+    const t2 = t*t, t3 = t2*t;
+    return {
+      x: 0.5 * ((2*p1.x) + (-p0.x + p2.x)*t + (2*p0.x - 5*p1.x + 4*p2.x - p3.x)*t2 + (-p0.x + 3*p1.x - 3*p2.x + p3.x)*t3),
+      y: 0.5 * ((2*p1.y) + (-p0.y + p2.y)*t + (2*p0.y - 5*p1.y + 4*p2.y - p3.y)*t2 + (-p0.y + 3*p1.y - 3*p2.y + p3.y)*t3),
+      z: 0.5 * ((2*p1.z) + (-p0.z + p2.z)*t + (2*p0.z - 5*p1.z + 4*p2.z - p3.z)*t2 + (-p0.z + 3*p1.z - 3*p2.z + p3.z)*t3)
+    };
+  }
+
+  function makePipeRun(points, options={}) {
+    const samples=[];
+    let total=0;
+    for(let i=0;i<points.length-1;i++) {
+      const p0=points[Math.max(0,i-1)], p1=points[i], p2=points[i+1], p3=points[Math.min(points.length-1,i+2)];
+      const steps=22;
+      for(let j=0;j<=steps;j++) {
+        if(i>0 && j===0) continue;
+        const pos=catmullRom(p0,p1,p2,p3,j/steps);
+        if(samples.length) {
+          const prev=samples[samples.length-1];
+          total+=Math.hypot(pos.x-prev.x,pos.y-prev.y,pos.z-prev.z);
+        }
+        samples.push({...pos,l:total});
+      }
+    }
+    for(let i=0;i<samples.length;i++) {
+      const a=samples[Math.max(0,i-1)], b=samples[Math.min(samples.length-1,i+1)];
+      const dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z,m=Math.hypot(dx,dy,dz)||1;
+      samples[i].tx=dx/m;samples[i].ty=dy/m;samples[i].tz=dz/m;
+    }
+    const run={
+      points,samples,totalLength:total||1,bends:points.slice(1,-1),
+      phase:rand(),bubbles:[],flowFactor:options.flowFactor??1,
+      outlet:options.outlet??true,name:options.name??'run',pressureFactor:options.pressureFactor??1
+    };
+    const bubbleCount=Math.round((4+settings.bubbleRate/100*20)*Math.max(.45,run.flowFactor));
+    for(let i=0;i<bubbleCount;i++) run.bubbles.push({u:rand(),speed:range(.72,1.28),radius:range(.25,1),phase:range(0,Math.PI*2)});
+    return run;
+  }
+
+  function sampleRun(run,u) {
+    if(!run?.samples?.length) return {x:0,y:0,z:0,tx:1,ty:0,tz:0};
+    const target=clamp(u,0,1)*run.totalLength;
+    let lo=0,hi=run.samples.length-1;
+    while(lo<hi){const mid=(lo+hi)>>1;if(run.samples[mid].l<target)lo=mid+1;else hi=mid;}
+    const b=run.samples[lo],a=run.samples[Math.max(0,lo-1)],span=Math.max(.0001,b.l-a.l),t=clamp((target-a.l)/span,0,1);
+    return {x:lerp(a.x,b.x,t),y:lerp(a.y,b.y,t),z:lerp(a.z,b.z,t),tx:lerp(a.tx,b.tx,t),ty:lerp(a.ty,b.ty,t),tz:lerp(a.tz,b.tz,t)};
+  }
+
+  function seededMainPoints() {
+    const complexity=settings.pipeComplexity/100;
+    const bends=Math.max(2,Math.round(2+complexity*5));
+    const points=[];
+    const baseY=.56+signed(.04);
+    points.push({x:-1.58,y:baseY+signed(.03),z:signed(.1)});
+    for(let i=1;i<=bends;i++) {
+      const t=i/(bends+1);
+      const x=lerp(-1.18,1.18,t)+signed(.045);
+      const swing=Math.sin(t*Math.PI*(1.4+complexity*1.6)+state.cycle)*(.07+complexity*.16);
+      const y=clamp(baseY+swing+signed(.06+complexity*.10),.25,.9);
+      const z=signed(.06+complexity*.20)*(.35+settings.perspective/100);
+      points.push({x,y,z});
+    }
+    points.push({x:1.48,y:baseY+signed(.04),z:signed(.1)});
+    return points;
+  }
+
+  function buildPipeGeometry() {
+    const network=settings.pipeNetwork;
+    const mainPoints = network==='straight'
+      ? [{x:-1.58,y:.56,z:0},{x:-.52,y:.56,z:0},{x:.52,y:.56,z:0},{x:1.48,y:.56,z:0}]
+      : seededMainPoints();
+    const main=makePipeRun(mainPoints,{name:'main',flowFactor:1,outlet:true,pressureFactor:1});
+    const runs=[main],junctions=[];
+
+    if(network==='tee') {
+      const u=.52+signed(.06),j=sampleRun(main,u),up=rand()>.5?1:-1;
+      const branchPoints=[
+        {x:j.x,y:j.y,z:j.z},
+        {x:j.x+.18,y:j.y+up*.18,z:j.z+signed(.12)},
+        {x:.9,y:clamp(j.y+up*.34,.18,1.02),z:signed(.18)},
+        {x:1.48,y:clamp(j.y+up*.38,.16,1.05),z:signed(.12)}
+      ];
+      runs.push(makePipeRun(branchPoints,{name:'branch A',flowFactor:.48,outlet:true,pressureFactor:.82}));
+      junctions.push({run:0,u,type:'tee'});
+      main.flowFactor=.66;
+    } else if(network==='manifold') {
+      main.outlet=false;
+      const count=settings.branchCount;
+      const headerU=.58,j=sampleRun(main,headerU);
+      junctions.push({run:0,u:headerU,type:'manifold'});
+      for(let i=0;i<count;i++) {
+        const lane=count===1?0:(i/(count-1)-.5);
+        const yTarget=clamp(.56+lane*.86,.12,1.03);
+        const zTarget=lane*.16+signed(.05);
+        const pts=[
+          {x:j.x,y:j.y,z:j.z},
+          {x:j.x+.13,y:lerp(j.y,yTarget,.42),z:lerp(j.z,zTarget,.42)},
+          {x:.92,y:yTarget,z:zTarget},
+          {x:1.5,y:yTarget+signed(.025),z:zTarget}
+        ];
+        runs.push(makePipeRun(pts,{name:`branch ${i+1}`,flowFactor:1/count,outlet:true,pressureFactor:.72-.04*i}));
+      }
+    } else if(network==='loop') {
+      const u1=.28,u2=.78,a=sampleRun(main,u1),b=sampleRun(main,u2),sign=rand()>.5?1:-1;
+      const pts=[
+        {x:a.x,y:a.y,z:a.z},
+        {x:a.x+.18,y:clamp(a.y+sign*.36,.12,1.05),z:a.z+sign*.14},
+        {x:b.x-.2,y:clamp(b.y+sign*.42,.12,1.06),z:b.z-sign*.1},
+        {x:b.x,y:b.y,z:b.z}
+      ];
+      runs.push(makePipeRun(pts,{name:'bypass',flowFactor:.38,outlet:false,pressureFactor:.78}));
+      junctions.push({run:0,u:u1,type:'split'},{run:0,u:u2,type:'join'});
+      main.flowFactor=.76;
+    }
+
+    const valves=[];
+    const valveCount=network==='straight' ? 0 : settings.valveCount;
+    for(let i=0;i<valveCount;i++) {
+      const runIndex=i%runs.length;
+      const cycle=Math.floor(i/runs.length);
+      const u=clamp(.25+((i+1)/(valveCount+1))*.58+cycle*.035,.18,.88);
+      valves.push({run:runIndex,u,opening:settings.valveOpening,phase:range(0,Math.PI*2)});
+    }
+
+    state.pipe.runs=runs;
+    state.pipe.junctions=junctions;
+    state.pipe.valves=valves;
+    calculatePressureModel();
+    updateHydraulicReadout();
+  }
+
+  function calculatePressureModel() {
+    const d=.24+settings.pipeDiameter/100*.76;
+    const speed=settings.flowSpeed/100;
+    const opening=Math.max(.03,settings.valveOpening/100);
+    const totalLength=state.pipe.runs.reduce((s,r)=>s+r.totalLength*Math.max(.35,r.flowFactor),0);
+    const bends=state.pipe.runs.reduce((s,r)=>s+r.bends.length,0);
+    const branches=Math.max(0,state.pipe.runs.length-1);
+    const isStraight=settings.pipeNetwork==='straight';
+    const inlet=isStraight ? (.18+settings.flowSpeed*.028) : (.25+settings.pumpPower*.052);
+    const friction=(speed*speed)*(.12+totalLength*.075)/(d*d*d*d);
+    const bendLoss=bends*.012*(.4+speed*speed*1.8)/(d*d);
+    const valveLoss=(isStraight?0:settings.valveCount*.035*Math.pow(1-opening,2.25)*(1+speed*2.2)/(d*d));
+    const branchLoss=(isStraight?0:branches*.055*(.5+speed*1.4));
+    const baseLoss=isStraight ? friction*0.72 : friction+bendLoss+valveLoss+branchLoss;
+    const loss=clamp(baseLoss,0,inlet*.94);
+    const outlet=Math.max(.03,inlet-loss);
+    const area=Math.pow(.25+settings.pipeDiameter/100*.75,2);
+    const flow=clamp(8+area*settings.flowSpeed*1.7*(isStraight?1:opening)*Math.sqrt(Math.max(.05,outlet/inlet)),0,320);
+    state.pipe.pressure={inlet,outlet,loss,flow};
+  }
+
+  function updateHydraulicReadout() {
+    const p=state.pipe.pressure;
+    const inEl=document.getElementById('pressureInReadout');
+    if(!inEl) return;
+    inEl.textContent=`${p.inlet.toFixed(2)} bar`;
+    document.getElementById('pressureOutReadout').textContent=`${p.outlet.toFixed(2)} bar`;
+    document.getElementById('pressureLossReadout').textContent=`${p.loss.toFixed(2)} bar`;
+    document.getElementById('flowReadout').textContent=`${Math.round(p.flow)} L/min`;
+  }
+
+  function emitPipeOutflow(dt) {
+    if(!state.pipe.runs.length) return;
+    const pressureRatio=state.pipe.pressure.inlet?state.pipe.pressure.outlet/state.pipe.pressure.inlet:0;
+    const isStraight=settings.pipeNetwork==='straight';
+    const opening=isStraight ? 1 : settings.valveOpening/100;
+    for(const run of state.pipe.runs) {
+      if(!run.outlet) continue;
+      run.emission=(run.emission||0)+settings.density*(.06+settings.flowSpeed/100*.20)*run.flowFactor*opening*(.3+pressureRatio*.7)*dt;
+      const n=Math.min(48,Math.floor(run.emission));run.emission-=n;
+      const end=sampleRun(run,.998),m=Math.hypot(end.tx,end.ty,end.tz)||1;
+      const dir={x:end.tx/m,y:end.ty/m,z:end.tz/m};
+      const speed=(.55+settings.flowSpeed*.010+(isStraight?0:settings.pumpPower*.009))*(.4+pressureRatio*.8);
+      const spread=.006+settings.spread/100*(isStraight?.05:.10);
+      for(let i=0;i<n;i++) addParticle(
+        end.x+dir.x*.045+signed(.012),end.y+dir.y*.045+signed(.012),end.z+dir.z*.045+signed(.012),
+        dir.x*speed+signed(spread),dir.y*speed+signed(spread*.38),dir.z*speed+signed(spread),
+        range(.007,.023)*lerp(.65,1.45,settings.droplet/100),range(.55,1.55),settings.tension>64?'sheet':'drop'
+      );
+    }
+  }
+
+  function updatePipeFlow(dt) {
+    if(!state.pipe.runs.length) return;
+    const isStraight=settings.pipeNetwork==='straight';
+    const opening=isStraight ? 1 : settings.valveOpening/100;
+    const pressureRatio=state.pipe.pressure.inlet?state.pipe.pressure.outlet/state.pipe.pressure.inlet:0;
+    const speed=(.035+settings.flowSpeed/100*.38)*(.25+opening*.75)*(.45+pressureRatio*.7);
+    if(!isStraight) state.pipe.pumpPhase+=dt*(1.2+settings.pumpPower/100*8);
+    for(const run of state.pipe.runs) {
+      run.phase=(run.phase+dt*speed*run.flowFactor)%1;
+      for(const b of run.bubbles) {b.u=(b.u+dt*speed*b.speed*run.flowFactor)%1;b.phase+=dt*(2.4+settings.turbulence/100*5);}
+    }
+    if((isStraight || settings.pumpPower>2) && settings.flowSpeed>1 && (isStraight || settings.valveOpening>1)) emitPipeOutflow(dt);
+  }
+
+  function emitSplash() {
+    const count = Math.round(settings.density * .78);
+    const speed = 1.65 + settings.pressure * .028;
+    const spread = settings.spread / 100;
+    const source = settings.nozzle / 100;
+    const tension = settings.tension / 100;
+
+    // Crown wall: coherent radial sheets that break into droplets.
+    const crownCount = Math.round(count * .54);
+    for (let i=0; i<crownCount; i++) {
+      const a = (i / crownCount) * Math.PI * 2 + signed(.025 + spread*.08);
+      const sectors = 7 + Math.floor(rand()*5);
+      const scallop = .76 + .24 * Math.pow(Math.max(0, Math.sin(a*sectors + state.cycle)), 1.8);
+      const ring = range(.02, .10 + source*.16);
+      const radial = speed * range(.48, 1.04) * scallop;
+      const vertical = speed * range(.58, 1.18) * lerp(.8, 1.18, tension);
+      addParticle(
+        Math.cos(a)*ring, range(.002,.035), Math.sin(a)*ring,
+        Math.cos(a)*radial*(.58+spread*.5), vertical, Math.sin(a)*radial*(.58+spread*.5),
+        range(.012,.035) * lerp(.7,1.45,settings.droplet/100), range(1.05,2.15), 'sheet'
+      );
+    }
+
+    // Central impact plume.
+    const plumeCount = Math.round(count * .30);
+    for (let i=0; i<plumeCount; i++) {
+      const a = range(0,Math.PI*2);
+      const radial = speed * range(.06, .42 + spread*.32);
+      addParticle(
+        signed(.035+source*.08), range(.01,.08), signed(.035+source*.08),
+        Math.cos(a)*radial, speed*range(.72,1.48), Math.sin(a)*radial,
+        range(.012,.05)*lerp(.6,1.5,settings.droplet/100), range(.85,2.35), 'drop'
+      );
+    }
+
+    // Fine spray.
+    const sprayCount = count - crownCount - plumeCount;
+    for (let i=0; i<sprayCount; i++) {
+      const a = range(0,Math.PI*2);
+      const radial = speed * range(.55,1.35) * lerp(.45,1.15,spread);
+      addParticle(
+        signed(.08), range(.01,.12), signed(.08),
+        Math.cos(a)*radial, speed*range(.25,1.1), Math.sin(a)*radial,
+        range(.005,.019)*lerp(.55,1.25,settings.droplet/100), range(.55,1.5), 'mist'
+      );
+    }
+
+    addRipple(0,0,1.2);
+    addRipple(0,0,.8);
+    state.splashes.push({age:0, life:.62, x:0, z:0, strength:1});
+  }
+
+  function emitJet(dt) {
+    const countPerSecond = settings.density * .94;
+    state.emissionAccumulator += countPerSecond * dt;
+    const n = Math.min(120, Math.floor(state.emissionAccumulator));
+    state.emissionAccumulator -= n;
+
+    const speed = 1.5 + settings.pressure * .032;
+    const theta = settings.angle * Math.PI/180;
+    const spread = settings.spread/100;
+    const nozzle = settings.nozzle/100;
+    const tension = settings.tension/100;
+    const pulse = 1 + Math.sin(state.nozzlePulse*3.1)*.025*(1-tension);
+
+    for (let i=0;i<n;i++) {
+      const jitter = .012 + spread*.23;
+      const az = signed(jitter);
+      const el = signed(jitter*.65);
+      const r = range(.012,.032) * lerp(.7,1.6,settings.droplet/100);
+      const sourceY = .62 + range(-.06,.06)*nozzle;
+      const sourceZ = signed(.055*nozzle);
+      const v = speed * pulse * range(.91,1.07);
+      addParticle(
+        -1.48, sourceY, sourceZ,
+        Math.cos(theta+el)*v,
+        Math.sin(theta+el)*v,
+        Math.sin(az)*v*.55,
+        r, range(1.15,2.35), tension>.62 ? 'sheet':'drop'
+      );
+    }
+  }
+
+  function emitFountain(dt) {
+    const countPerSecond = settings.density * .78;
+    state.emissionAccumulator += countPerSecond*dt;
+    const n = Math.min(110,Math.floor(state.emissionAccumulator));
+    state.emissionAccumulator -= n;
+
+    const speed = 1.5 + settings.pressure*.031;
+    const spread = settings.spread/100;
+    const nozzle = settings.nozzle/100;
+    for(let i=0;i<n;i++) {
+      const a = range(0,Math.PI*2);
+      const cone = range(0.015, .10 + spread*.62);
+      const r = range(.009,.03)*lerp(.65,1.55,settings.droplet/100);
+      addParticle(
+        signed(.04*nozzle), .015, signed(.04*nozzle),
+        Math.cos(a)*speed*cone,
+        speed*range(.86,1.12),
+        Math.sin(a)*speed*cone,
+        r, range(1.25,2.7), settings.tension>67?'sheet':'drop'
+      );
+    }
+  }
+
+  function secondaryImpact(p, impactSpeed) {
+    if (p.hit || impactSpeed < 1.0 || state.particles.length > 2550) return;
+    p.hit = true;
+    const tension = settings.tension/100;
+    const n = Math.round(clamp(impactSpeed*2.2*(1-tension*.4),2,11));
+    for(let i=0;i<n;i++) {
+      const a = range(0,Math.PI*2);
+      const s = range(.16,.55)*impactSpeed;
+      addParticle(p.x, .006, p.z,
+        Math.cos(a)*s, range(.18,.55)*impactSpeed, Math.sin(a)*s,
+        p.r*range(.35,.75), range(.3,.95), 'mist');
+    }
+    if (rand() < .25) addRipple(p.x,p.z,clamp(impactSpeed/4,.2,1));
+  }
+
+  function reset() {
+    settings.seed = hashSeed(ui.seed.value);
+    ui.seed.value = settings.seed;
+    state.rng = mulberry32(settings.seed);
+    state.particles.length = 0;
+    state.ripples.length = 0;
+    state.splashes.length = 0;
+    state.burstAge = 0;
+    state.emissionAccumulator = 0;
+    state.pipeEmissionAccumulator = 0;
+    state.cycle = rand()*Math.PI*2;
+    state.nozzlePulse = rand()*10;
+    seedReadout.textContent = settings.seed;
+    state.waterline = state.height * (settings.mode === 'fountain' ? .79 : settings.mode === 'pipe' ? .88 : .72);
+    if (settings.mode === 'pipe') buildPipeGeometry();
+    if (settings.mode === 'splash') emitSplash();
+  }
+
+  function update(dt) {
+    state.burstAge += dt;
+    state.nozzlePulse += dt;
+    if(settings.mode==='pipe' && settings.turntable) {
+      state.turntableAngle = (state.turntableAngle + dt * (0.10 + settings.turntableSpeed/100 * 0.62)) % (Math.PI*2);
+    }
+
+    if (settings.mode === 'jet') emitJet(dt);
+    if (settings.mode === 'fountain') emitFountain(dt);
+    if (settings.mode === 'pipe') updatePipeFlow(dt);
+
+    const gravity = 3.35 * settings.gravity/100;
+    const drag = .025 + (settings.drag/100)*.72;
+    const wind = settings.wind/100 * 1.15;
+    const turbulence = settings.turbulence/100;
+    const tension = settings.tension/100;
+
+    for (let i=state.particles.length-1; i>=0; i--) {
+      const p = state.particles[i];
+      p.age += dt;
+      p.prevX=p.x; p.prevY=p.y; p.prevZ=p.z;
+
+      const noise = Math.sin(p.phase + p.age*6.7 + p.y*3.1) * turbulence;
+      p.vx += (wind + noise*.22) * dt;
+      p.vz += Math.cos(p.phase*1.7 + p.age*5.2) * turbulence*.17*dt;
+      p.vy -= gravity * dt;
+
+      const d = Math.exp(-drag*dt);
+      p.vx*=d; p.vy*=d; p.vz*=d;
+
+      // Tension keeps larger particles coherent and subtly pulls sheets inward.
+      if (p.type === 'sheet') {
+        p.vx *= 1 - tension*.028*dt;
+        p.vz *= 1 - tension*.028*dt;
+      }
+
+      p.x += p.vx*dt;
+      p.y += p.vy*dt;
+      p.z += p.vz*dt;
+
+      if (p.y <= 0) {
+        const impact = Math.abs(p.vy);
+        secondaryImpact(p,impact);
+        p.y = 0;
+        if (p.type === 'mist' && impact < .75) {
+          p.vy *= -.16; p.vx*=.48; p.vz*=.48; p.life=Math.min(p.life,p.age+.16);
+        } else {
+          p.life = Math.min(p.life,p.age+.035);
+        }
+      }
+
+      if (p.age > p.life || p.x > 4 || p.x < -4 || Math.abs(p.z)>4) {
+        state.particles.splice(i,1);
+      }
+    }
+
+    for(let i=state.ripples.length-1;i>=0;i--) {
+      const r=state.ripples[i]; r.age+=dt; r.radius += dt*(.38+.34*r.strength);
+      if(r.age>r.life) state.ripples.splice(i,1);
+    }
+    for(let i=state.splashes.length-1;i>=0;i--) {
+      const s=state.splashes[i]; s.age+=dt;
+      if(s.age>s.life) state.splashes.splice(i,1);
+    }
+
+    if (settings.mode === 'splash' && settings.autoReplay && state.particles.length < 18 && state.burstAge > 1.45) {
+      reset();
+    }
+  }
+
+  function drawBackground() {
+    const bg = hexToRgb(settings.bgColor);
+    const water=hexToRgb(settings.waterColor);
+    if(settings.mode==='pipe' && settings.presentationMode) {
+      const g = ctx.createLinearGradient(0,0,0,state.height);
+      g.addColorStop(0, 'rgb(252, 254, 255)');
+      g.addColorStop(.45, rgba(brighten(bg,.08),1));
+      g.addColorStop(1, rgba(brighten(bg,.02),1));
+      ctx.fillStyle = g;
+      ctx.fillRect(0,0,state.width,state.height);
+
+      const spot = ctx.createRadialGradient(state.width*.5,state.height*.42,0,state.width*.5,state.height*.42,state.width*.42);
+      spot.addColorStop(0,'rgba(255,255,255,.92)');
+      spot.addColorStop(.55,'rgba(255,255,255,.42)');
+      spot.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle = spot;
+      ctx.fillRect(0,0,state.width,state.height);
+
+      const horizon = state.height*.66;
+      const floor = ctx.createLinearGradient(0,horizon,0,state.height);
+      floor.addColorStop(0,'rgba(214,224,232,.22)');
+      floor.addColorStop(1,'rgba(228,235,240,.55)');
+      ctx.fillStyle = floor;
+      ctx.fillRect(0,horizon,state.width,state.height-horizon);
+
+      const floorLine = ctx.createLinearGradient(0,horizon-1,state.width,horizon+1);
+      floorLine.addColorStop(0,'rgba(255,255,255,0)');
+      floorLine.addColorStop(.5,'rgba(190,204,214,.62)');
+      floorLine.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle=floorLine;
+      ctx.fillRect(0,horizon-1,state.width,2);
+
+      const glow=ctx.createRadialGradient(state.width*.5,state.height*.5,0,state.width*.5,state.height*.5,state.width*.3);
+      glow.addColorStop(0,rgba(water,.08));
+      glow.addColorStop(.55,rgba(water,.02));
+      glow.addColorStop(1,rgba(water,0));
+      ctx.fillStyle=glow;
+      ctx.fillRect(0,0,state.width,state.height);
+      return;
+    }
+
+    const g = ctx.createRadialGradient(state.width*.54,state.height*.34,0,state.width*.5,state.height*.42,Math.max(state.width,state.height)*.84);
+    g.addColorStop(0, rgba(brighten(bg,.10),1));
+    g.addColorStop(.48, rgba(bg,1));
+    g.addColorStop(1, `rgb(${Math.round(bg.r*.38)},${Math.round(bg.g*.42)},${Math.round(bg.b*.48)})`);
+    ctx.fillStyle=g;
+    ctx.fillRect(0,0,state.width,state.height);
+
+    // Soft atmospheric glow behind the fluid.
+    const glow=ctx.createRadialGradient(state.width*.52,state.waterline-state.height*.22,0,state.width*.52,state.waterline-state.height*.18,state.width*.47);
+    glow.addColorStop(0,rgba(water,.09));
+    glow.addColorStop(.55,rgba(water,.025));
+    glow.addColorStop(1,rgba(water,0));
+    ctx.fillStyle=glow;
+    ctx.fillRect(0,0,state.width,state.height);
+
+    // Subtle vignette.
+    const v=ctx.createRadialGradient(state.width*.5,state.height*.47,state.height*.18,state.width*.5,state.height*.47,state.width*.72);
+    v.addColorStop(0,'rgba(0,0,0,0)');
+    v.addColorStop(1,'rgba(0,0,0,.54)');
+    ctx.fillStyle=v;
+    ctx.fillRect(0,0,state.width,state.height);
+  }
+
+  function drawSurface() {
+    if (!settings.surface) return;
+    const water=hexToRgb(settings.waterColor);
+    const y=state.waterline;
+
+    const surface=ctx.createLinearGradient(0,y-18,0,state.height);
+    surface.addColorStop(0,rgba(water,.07));
+    surface.addColorStop(.12,rgba(water,.035));
+    surface.addColorStop(1,'rgba(0,0,0,.12)');
+    ctx.fillStyle=surface;
+    ctx.fillRect(0,y,state.width,state.height-y);
+
+    const horizon=ctx.createLinearGradient(0,y-1,state.width,y+1);
+    horizon.addColorStop(0,rgba(water,0));
+    horizon.addColorStop(.2,rgba(water,.08));
+    horizon.addColorStop(.5,rgba(brighten(water,.35),.2));
+    horizon.addColorStop(.8,rgba(water,.08));
+    horizon.addColorStop(1,rgba(water,0));
+    ctx.fillStyle=horizon;
+    ctx.fillRect(0,y-1,state.width,2);
+
+    // Broad elliptical reflection.
+    const refl=ctx.createRadialGradient(state.width*.5+state.targetX*state.scale,y,0,state.width*.5+state.targetX*state.scale,y,state.width*.36);
+    refl.addColorStop(0,rgba(water,.12));
+    refl.addColorStop(.45,rgba(water,.035));
+    refl.addColorStop(1,rgba(water,0));
+    ctx.save();
+    ctx.scale(1,.18);
+    ctx.fillStyle=refl;
+    ctx.beginPath();
+    ctx.arc(state.width*.5+state.targetX*state.scale,y/.18,state.width*.36,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalCompositeOperation='screen';
+    for (const r of state.ripples) {
+      const p=project({x:r.x,y:0,z:r.z});
+      const t=r.age/r.life;
+      const alpha=(1-t)*.24*r.strength;
+      ctx.strokeStyle=rgba(brighten(water,.35),alpha);
+      ctx.lineWidth=Math.max(.5,1.2*(1-t));
+      ctx.beginPath();
+      ctx.ellipse(p.x,p.y,r.radius*state.scale, r.radius*state.scale*.19, 0,0,Math.PI*2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawImpactFlash() {
+    const water=hexToRgb(settings.waterColor);
+    for(const s of state.splashes) {
+      const t=s.age/s.life;
+      const p=project({x:s.x,y:.02,z:s.z});
+      const rad=state.scale*(.08+t*.44);
+      const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,rad);
+      g.addColorStop(0,rgba(brighten(water,.55),(1-t)*.22));
+      g.addColorStop(.35,rgba(water,(1-t)*.08));
+      g.addColorStop(1,rgba(water,0));
+      ctx.fillStyle=g;
+      ctx.beginPath(); ctx.arc(p.x,p.y,rad,0,Math.PI*2); ctx.fill();
+    }
+  }
+
+  function drawParticles() {
+    const water=hexToRgb(settings.waterColor);
+    const light=brighten(water,.72);
+    const alphaBase=settings.opacity/100;
+    const trailAmount=settings.trail/100;
+    const highlight=settings.highlight/100;
+
+    // Depth sort gives the spray a more volumetric silhouette.
+    const particles = state.particles.slice().sort((a,b)=>b.z-a.z);
+
+    // Soft volume pass.
+    ctx.save();
+    ctx.globalCompositeOperation='screen';
+    ctx.lineCap='round';
+    for(const p of particles) {
+      const a=1-p.age/p.life;
+      if(a<=0) continue;
+      const q=project(p);
+      const prev=project({x:p.prevX,y:p.prevY,z:p.prevZ});
+      const speed=Math.hypot(p.vx,p.vy,p.vz);
+      const size=Math.max(.45,p.r*state.scale*q.s);
+      const streak=lerp(.3,2.4,trailAmount)*clamp(speed/2.4,.25,1.5);
+      const sx=q.x-(q.x-prev.x)*streak*5.0;
+      const sy=q.y-(q.y-prev.y)*streak*5.0;
+      const typeAlpha=p.type==='mist'?.34:p.type==='sheet'?.72:.58;
+      ctx.strokeStyle=rgba(water,a*alphaBase*typeAlpha*.34);
+      ctx.lineWidth=size*(p.type==='sheet'?3.4:2.8);
+      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(q.x,q.y); ctx.stroke();
+    }
+
+    // Main body and specular pass.
+    ctx.globalCompositeOperation='source-over';
+    for(const p of particles) {
+      const life=1-p.age/p.life;
+      if(life<=0) continue;
+      const q=project(p);
+      const prev=project({x:p.prevX,y:p.prevY,z:p.prevZ});
+      const speed=Math.hypot(p.vx,p.vy,p.vz);
+      const size=Math.max(.42,p.r*state.scale*q.s);
+      const streak=lerp(.25,2.05,trailAmount)*clamp(speed/2.5,.18,1.55);
+      const sx=q.x-(q.x-prev.x)*streak*4.2;
+      const sy=q.y-(q.y-prev.y)*streak*4.2;
+      const mist=p.type==='mist';
+      const bodyAlpha=life*alphaBase*(mist?.42:p.type==='sheet'?.78:.68);
+
+      ctx.strokeStyle=rgba(water,bodyAlpha);
+      ctx.lineWidth=size*(p.type==='sheet'?1.72:1.32);
+      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(q.x,q.y); ctx.stroke();
+
+      if(size>1.1 && !mist) {
+        ctx.strokeStyle=rgba(light,bodyAlpha*.55*highlight);
+        ctx.lineWidth=Math.max(.45,size*.34);
+        ctx.beginPath();
+        ctx.moveTo(lerp(sx,q.x,.30)-size*.14,lerp(sy,q.y,.30)-size*.13);
+        ctx.lineTo(q.x-size*.12,q.y-size*.12);
+        ctx.stroke();
+      }
+
+      if(settings.sparkle && p.sparkle>.82 && life>.35 && size>.75) {
+        const twinkle=.35+.65*Math.max(0,Math.sin(p.phase+p.age*13));
+        ctx.fillStyle=rgba(light,twinkle*highlight*life*.75);
+        ctx.beginPath(); ctx.arc(q.x-size*.16,q.y-size*.18,Math.max(.35,size*.19),0,Math.PI*2); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawPipeSystem() {
+    if(settings.mode!=='pipe'||!state.pipe.runs.length)return;
+    const bg=hexToRgb(settings.bgColor),water=hexToRgb(settings.waterColor),metal=brighten(bg,.28),edge=brighten(metal,.52);
+    const outerW=state.scale*(.12+settings.pipeDiameter/100*.18),innerW=outerW*(.20+settings.pipeFill/100*.58);
+    const turbulence=settings.turbulence/100,highlight=settings.highlight/100,material=settings.pipeMaterial,isStudio=settings.presentationMode;
+    const pressure=state.pipe.pressure;
+
+    const traceRun=run=>{run.samples.forEach((p,i)=>{const q=project(p);if(i===0)ctx.moveTo(q.x,q.y);else ctx.lineTo(q.x,q.y);});};
+    const pressureAt=(run,u)=>clamp((pressure.inlet-(pressure.loss*(u*.78+(1-run.pressureFactor)*.45)))/Math.max(.01,pressure.inlet),0,1);
+
+    ctx.save();ctx.lineJoin='round';ctx.lineCap='round';
+    for(const run of state.pipe.runs) {
+      ctx.beginPath();traceRun(run);ctx.strokeStyle=isStudio?'rgba(30,45,55,.10)':'rgba(0,0,0,.34)';ctx.lineWidth=outerW+(isStudio?6:10);ctx.stroke();
+      if(material==='glass' || material==='acrylic' || material==='frosted' || material==='smoked') {
+        const shellAlpha = material==='smoked' ? .58 : material==='frosted' ? .38 : material==='acrylic' ? .26 : .20;
+        const edgeAlpha = material==='smoked' ? .42 : material==='frosted' ? .30 : material==='acrylic' ? .62 : .35;
+        const shellColor = material==='smoked' ? {r:42,g:58,b:68} : material==='acrylic' ? {r:218,g:246,b:255} : {r:196,g:232,b:246};
+        ctx.beginPath();traceRun(run);ctx.strokeStyle=rgba(shellColor,shellAlpha);ctx.lineWidth=outerW;ctx.stroke();
+        if(material==='frosted') {
+          ctx.beginPath();traceRun(run);ctx.strokeStyle='rgba(244,251,255,.22)';ctx.lineWidth=outerW*.72;ctx.stroke();
+        }
+        ctx.beginPath();traceRun(run);ctx.strokeStyle=`rgba(238,251,255,${edgeAlpha})`;ctx.lineWidth=Math.max(1,outerW*(material==='acrylic'?.16:.12));ctx.stroke();
+      } else {
+        const shell=ctx.createLinearGradient(state.width*.12,state.height*.1,state.width*.88,state.height*.74);
+        if(material==='chrome') {
+          shell.addColorStop(0,'rgba(249,253,255,.98)');
+          shell.addColorStop(.18,'rgba(80,101,116,.96)');
+          shell.addColorStop(.38,'rgba(232,244,250,.98)');
+          shell.addColorStop(.62,'rgba(35,49,59,.98)');
+          shell.addColorStop(.84,'rgba(211,229,238,.98)');
+          shell.addColorStop(1,'rgba(62,77,88,.98)');
+        } else {
+          shell.addColorStop(0,rgba(brighten(metal,.24),material==='cutaway'?.62:.96));
+          shell.addColorStop(.42,rgba(metal,material==='cutaway'?.48:.9));
+          shell.addColorStop(1,rgba(brighten(bg,.08),material==='cutaway'?.66:.97));
+        }
+        ctx.beginPath();traceRun(run);ctx.strokeStyle=shell;ctx.lineWidth=outerW;ctx.stroke();
+        ctx.beginPath();traceRun(run);ctx.strokeStyle=material==='chrome'?'rgba(255,255,255,.62)':rgba(edge,material==='cutaway'?.38:.22);ctx.lineWidth=Math.max(1,outerW*(material==='chrome'?.10:.15));ctx.stroke();
+      }
+
+      const waterVisibility = material==='chrome' ? .24 : material==='metal' ? .44 : material==='frosted' ? .42 : material==='smoked' ? .52 : .60;
+      const waterBase = material==='chrome' ? .10 : material==='metal' ? .22 : material==='smoked' ? .20 : .30;
+      ctx.beginPath();traceRun(run);ctx.strokeStyle=rgba(water,waterBase+settings.opacity/100*waterVisibility);ctx.lineWidth=innerW*(material==='chrome'?.64:1);ctx.stroke();
+
+      if(material==='cutaway') {
+        ctx.save();ctx.setLineDash([outerW*.18,outerW*.12]);
+        ctx.beginPath();traceRun(run);ctx.strokeStyle='rgba(225,245,255,.30)';ctx.lineWidth=Math.max(1.2,outerW*.08);ctx.stroke();ctx.restore();
+      }
+      if(material==='chrome') {
+        ctx.save();ctx.setLineDash([outerW*.42,outerW*.30]);ctx.lineDashOffset=-run.phase*outerW*16;
+        ctx.beginPath();traceRun(run);ctx.strokeStyle=rgba(brighten(water,.78),.32+.34*highlight);ctx.lineWidth=Math.max(1.2,innerW*.16);ctx.stroke();ctx.restore();
+      }
+
+      ctx.globalCompositeOperation='screen';
+      const dashCount=Math.round(10+18*run.flowFactor),segmentSize=.045+settings.flowSpeed/100*.035;
+      for(let i=0;i<dashCount;i++) {
+        const start=(run.phase+i/dashCount)%1,end=Math.min(1,start+segmentSize);
+        ctx.beginPath();
+        for(let s=0;s<=10;s++){const pos=sampleRun(run,lerp(start,end,s/10)),q=project(pos);if(s===0)ctx.moveTo(q.x,q.y);else ctx.lineTo(q.x,q.y);}
+        const pRatio=pressureAt(run,start);
+        ctx.strokeStyle=rgba(brighten(water,.64),(.08+highlight*.48)*pRatio);ctx.lineWidth=Math.max(1,innerW*.14);ctx.stroke();
+      }
+
+      for(const bubble of run.bubbles) {
+        const pos=sampleRun(run,bubble.u),q=project(pos),pulse=.4+.6*Math.max(0,Math.sin(bubble.phase));
+        const radius=Math.max(.45,bubble.radius*(.7+pulse*.55)*(.16+settings.bubbleRate/100*.38));
+        ctx.fillStyle=rgba(brighten(water,.82),(.10+pulse*.22)*(.2+settings.bubbleRate/100*.8)*pressureAt(run,bubble.u));
+        ctx.beginPath();ctx.arc(q.x,q.y,radius+innerW*.025,0,Math.PI*2);ctx.fill();
+      }
+      ctx.globalCompositeOperation='source-over';
+
+      run.bends.forEach((bend,i)=>{const q=project(bend);ctx.strokeStyle=rgba(brighten(water,.34),.05+turbulence*.22);ctx.lineWidth=1.1;ctx.beginPath();ctx.arc(q.x,q.y,outerW*(.30+.05*Math.sin(state.nozzlePulse*2+i)),0,Math.PI*2);ctx.stroke();});
+    }
+
+    if(isStudio) {
+      ctx.save();
+      ctx.globalCompositeOperation='multiply';
+      ctx.globalAlpha=.12;
+      for(const run of state.pipe.runs) {
+        ctx.beginPath();
+        run.samples.forEach((p,i)=>{const q=project(p); const ry=q.y + (state.height*.66 - q.y)*2 + 22; if(i===0) ctx.moveTo(q.x, ry); else ctx.lineTo(q.x, ry);});
+        ctx.strokeStyle='rgba(120,140,155,.28)';
+        ctx.lineWidth=innerW*.72;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    const isStraight=settings.pipeNetwork==='straight';
+
+    if(!isStraight && !isStudio) {
+      // Junction collars
+      for(const j of state.pipe.junctions){const pos=sampleRun(state.pipe.runs[j.run],j.u),q=project(pos);ctx.fillStyle=material==='glass'?'rgba(210,244,255,.16)':'rgba(24,39,49,.82)';ctx.strokeStyle='rgba(210,240,255,.24)';ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(q.x,q.y,outerW*.44,0,Math.PI*2);ctx.fill();ctx.stroke();}
+
+      // Valve bodies and handwheels
+      for(const valve of state.pipe.valves) {
+        const run=state.pipe.runs[valve.run],pos=sampleRun(run,valve.u),q=project(pos),angle=Math.atan2(pos.ty,pos.tx),open=settings.valveOpening/100;
+        ctx.save();ctx.translate(q.x,q.y);ctx.rotate(angle);
+        ctx.fillStyle='rgba(18,29,37,.94)';ctx.strokeStyle='rgba(203,235,248,.28)';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(-outerW*.34,-outerW*.40);ctx.lineTo(0,-outerW*.22);ctx.lineTo(outerW*.34,-outerW*.40);ctx.lineTo(outerW*.34,outerW*.40);ctx.lineTo(0,outerW*.22);ctx.lineTo(-outerW*.34,outerW*.40);ctx.closePath();ctx.fill();ctx.stroke();
+        ctx.rotate(-angle);ctx.strokeStyle=rgba(brighten(water,.55),.35+.45*open);ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,-outerW*.72,outerW*.22,0,Math.PI*2);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(-outerW*.22,-outerW*.72);ctx.lineTo(outerW*.22,-outerW*.72);ctx.moveTo(0,-outerW*.94);ctx.lineTo(0,-outerW*.50);ctx.stroke();
+        ctx.restore();
+      }
+
+      // Centrifugal pump at inlet
+      const main=state.pipe.runs[0],inlet=sampleRun(main,.002),iq=project(inlet),pumpR=outerW*.72;
+      ctx.save();ctx.translate(iq.x-outerW*.52,iq.y);ctx.fillStyle='rgba(13,26,34,.96)';ctx.strokeStyle='rgba(201,236,249,.28)';ctx.lineWidth=1.4;
+      ctx.beginPath();ctx.arc(0,0,pumpR,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.fillStyle=rgba(water,.10+.28*settings.pumpPower/100);ctx.beginPath();ctx.arc(0,0,pumpR*.58,0,Math.PI*2);ctx.fill();
+      ctx.rotate(state.pipe.pumpPhase);
+      for(let i=0;i<5;i++){ctx.rotate(Math.PI*2/5);ctx.strokeStyle=rgba(brighten(water,.62),.32+.5*settings.pumpPower/100);ctx.lineWidth=Math.max(1,pumpR*.10);ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(pumpR*.22,-pumpR*.10,pumpR*.48,0);ctx.stroke();}
+      ctx.restore();
+      ctx.fillStyle='rgba(225,245,252,.62)';ctx.font='9px "Space Mono", ui-monospace, monospace';ctx.fillText('PUMP',iq.x-pumpR*.72,iq.y+pumpR+14);
+
+      // Simple pressure tags
+      ctx.font='10px "Space Mono", ui-monospace, monospace';
+      ctx.fillStyle='rgba(205,239,251,.72)';ctx.fillText(`${pressure.inlet.toFixed(1)} bar`,iq.x-pumpR*.9,iq.y-pumpR-10);
+      for(const run of state.pipe.runs.filter(r=>r.outlet)) {const out=project(sampleRun(run,.99));ctx.fillStyle=rgba(brighten(water,.52),.72);ctx.fillText(`${(pressure.outlet*run.pressureFactor).toFixed(1)} bar`,out.x-18,out.y-outerW*.62);}
+    }
+
+    ctx.restore();
+  }
+
+  function drawNozzleGuide() {
+    if(settings.mode==='splash' || settings.mode==='pipe') return;
+    const water=hexToRgb(settings.waterColor);
+    ctx.save();
+    ctx.globalAlpha=.5;
+    ctx.strokeStyle=rgba(brighten(water,.25),.35);
+    ctx.fillStyle='rgba(5,16,23,.8)';
+    ctx.lineWidth=1;
+
+    if(settings.mode==='jet') {
+      const a=project({x:-1.58,y:.62,z:0});
+      const b=project({x:-1.43,y:.62,z:0});
+      ctx.beginPath();
+      ctx.roundRect(a.x-30,a.y-8,38,16,5); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(b.x,b.y); ctx.lineTo(b.x+15,b.y); ctx.stroke();
+    } else {
+      const p=project({x:0,y:0,z:0});
+      ctx.beginPath(); ctx.ellipse(p.x,p.y,28,6,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function render(exportPass=false) {
+    ctx.setTransform(state.dpr,0,0,state.dpr,0,0);
+    ctx.clearRect(0,0,state.width,state.height);
+    if (!(exportPass && settings.transparentExport)) drawBackground();
+    drawSurface();
+    drawImpactFlash();
+    drawPipeSystem();
+    drawNozzleGuide();
+    drawParticles();
+  }
+
+  function loop(now) {
+    const rawDt=(now-state.lastTime)/1000;
+    state.lastTime=now;
+    const dt=Math.min(.033,Math.max(.001,rawDt));
+
+    state.fpsFrames++;
+    state.fpsTimer+=rawDt;
+    if(state.fpsTimer>.55) {
+      state.fps=Math.round(state.fpsFrames/state.fpsTimer);
+      state.fpsFrames=0; state.fpsTimer=0;
+      fpsEl.textContent=state.fps;
+    }
+
+    if(!state.paused) update(dt);
+    render();
+    particleEl.textContent=state.particles.length;
+    requestAnimationFrame(loop);
+  }
+
+  function setRangeVisual(el) {
+    const min=Number(el.min), max=Number(el.max), value=Number(el.value);
+    const pct=((value-min)/(max-min))*100;
+    el.style.setProperty('--pct',`${pct}%`);
+  }
+
+  function formatValue(id,v) {
+    const n=Number(v);
+    const map={
+      pressure:`${n}%`, spread:`${n}%`, angle:`${n}°`, nozzle:`${n}%`, density:n.toLocaleString(),
+      pipeDiameter:`${n}%`, pipeFill:`${n}%`, pipeComplexity:`${n}%`, branchCount:`${n}`, flowSpeed:`${n}%`, bubbleRate:`${n}%`,
+      pumpPower:`${n}%`, valveCount:`${n}`, valveOpening:`${n}%`,
+      gravity:`${(n/100).toFixed(2)} g`, drag:`${n}%`, tension:`${n}%`, turbulence:`${n}%`,
+      wind:n===0?'Still':`${n>0?'+':''}${n}%`, droplet:`${n}%`, opacity:`${n}%`, highlight:`${n}%`,
+      trail:`${n}%`, perspective:`${n}%`, turntableSpeed:`${n}%`
+    };
+    return map[id] ?? String(v);
+  }
+
+  function syncRange(id) {
+    const el=ui[id];
+    settings[id]=Number(el.value);
+    setRangeVisual(el);
+    const out=document.querySelector(`[data-for="${id}"]`);
+    if(out) out.textContent=formatValue(id,el.value);
+  }
+
+  const rangeIds=['pressure','spread','angle','nozzle','density','pipeDiameter','pipeFill','pipeComplexity','branchCount','flowSpeed','bubbleRate','pumpPower','valveCount','valveOpening','gravity','drag','tension','turbulence','wind','droplet','opacity','highlight','trail','perspective','turntableSpeed'];
+  rangeIds.forEach(id=>{
+    syncRange(id);
+    ui[id].addEventListener('input',()=>{
+      syncRange(id); ui.preset.value='custom';
+      if(['density','pressure','spread','nozzle','droplet','tension'].includes(id) && settings.mode==='splash') reset();
+      if(['pipeDiameter','pipeFill','pipeComplexity','branchCount','flowSpeed','bubbleRate','pumpPower','valveCount','valveOpening','perspective'].includes(id) && settings.mode==='pipe') reset();
+    });
+  });
+
+  function syncColor(colorId,textId,key) {
+    const color=ui[colorId], text=ui[textId];
+    color.addEventListener('input',()=>{ text.value=color.value; settings[key]=color.value; ui.preset.value='custom'; });
+    text.addEventListener('change',()=>{
+      if(/^#[0-9a-f]{6}$/i.test(text.value)) { color.value=text.value; settings[key]=text.value; ui.preset.value='custom'; }
+      else text.value=color.value;
+    });
+  }
+  syncColor('waterColor','waterHex','waterColor');
+  syncColor('bgColor','bgHex','bgColor');
+
+  ['pipeNetwork','pipeMaterial'].forEach(id=>ui[id].addEventListener('change',()=>{settings[id]=ui[id].value;ui.preset.value='custom';if(settings.mode==='pipe')reset();}));
+
+  function syncPresentationClasses() {
+    app.classList.toggle('presentation-clean', settings.presentationMode && settings.mode==='pipe');
+    app.classList.toggle('ui-hidden', state.uiHidden);
+    document.getElementById('hideUiBtn').textContent = state.uiHidden ? '◫ Show UI' : '◫ Hide UI';
+    document.getElementById('turntableBtn').textContent = settings.turntable ? '■ Stop rotation' : '↻ Turntable';
+    document.getElementById('floatingTurntableBtn').textContent = settings.turntable ? '■ Stop' : '↻ Rotate';
+  }
+
+  function setUiHidden(hidden) {
+    state.uiHidden = !!hidden;
+    syncPresentationClasses();
+    requestAnimationFrame(resize);
+  }
+
+  function setTurntable(enabled) {
+    settings.turntable = !!enabled;
+    ui.turntable.checked = settings.turntable;
+    ui.preset.value='custom';
+    syncPresentationClasses();
+  }
+
+  async function toggleFullscreen() {
+    try {
+      if(!document.fullscreenElement) await app.requestFullscreen();
+      else await document.exitFullscreen();
+    } catch (err) {
+      console.warn('Fullscreen is unavailable in this browser.', err);
+    }
+  }
+
+  ui.presentationMode.addEventListener('change',()=>{settings.presentationMode=ui.presentationMode.checked; ui.preset.value='custom'; syncPresentationClasses(); if(settings.mode==='pipe') reset();});
+  ui.turntable.addEventListener('change',()=>setTurntable(ui.turntable.checked));
+  ui.surface.addEventListener('change',()=>settings.surface=ui.surface.checked);
+  ui.sparkle.addEventListener('change',()=>settings.sparkle=ui.sparkle.checked);
+  ui.transparentExport.addEventListener('change',()=>settings.transparentExport=ui.transparentExport.checked);
+  ui.autoReplay.addEventListener('change',()=>settings.autoReplay=ui.autoReplay.checked);
+  ui.seed.addEventListener('change',reset);
+
+  const modeDescriptions={
+    splash:'A crown-shaped impact with a dense central plume and secondary droplets.',
+    jet:'A continuous pressurized stream that breaks up, arcs under gravity, and splashes on contact.',
+    fountain:'A vertical nozzle with adjustable cone spread, droplet breakup, drift, and mist.',
+    pipe:'Pipe flow mode includes a simple straight-pipe option and a studio presentation toggle for clean glass-tube renders, alongside fuller process networks.'
+  };
+
+  ui.mode.addEventListener('change',()=>{
+    settings.mode=ui.mode.value;
+    modeHelp.textContent=modeDescriptions[settings.mode];
+    ui.preset.value='custom';
+    syncPresentationClasses();
+    reset();
+  });
+
+  function applyPreset(name) {
+    const p=presets[name];
+    if(!p) return;
+    settings.presentationMode = false;
+    settings.turntable = false;
+    ui.presentationMode.checked = false;
+    ui.turntable.checked = false;
+    Object.assign(settings,p);
+    Object.entries(p).forEach(([key,value])=>{
+      if(!ui[key]) return;
+      if(ui[key].type==='range') { ui[key].value=value; syncRange(key); }
+      else if(ui[key].type==='checkbox') ui[key].checked=value;
+      else ui[key].value=value;
+    });
+    ui.waterHex.value=settings.waterColor; ui.bgHex.value=settings.bgColor;
+    ui.presentationMode.checked = !!settings.presentationMode;
+    ui.turntable.checked = !!settings.turntable;
+    syncPresentationClasses();
+    modeHelp.textContent=modeDescriptions[settings.mode];
+    reset();
+  }
+  ui.preset.addEventListener('change',()=>applyPreset(ui.preset.value));
+
+  document.getElementById('replayBtn').addEventListener('click',reset);
+  document.getElementById('pauseBtn').addEventListener('click',()=>{
+    state.paused=!state.paused;
+    document.getElementById('pauseBtn').textContent=state.paused?'▶ Resume':'Ⅱ Pause';
+  });
+
+  document.getElementById('randomBtn').addEventListener('click',()=>{
+    const seed=Math.floor(1+Math.random()*999998);
+    ui.seed.value=seed;
+    const choose=(a,b)=>Math.round(a+Math.random()*(b-a));
+    const modes=['splash','jet','fountain','pipe'];
+    ui.mode.value=modes[Math.floor(Math.random()*modes.length)];
+    settings.mode=ui.mode.value;
+    const networks=['straight','single','tee','manifold','loop'];
+    const materials=['metal','glass','frosted','acrylic','chrome','smoked','cutaway'];
+    ui.pipeNetwork.value=networks[Math.floor(Math.random()*networks.length)];settings.pipeNetwork=ui.pipeNetwork.value;
+    ui.pipeMaterial.value=materials[Math.floor(Math.random()*materials.length)];settings.pipeMaterial=ui.pipeMaterial.value;
+    const randomValues={ pressure:choose(38,96), spread:choose(8,82), angle:choose(12,84), nozzle:choose(15,75), density:choose(900,2300), pipeDiameter:choose(28,86), pipeFill:choose(42,96), pipeComplexity:choose(18,92), branchCount:choose(2,5), flowSpeed:choose(18,94), bubbleRate:choose(0,82), pumpPower:choose(24,98), valveCount:choose(0,6), valveOpening:choose(22,100), gravity:choose(65,135), drag:choose(4,55), tension:choose(20,94), turbulence:choose(4,72), wind:choose(-25,25), droplet:choose(22,78), opacity:choose(48,88), highlight:choose(55,96), trail:choose(12,78), perspective:choose(18,72) };
+    Object.entries(randomValues).forEach(([k,v])=>{ ui[k].value=v; syncRange(k); });
+    settings.presentationMode = false; ui.presentationMode.checked = false;
+    settings.turntable = false; ui.turntable.checked = false;
+    syncPresentationClasses();
+    ui.preset.value='custom';
+    modeHelp.textContent=modeDescriptions[settings.mode];
+    reset();
+  });
+
+  document.getElementById('turntableBtn').addEventListener('click',()=>setTurntable(!settings.turntable));
+  document.getElementById('floatingTurntableBtn').addEventListener('click',()=>setTurntable(!settings.turntable));
+  document.getElementById('hideUiBtn').addEventListener('click',()=>setUiHidden(true));
+  document.getElementById('floatingUiBtn').addEventListener('click',()=>setUiHidden(!state.uiHidden));
+  document.getElementById('fullscreenBtn').addEventListener('click',toggleFullscreen);
+  document.getElementById('floatingFullscreenBtn').addEventListener('click',toggleFullscreen);
+  document.addEventListener('fullscreenchange',()=>{
+    const active=!!document.fullscreenElement;
+    app.classList.toggle('is-fullscreen',active);
+    document.getElementById('fullscreenBtn').textContent=active?'⛶ Exit fullscreen':'⛶ Fullscreen';
+    document.getElementById('floatingFullscreenBtn').textContent=active?'⛶ Exit':'⛶ Fullscreen';
+    requestAnimationFrame(resize);
+  });
+
+  document.getElementById('exportBtn').addEventListener('click',()=>{
+    render(true);
+    const a=document.createElement('a');
+    a.download=`hydroform-${settings.mode}-seed-${settings.seed}.png`;
+    a.href=canvas.toDataURL('image/png');
+    a.click();
+    requestAnimationFrame(()=>render(false));
+  });
+
+  canvas.addEventListener('pointerdown',e=>{
+    const r=canvas.getBoundingClientRect();
+    const x=(e.clientX-r.left-r.width*.5)/state.scale;
+    if(settings.mode==='pipe') ui.seed.value=hashSeed(Number(ui.seed.value)+1);
+    else state.targetX=clamp(x,-1.45,1.45);
+    reset();
+  });
+
+  window.addEventListener('keydown',e=>{
+    if(e.target.matches('input,select')) return;
+    if(e.code==='Space') {
+      e.preventDefault(); state.paused=!state.paused;
+      document.getElementById('pauseBtn').textContent=state.paused?'▶ Resume':'Ⅱ Pause';
+    }
+    if(e.key.toLowerCase()==='r') reset();
+    if(e.key.toLowerCase()==='h') setUiHidden(!state.uiHidden);
+    if(e.key.toLowerCase()==='t') setTurntable(!settings.turntable);
+    if(e.key.toLowerCase()==='f') toggleFullscreen();
+  });
+
+  window.addEventListener('resize',resize);
+  resize();
+  syncPresentationClasses();
+  reset();
+  requestAnimationFrame(loop);
+})();
+</script>
+<script src="../../assets/menu.js"></script>
+</body>
+</html>

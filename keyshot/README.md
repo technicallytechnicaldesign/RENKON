@@ -5,7 +5,9 @@ binaries as they arrive.
 
 Live pages: [`index.html`](index.html) &mdash; hub tile grid, Scripts is the
 first live area; [`scripts.html`](scripts.html) &mdash; script inventory
-(filterable, active-only by default), backlog, and conventions.
+(filterable, active-only by default), backlog, and conventions;
+[`backplate-creator/`](backplate-creator/) &mdash; procedural fluid-backplate
+generator + a curated pack of six rendered 16:9 render environments.
 
 ## Structure
 
@@ -13,6 +15,7 @@ first live area; [`scripts.html`](scripts.html) &mdash; script inventory
 keyshot/
   scripts/            current lux/luxmath scripts (batch render, turntable, animation, helpers)
   scripts/archive/    superseded scripts, kept for reference only — not part of the active pipeline
+  backplate-creator/  single-file backplate tool (generator + curated 6-JPG gallery), assets/ holds the renders
   index.html          hub page — tile grid of KeyShot areas
   scripts.html        script inventory page (filters, backlog, conventions)
   SCRIPT_STOCK.md            at-a-glance inventory + prioritized backlog

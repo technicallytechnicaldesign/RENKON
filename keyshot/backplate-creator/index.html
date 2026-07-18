@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Backplate Creator &mdash; RENKON</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap"></noscript>
+<style>
+  :root {
+    --bg: #0C141D;
+    --panel-bg: #14202C;
+    --panel-bg-raised: #182635;
+    --line: #22303E;
+    --text: #ECF2F6;
+    --muted: #6E7E8C;
+
+    --c-structural: #002F67;
+    --c-fluid: #4FD1D9;
+    --c-accent: #F08A3C;
+
+    --stage-bg: #060a10;
+    --c-hud-text: #ECF2F6;   /* fixed-light text for chips pinned to a dark backdrop in both themes */
+    --c-hud-muted: #6E7E8C;  /* fixed-light muted text, same reasoning */
+
+    --font-display: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "Space Mono", ui-monospace, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  button, input, select { font-family: inherit; }
+  button { cursor: pointer; border-radius: 0; }
+  button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible {
+    outline: 2px solid var(--c-accent); outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition: none !important; }
+  }
+
+  #app-header {
+    display: flex; align-items: center; gap: 20px;
+    padding: 14px 28px; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; background: var(--bg); z-index: 10;
+  }
+  #app-header .brand { display: flex; align-items: center; gap: 11px; color: var(--text); text-decoration: none; flex: none; }
+  #app-header .brand .mark { width: 26px; height: 26px; flex: none; color: var(--c-accent); }
+  #app-header .brand .mark svg { display: block; width: 100%; height: 100%; }
+  #app-header .wordmark { font-family: var(--font-display); font-size: 14px; letter-spacing: 0.28em; font-weight: 700; text-decoration: none; flex: none; }
+  #app-header .wordmark b { color: var(--c-accent); font-weight: 700; }
+  #app-header .crumbs {
+    font-family: var(--font-mono);
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+    flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #app-header .mark { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.08em; flex: none; }
+
+  #app-main { padding: 22px 28px 40px; max-width: 1600px; margin: 0 auto; }
+  .page-head { margin-bottom: 18px; }
+  .page-head h1 { font-family: var(--font-display); font-size: 16px; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 6px; font-weight: 700; }
+  .page-head p { color: var(--muted); font-size: 12px; margin: 0; max-width: 74ch; line-height: 1.6; }
+
+  .section-label {
+    font-family: var(--font-mono);
+    display: block; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text); font-weight: 700; border-bottom: 1px solid var(--line);
+    padding-bottom: 8px; margin: 0 0 12px;
+  }
+
+  /* ---- Mode toggle ---- */
+  .mode-row { display: flex; gap: 1px; background: var(--line); border: 1px solid var(--line); margin-bottom: 20px; max-width: 420px; }
+  .mode-btn {
+    font-family: var(--font-mono);
+    flex: 1 1 0; background: var(--panel-bg); border: none; color: var(--muted);
+    padding: 11px 8px; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  }
+  .mode-btn:hover { color: var(--text); }
+  .mode-btn.active { color: var(--c-accent); background: var(--panel-bg-raised); box-shadow: inset 0 -2px 0 var(--c-accent); }
+
+  .mode-panel { display: none; }
+  .mode-panel.active { display: block; }
+
+  /* ================= GENERATE MODE ================= */
+  .gen-layout {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr) 280px;
+    gap: 1px; background: var(--line); border: 1px solid var(--line);
+  }
+  @media (max-width: 1100px) { .gen-layout { grid-template-columns: 1fr; } }
+  .col { background: var(--panel-bg); padding: 16px; display: flex; flex-direction: column; gap: 18px; }
+
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .field select, .field input[type=text] {
+    background: var(--panel-bg); border: 1px solid var(--line); color: var(--text);
+    padding: 7px 9px; font-size: 12px;
+  }
+  .field select:focus-visible, .field input[type=text]:focus-visible { border-color: var(--c-accent); }
+  .seed-row { display: flex; gap: 6px; }
+  .seed-row input { flex: 1 1 auto; min-width: 0; }
+
+  .param-row { display: flex; align-items: center; gap: 8px; margin-bottom: 11px; }
+  .param-row:last-child { margin-bottom: 0; }
+  .param-row label { font-family: var(--font-mono); flex: 0 0 92px; font-size: 10px; letter-spacing: 0.03em; text-transform: uppercase; color: var(--muted); }
+  .param-row input[type=range] { flex: 1 1 auto; min-width: 0; accent-color: var(--c-accent); }
+  .param-row .param-value { font-family: var(--font-mono); flex: 0 0 42px; font-size: 10px; color: var(--text); text-align: right; }
+
+  .toggle-inline { font-family: var(--font-mono); display: flex; align-items: center; gap: 8px; letter-spacing: 0.05em; text-transform: uppercase; font-size: 10px; color: var(--muted); margin-bottom: 9px; }
+  .toggle-inline:last-child { margin-bottom: 0; }
+  .toggle-inline input { accent-color: var(--c-accent); width: 15px; height: 15px; flex: none; }
+
+  /* center stage */
+  .stage {
+    background: var(--stage-bg); border: 1px solid var(--line);
+    position: relative; overflow: hidden; aspect-ratio: 16 / 9; width: 100%;
+  }
+  .stage canvas { width: 100%; height: 100%; display: block; }
+  .guide-layer { pointer-events: none; position: absolute; inset: 0; display: none; }
+  .guide-layer.show { display: block; }
+  .safe {
+    position: absolute; inset: 10%;
+    border: 1px dashed var(--c-fluid);
+    box-shadow: inset 0 0 0 9999px rgba(79,209,217,0.05);
+  }
+  .safe:before {
+    content: ""; position: absolute; left: -3%; right: -3%; top: var(--horizon, 68%);
+    border-top: 1px solid var(--c-fluid); opacity: 0.9;
+  }
+  .safe:after {
+    content: "PRODUCT SAFE AREA"; position: absolute; right: 8px; top: 7px;
+    font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.14em; color: var(--c-fluid);
+    text-shadow: 0 1px 5px #000;
+  }
+  .crosshair { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; transform: translate(-50%,-50%); }
+  .crosshair:before, .crosshair:after { content: ""; position: absolute; background: var(--c-fluid); opacity: 0.7; }
+  .crosshair:before { left: 8px; top: 0; width: 1px; height: 18px; }
+  .crosshair:after { left: 0; top: 8px; width: 18px; height: 1px; }
+
+  .stage-meta { font-family: var(--font-mono); display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; font-size: 10px; color: var(--muted); }
+  .stage-meta .status { display: inline-flex; align-items: center; gap: 7px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .stage-meta .status:before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c-fluid); box-shadow: 0 0 10px var(--c-fluid); }
+  .stage-meta b { color: var(--text); font-weight: 700; }
+
+  .preset-strip { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  @media (max-width: 700px) { .preset-strip { grid-template-columns: repeat(3, 1fr); } }
+  .preset {
+    font-family: var(--font-mono);
+    background: transparent; border: 1px solid var(--line); color: var(--muted);
+    padding: 8px 5px; font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; text-align: center;
+  }
+  .preset:hover { border-color: var(--c-accent); color: var(--c-accent); }
+
+  .btn {
+    font-family: var(--font-mono);
+    background: transparent; border: 1px solid var(--line); color: var(--text);
+    font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; padding: 9px 12px;
+  }
+  .btn:hover { border-color: var(--c-accent); color: var(--c-accent); }
+  .btn.primary { border-color: var(--c-accent); color: var(--c-accent); }
+  .btn.primary:hover { background: var(--c-accent); color: var(--bg); }
+  .btn.full { width: 100%; }
+  .btn-row { display: flex; gap: 6px; }
+  .btn-row .btn { flex: 1 1 0; }
+
+  /* ================= CURATED MODE ================= */
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 1px; align-items: stretch;
+    background: var(--line); border: 1px solid var(--line); margin-bottom: 20px;
+  }
+  .toolbar .filter-btn {
+    font-family: var(--font-mono);
+    background: var(--panel-bg); border: none; color: var(--muted);
+    padding: 10px 14px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .toolbar .filter-btn:hover { color: var(--text); }
+  .toolbar .filter-btn.active { color: var(--c-accent); background: var(--panel-bg-raised); box-shadow: inset 0 -2px 0 var(--c-accent); }
+  .toolbar .spacer { flex: 1 1 auto; background: var(--panel-bg); }
+  .toolbar .guide-toggle {
+    font-family: var(--font-mono);
+    display: flex; align-items: center; gap: 9px; background: var(--panel-bg);
+    color: var(--muted); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; padding: 0 14px;
+  }
+  .toolbar .guide-toggle input { accent-color: var(--c-accent); width: 15px; height: 15px; }
+
+  .gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 900px) { .gallery { grid-template-columns: 1fr; } }
+  .card { border: 1px solid var(--line); background: var(--panel-bg); display: flex; flex-direction: column; }
+  .image-button {
+    position: relative; width: 100%; aspect-ratio: 16 / 9; display: block; padding: 0;
+    border: 0; border-bottom: 1px solid var(--line); background: var(--stage-bg); overflow: hidden; cursor: zoom-in;
+  }
+  .image-button img {
+    width: 100%; height: 100%; display: block; object-fit: cover;
+    filter: var(--preview-filter, none);
+    transition: transform .5s cubic-bezier(.2,.7,.2,1), filter .25s;
+  }
+  .card:hover .image-button img { transform: scale(1.03); }
+  .card-index {
+    position: absolute; left: 12px; top: 12px;
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em;
+    background: rgba(6,10,16,.72); border: 1px solid var(--line); color: var(--c-hud-text);
+    padding: 5px 8px;
+  }
+  .safe-zone {
+    display: none; position: absolute; inset: 10%;
+    border: 1px dashed var(--c-fluid);
+    box-shadow: inset 0 0 0 9999px rgba(79,209,217,0.06); pointer-events: none;
+  }
+  .show-guides .safe-zone { display: block; }
+  .safe-zone:before {
+    content: ""; position: absolute; left: -4%; right: -4%; top: var(--horizon, 68%);
+    border-top: 1px solid var(--c-fluid); opacity: 0.9;
+  }
+  .safe-zone:after {
+    content: "PRODUCT SAFE ZONE"; position: absolute; right: 8px; top: 7px;
+    font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.14em; color: var(--c-fluid);
+    text-shadow: 0 1px 6px #000;
+  }
+  .card-copy { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .card-copy h2 { margin: 0; font-family: var(--font-display); font-size: 15px; letter-spacing: 0.02em; text-transform: uppercase; font-weight: 700; }
+  .card-copy .subtitle { margin: 3px 0 0; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--c-fluid); }
+  .card-copy .use { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; min-height: 3em; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .meta-row span {
+    font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase;
+    border: 1px solid var(--line); background: var(--stage-bg); color: var(--c-hud-muted); padding: 5px 8px;
+  }
+  .actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+  .actions .view-btn, .actions .download-btn {
+    font-family: var(--font-mono);
+    text-decoration: none; font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; padding: 9px 12px;
+    border: 1px solid var(--line); background: transparent; color: var(--text);
+  }
+  .actions .view-btn:hover { border-color: var(--c-fluid); color: var(--c-fluid); }
+  .actions .download-btn { border-color: var(--c-accent); color: var(--c-accent); }
+  .actions .download-btn:hover { background: var(--c-accent); color: var(--bg); }
+
+  /* modal */
+  .modal {
+    position: fixed; inset: 0; z-index: 100; display: none; place-items: center;
+    background: rgba(4,8,12,.92); padding: 24px;
+  }
+  .modal.open { display: grid; }
+  .modal figure { margin: 0; width: min(96vw, 1700px); }
+  .modal img { width: 100%; display: block; border: 1px solid var(--line); }
+  .modal figcaption {
+    display: flex; align-items: center; justify-content: space-between; gap: 20px;
+    padding: 12px 2px 0; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .modal figcaption b { color: var(--text); font-weight: 700; }
+  .modal-close {
+    position: absolute; top: 18px; right: 18px; width: 42px; height: 42px;
+    color: var(--text); background: var(--panel-bg); border: 1px solid var(--line); font-size: 20px; line-height: 1;
+  }
+  .modal-close:hover { border-color: var(--c-accent); color: var(--c-accent); }
+
+  footer.note {
+    margin-top: 24px; font-size: 11px; color: var(--muted); line-height: 1.7;
+    border-top: 1px solid var(--line); padding-top: 14px; max-width: 90ch;
+  }
+  footer.note code { font-family: var(--font-mono); color: var(--c-fluid); }
+  footer.note strong { color: var(--text); }
+</style>
+<script src="../../assets/theme.js"></script>
+<script src="../../assets/reveal.js"></script>
+</head>
+<body>
+  <header id="app-header">
+    <a class="brand" href="../../index.html" aria-label="RENKON home">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round">
+          <circle cx="50" cy="50" r="44"/>
+          <g transform="rotate(0 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(72 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(144 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(216 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(288 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <circle cx="50" cy="50" r="8.5"/>
+        </svg>
+      </span>
+      <span class="wordmark">RENK<b>O</b>N</span>
+    </a>
+    <div class="crumbs">KeyShot / Backplate Creator</div>
+    <div class="mark">FLUID &middot; 16:9</div>
+  </header>
+
+  <main id="app-main">
+    <div class="page-head">
+      <h1>Backplate Creator</h1>
+      <p>Fluid 16:9 backplates for KeyShot &mdash; <strong>Generate</strong> endless deterministic
+         environments from seeds and sliders, or pull one of the six <strong>Curated</strong> rendered
+         2560&times;1440 JPG backplates. Photographic backplates, not HDRIs: match the ground plane,
+         camera and shadow separately.</p>
+    </div>
+
+    <div class="mode-row" role="tablist" aria-label="Tool mode">
+      <button class="mode-btn active" id="mode-generate" data-mode="generate" role="tab" aria-selected="true">Generate</button>
+      <button class="mode-btn" id="mode-curated" data-mode="curated" role="tab" aria-selected="false">Curated</button>
+    </div>
+
+    <!-- ===================== GENERATE ===================== -->
+    <section class="mode-panel active" id="panel-generate" role="tabpanel" aria-label="Procedural generator">
+      <div class="gen-layout">
+
+        <!-- LEFT: style / palette / seed / sliders -->
+        <div class="col">
+          <div>
+            <span class="section-label">Generator</span>
+            <div class="field">
+              <label for="style">Fluid style</label>
+              <select id="style">
+                <option value="viscous">Viscous Current</option>
+                <option value="stream">Laminar Stream</option>
+                <option value="droplets">Liquid Metal Droplets</option>
+                <option value="ripple">Ripple Impact</option>
+                <option value="ink">Ink Bloom</option>
+                <option value="splash">Splash Crown</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="palette">Palette</label>
+              <select id="palette">
+                <option value="polar">Polar Blue</option>
+                <option value="graphite">Graphite Steel</option>
+                <option value="petroleum">Petroleum</option>
+                <option value="cyan">Cyan Noir</option>
+                <option value="mercury">Mercury</option>
+                <option value="milk">Milk &amp; Ink</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="seed">Seed</label>
+              <div class="seed-row">
+                <input id="seed" type="text" value="FLUID-7319" spellcheck="false">
+                <button class="btn" id="randomSeed" title="Re-roll the seed">Roll</button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <span class="section-label">Parameters</span>
+            <div class="param-row"><label>Turbulence</label><input id="turbulence" type="range" min="0" max="100" value="64"><span class="param-value" id="turbulenceOut">64</span></div>
+            <div class="param-row"><label>Viscosity</label><input id="viscosity" type="range" min="0" max="100" value="72"><span class="param-value" id="viscosityOut">72</span></div>
+            <div class="param-row"><label>Detail</label><input id="detail" type="range" min="10" max="100" value="70"><span class="param-value" id="detailOut">70</span></div>
+            <div class="param-row"><label>Light angle</label><input id="lightAngle" type="range" min="-180" max="180" value="-36"><span class="param-value" id="lightAngleOut">-36&deg;</span></div>
+            <div class="param-row"><label>Highlight</label><input id="glow" type="range" min="0" max="100" value="66"><span class="param-value" id="glowOut">66</span></div>
+            <div class="param-row"><label>Horizon</label><input id="horizon" type="range" min="45" max="84" value="69"><span class="param-value" id="horizonOut">69%</span></div>
+          </div>
+        </div>
+
+        <!-- CENTER: preview + presets + status -->
+        <div class="col">
+          <div class="stage" id="stage">
+            <canvas id="canvas" width="1600" height="900"></canvas>
+            <div class="guide-layer" id="guideLayer">
+              <div class="safe" id="safeGuide"></div>
+              <div class="crosshair"></div>
+            </div>
+          </div>
+          <div class="stage-meta">
+            <span class="status"><b>Ready</b></span>
+            <span id="activeStyle">Viscous Current</span>
+            <span style="margin-left:auto;">Photographic backplate &middot; not an HDRI</span>
+          </div>
+          <div>
+            <span class="section-label">Presets</span>
+            <div class="preset-strip">
+              <button class="preset" data-style="viscous" data-palette="petroleum">Heavy Oil</button>
+              <button class="preset" data-style="stream" data-palette="polar">Cryogenic</button>
+              <button class="preset" data-style="droplets" data-palette="mercury">Mercury</button>
+              <button class="preset" data-style="ripple" data-palette="graphite">Precision</button>
+              <button class="preset" data-style="ink" data-palette="milk">Ink Cloud</button>
+              <button class="preset" data-style="splash" data-palette="cyan">Dynamic</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: view toggles + export -->
+        <div class="col">
+          <div>
+            <span class="section-label">Preview &amp; Overlay</span>
+            <label class="toggle-inline"><input id="showGuides" type="checkbox"> Preview guides</label>
+            <label class="toggle-inline"><input id="exportGuides" type="checkbox"> Bake guides into export</label>
+            <label class="toggle-inline"><input id="grain" type="checkbox" checked> Fine grain</label>
+            <label class="toggle-inline"><input id="vignette" type="checkbox" checked> Vignette</label>
+          </div>
+
+          <div>
+            <span class="section-label">Export</span>
+            <div class="field">
+              <label for="resolution">Export size</label>
+              <select id="resolution">
+                <option value="1920x1080">1920 &times; 1080</option>
+                <option value="2560x1440">2560 &times; 1440</option>
+                <option value="3840x2160" selected>3840 &times; 2160</option>
+                <option value="5120x2880">5120 &times; 2880</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="format">Format</label>
+              <select id="format">
+                <option value="png">PNG</option>
+                <option value="jpg">JPG 95%</option>
+              </select>
+            </div>
+            <div class="btn-row" style="margin-bottom:6px;">
+              <button class="btn primary" id="generate">Generate</button>
+            </div>
+            <button class="btn full" id="download">Export backplate</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===================== CURATED ===================== -->
+    <section class="mode-panel" id="panel-curated" role="tabpanel" aria-label="Curated backplate gallery">
+      <nav class="toolbar" aria-label="Preview controls">
+        <button class="filter-btn active" data-filter="none">Original</button>
+        <button class="filter-btn" data-filter="brightness(.82) contrast(1.08)">Darker</button>
+        <button class="filter-btn" data-filter="saturate(.78) hue-rotate(6deg)">Cooler</button>
+        <button class="filter-btn" data-filter="contrast(.92) brightness(1.06) blur(.55px)">Soft studio</button>
+        <span class="spacer"></span>
+        <label class="guide-toggle"><input id="guideToggle" type="checkbox"> KeyShot placement guides</label>
+      </nav>
+
+      <div class="gallery" id="gallery">
+
+        <article class="card" data-title="Liquid Impact"
+                 data-src="assets/01_liquid_impact_2560x1440.jpg" style="--horizon:68%">
+          <button class="image-button" type="button" aria-label="Open Liquid Impact full screen">
+            <img loading="lazy" src="assets/01_liquid_impact_2560x1440.jpg" alt="Liquid Impact, fluid KeyShot backplate">
+            <span class="safe-zone" aria-hidden="true"></span>
+            <span class="card-index">01</span>
+          </button>
+          <div class="card-copy">
+            <div>
+              <h2>Liquid Impact</h2>
+              <p class="subtitle">Crisp splash crown &middot; cool studio reflections</p>
+            </div>
+            <p class="use">Best for pumps, valves, bottles, polished metal and rugged product shots.</p>
+            <div class="meta-row"><span>2560 &times; 1440</span><span>16:9</span><span>JPG &middot; 0.9 MB</span></div>
+            <div class="actions">
+              <button class="view-btn" type="button">Full-screen</button>
+              <a class="download-btn" href="assets/01_liquid_impact_2560x1440.jpg" download="01_liquid_impact_2560x1440.jpg">Download JPG</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="card" data-title="Laminar Arc"
+                 data-src="assets/02_laminar_arc_2560x1440.jpg" style="--horizon:70%">
+          <button class="image-button" type="button" aria-label="Open Laminar Arc full screen">
+            <img loading="lazy" src="assets/02_laminar_arc_2560x1440.jpg" alt="Laminar Arc, fluid KeyShot backplate">
+            <span class="safe-zone" aria-hidden="true"></span>
+            <span class="card-index">02</span>
+          </button>
+          <div class="card-copy">
+            <div>
+              <h2>Laminar Arc</h2>
+              <p class="subtitle">Glassy flow ribbons &middot; bright negative space</p>
+            </div>
+            <p class="use">A strong match for hydraulic components, technical assemblies and clean industrial renders.</p>
+            <div class="meta-row"><span>2560 &times; 1440</span><span>16:9</span><span>JPG &middot; 1.0 MB</span></div>
+            <div class="actions">
+              <button class="view-btn" type="button">Full-screen</button>
+              <a class="download-btn" href="assets/02_laminar_arc_2560x1440.jpg" download="02_laminar_arc_2560x1440.jpg">Download JPG</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="card" data-title="Mercury Field"
+                 data-src="assets/03_mercury_field_2560x1440.jpg" style="--horizon:72%">
+          <button class="image-button" type="button" aria-label="Open Mercury Field full screen">
+            <img loading="lazy" src="assets/03_mercury_field_2560x1440.jpg" alt="Mercury Field, fluid KeyShot backplate">
+            <span class="safe-zone" aria-hidden="true"></span>
+            <span class="card-index">03</span>
+          </button>
+          <div class="card-copy">
+            <div>
+              <h2>Mercury Field</h2>
+              <p class="subtitle">Liquid-metal droplets &middot; premium macro mood</p>
+            </div>
+            <p class="use">Ideal for precision parts, consumer tech, fittings, fasteners and small hero objects.</p>
+            <div class="meta-row"><span>2560 &times; 1440</span><span>16:9</span><span>JPG &middot; 0.9 MB</span></div>
+            <div class="actions">
+              <button class="view-btn" type="button">Full-screen</button>
+              <a class="download-btn" href="assets/03_mercury_field_2560x1440.jpg" download="03_mercury_field_2560x1440.jpg">Download JPG</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="card" data-title="Ink Bloom"
+                 data-src="assets/04_ink_bloom_2560x1440.jpg" style="--horizon:78%">
+          <button class="image-button" type="button" aria-label="Open Ink Bloom full screen">
+            <img loading="lazy" src="assets/04_ink_bloom_2560x1440.jpg" alt="Ink Bloom, fluid KeyShot backplate">
+            <span class="safe-zone" aria-hidden="true"></span>
+            <span class="card-index">04</span>
+          </button>
+          <div class="card-copy">
+            <div>
+              <h2>Ink Bloom</h2>
+              <p class="subtitle">Volumetric fluid cloud &middot; deep blue atmosphere</p>
+            </div>
+            <p class="use">Works beautifully behind translucent materials, dark products and sculptural forms.</p>
+            <div class="meta-row"><span>2560 &times; 1440</span><span>16:9</span><span>JPG &middot; 0.8 MB</span></div>
+            <div class="actions">
+              <button class="view-btn" type="button">Full-screen</button>
+              <a class="download-btn" href="assets/04_ink_bloom_2560x1440.jpg" download="04_ink_bloom_2560x1440.jpg">Download JPG</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="card" data-title="Ripple Drop"
+                 data-src="assets/05_ripple_drop_2560x1440.jpg" style="--horizon:68%">
+          <button class="image-button" type="button" aria-label="Open Ripple Drop full screen">
+            <img loading="lazy" src="assets/05_ripple_drop_2560x1440.jpg" alt="Ripple Drop, fluid KeyShot backplate">
+            <span class="safe-zone" aria-hidden="true"></span>
+            <span class="card-index">05</span>
+          </button>
+          <div class="card-copy">
+            <div>
+              <h2>Ripple Drop</h2>
+              <p class="subtitle">Centered impact &middot; calm precision</p>
+            </div>
+            <p class="use">Built for symmetrical products, cosmetics, instrumentation and minimal product staging.</p>
+            <div class="meta-row"><span>2560 &times; 1440</span><span>16:9</span><span>JPG &middot; 0.8 MB</span></div>
+            <div class="actions">
+              <button class="view-btn" type="button">Full-screen</button>
+              <a class="download-btn" href="assets/05_ripple_drop_2560x1440.jpg" download="05_ripple_drop_2560x1440.jpg">Download JPG</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="card" data-title="Viscous Current"
+                 data-src="assets/06_viscous_current_2560x1440.jpg" style="--horizon:74%">
+          <button class="image-button" type="button" aria-label="Open Viscous Current full screen">
+            <img loading="lazy" src="assets/06_viscous_current_2560x1440.jpg" alt="Viscous Current, fluid KeyShot backplate">
+            <span class="safe-zone" aria-hidden="true"></span>
+            <span class="card-index">06</span>
+          </button>
+          <div class="card-copy">
+            <div>
+              <h2>Viscous Current</h2>
+              <p class="subtitle">Dense glossy turbulence &middot; dark industrial energy</p>
+            </div>
+            <p class="use">Excellent for engines, heavy equipment, blackened steel and dramatic machinery.</p>
+            <div class="meta-row"><span>2560 &times; 1440</span><span>16:9</span><span>JPG &middot; 1.0 MB</span></div>
+            <div class="actions">
+              <button class="view-btn" type="button">Full-screen</button>
+              <a class="download-btn" href="assets/06_viscous_current_2560x1440.jpg" download="06_viscous_current_2560x1440.jpg">Download JPG</a>
+            </div>
+          </div>
+        </article>
+
+      </div>
+
+      <footer class="note">
+        <strong>KeyShot note:</strong> these are photographic backplates, not HDRIs. Match your ground plane,
+        camera perspective, shadow direction and environment lighting separately. The preview filters above are
+        non-destructive and never touch the downloadable <code>assets/NN_name.jpg</code> files.
+      </footer>
+    </section>
+  </main>
+
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Backplate preview">
+    <button class="modal-close" aria-label="Close preview">&times;</button>
+    <figure>
+      <img id="modalImage" alt="">
+      <figcaption><b id="modalTitle"></b><span>Press Esc or click outside to close</span></figcaption>
+    </figure>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+  const $ = s => document.querySelector(s);
+
+  /* =========================================================
+     MODE TOGGLE  —  Generate | Curated (shared RENKON shell)
+     ========================================================= */
+  const panels = { generate: $('#panel-generate'), curated: $('#panel-curated') };
+  const modeBtns = document.querySelectorAll('.mode-btn');
+  function setMode(mode) {
+    modeBtns.forEach(b => {
+      const on = b.dataset.mode === mode;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    Object.keys(panels).forEach(k => panels[k].classList.toggle('active', k === mode));
+  }
+  modeBtns.forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+
+  /* =========================================================
+     GENERATE MODE  —  procedural fluid backplate engine
+     (deterministic seed -> mulberry32; Canvas 2D render)
+     ========================================================= */
+  const canvas = $('#canvas');
+  const ctx = canvas.getContext('2d', { alpha: false });
+  const guideLayer = $('#guideLayer');
+  const safeGuide = $('#safeGuide');
+
+  const palettes = {
+    polar:{bg0:'#02070d',bg1:'#0c2032',bg2:'#9ed8ff',mid:'#2d6f9c',light:'#e6f7ff',dark:'#03101b'},
+    graphite:{bg0:'#030507',bg1:'#161d23',bg2:'#7f96a7',mid:'#465867',light:'#e7f3f8',dark:'#010304'},
+    petroleum:{bg0:'#020507',bg1:'#071a24',bg2:'#183d54',mid:'#0b6a88',light:'#d9f5ff',dark:'#000203'},
+    cyan:{bg0:'#01060a',bg1:'#061a26',bg2:'#168ac2',mid:'#18baf2',light:'#e2f8ff',dark:'#000308'},
+    mercury:{bg0:'#05070a',bg1:'#1b2730',bg2:'#b4d7ee',mid:'#5f7f96',light:'#ffffff',dark:'#020406'},
+    milk:{bg0:'#030712',bg1:'#0c2a4c',bg2:'#dbeeff',mid:'#668bb0',light:'#ffffff',dark:'#020817'}
+  };
+  const styleNames = {
+    viscous:'Viscous Current',stream:'Laminar Stream',droplets:'Liquid Metal Droplets',
+    ripple:'Ripple Impact',ink:'Ink Bloom',splash:'Splash Crown'
+  };
+
+  function hashString(str){
+    let h=2166136261>>>0;
+    for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)}
+    return h>>>0;
+  }
+  function mulberry32(a){return function(){let t=a+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296}}
+  function mix(a,b,t){return a+(b-a)*t}
+  function hexToRgb(hex){const n=parseInt(hex.slice(1),16);return[(n>>16)&255,(n>>8)&255,n&255]}
+  function rgba(hex,a){const [r,g,b]=hexToRgb(hex);return `rgba(${r},${g},${b},${a})`}
+
+  function state(){
+    return {
+      style:$('#style').value,palette:$('#palette').value,seed:$('#seed').value||'FLUID',
+      turbulence:+$('#turbulence').value/100,viscosity:+$('#viscosity').value/100,
+      detail:+$('#detail').value/100,lightAngle:+$('#lightAngle').value*Math.PI/180,
+      glow:+$('#glow').value/100,horizon:+$('#horizon').value/100,
+      grain:$('#grain').checked,vignette:$('#vignette').checked
+    }
+  }
+  function setupBase(c,w,h,p,s){
+    c.save();
+    const g=c.createLinearGradient(0,0,w,h);
+    g.addColorStop(0,p.bg0); g.addColorStop(.45,p.bg1); g.addColorStop(1,p.dark);
+    c.fillStyle=g;c.fillRect(0,0,w,h);
+
+    const hx=w*(.5+Math.cos(s.lightAngle)*.24), hy=h*(.16+Math.sin(s.lightAngle)*.05);
+    const rg=c.createRadialGradient(hx,hy,0,hx,hy,w*.72);
+    rg.addColorStop(0,rgba(p.bg2,.42*s.glow));
+    rg.addColorStop(.26,rgba(p.mid,.18*s.glow));
+    rg.addColorStop(1,rgba(p.dark,0));
+    c.fillStyle=rg;c.fillRect(0,0,w,h);
+
+    const horizonY=h*s.horizon;
+    const hg=c.createLinearGradient(0,horizonY-h*.2,0,horizonY+h*.14);
+    hg.addColorStop(0,rgba(p.mid,0));
+    hg.addColorStop(.52,rgba(p.bg2,.18*s.glow));
+    hg.addColorStop(1,rgba(p.dark,.4));
+    c.fillStyle=hg;c.fillRect(0,horizonY-h*.22,w,h*.4);
+    c.restore();
+  }
+  function bezierRibbon(c,w,h,rng,p,s,index,total,mode){
+    mode=mode||'viscous';
+    const t=index/Math.max(1,total-1);
+    const baseY=h*(s.horizon + (t-.5)*.28);
+    const amp=h*(.05+.14*s.turbulence)*(mode==='stream'?.65:1);
+    const x0=-w*.15, x3=w*1.15;
+    const y0=baseY + (rng()-.5)*amp;
+    const y3=baseY + (rng()-.5)*amp;
+    const x1=w*(.18+rng()*.22), x2=w*(.58+rng()*.23);
+    const y1=baseY + (rng()-.5)*amp*2;
+    const y2=baseY + (rng()-.5)*amp*2;
+    const width=h*(.015 + .045*s.viscosity)*(1.15-t*.25)*(mode==='stream'?1.7:1);
+
+    c.save();
+    c.lineCap='round';c.lineJoin='round';
+    c.shadowColor=rgba(p.light,.18*s.glow);c.shadowBlur=width*.65;
+    c.beginPath();c.moveTo(x0,y0);c.bezierCurveTo(x1,y1,x2,y2,x3,y3);
+    c.strokeStyle=rgba(p.dark,.88);c.lineWidth=width*1.7;c.stroke();
+    c.shadowBlur=0;
+    c.beginPath();c.moveTo(x0,y0);c.bezierCurveTo(x1,y1,x2,y2,x3,y3);
+    const lg=c.createLinearGradient(0,0,w,0);
+    lg.addColorStop(0,rgba(p.mid,.24));lg.addColorStop(.28,rgba(p.light,.9*s.glow));
+    lg.addColorStop(.5,rgba(p.mid,.55));lg.addColorStop(.72,rgba(p.light,.38*s.glow));lg.addColorStop(1,rgba(p.dark,.8));
+    c.strokeStyle=lg;c.lineWidth=width;c.stroke();
+    c.beginPath();c.moveTo(x0,y0-width*.18);c.bezierCurveTo(x1,y1-width*.22,x2,y2-width*.16,x3,y3-width*.12);
+    c.strokeStyle=rgba('#ffffff',.24*s.glow);c.lineWidth=Math.max(1,width*.09);c.stroke();
+    c.restore();
+  }
+  function drawViscous(c,w,h,rng,p,s){
+    const count=Math.floor(16+34*s.detail);
+    c.save();c.globalCompositeOperation='source-over';
+    for(let i=0;i<count;i++)bezierRibbon(c,w,h,rng,p,s,i,count,'viscous');
+    c.globalCompositeOperation='screen';
+    for(let i=0;i<count*.45;i++){
+      const x=rng()*w,y=h*(s.horizon-.15+rng()*.38),r=(2+rng()*8)*(w/1600);
+      const g=c.createRadialGradient(x-r*.3,y-r*.4,0,x,y,r);
+      g.addColorStop(0,rgba(p.light,.7));g.addColorStop(.35,rgba(p.mid,.4));g.addColorStop(1,rgba(p.dark,0));
+      c.fillStyle=g;c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fill();
+    } c.restore();
+  }
+  function drawStream(c,w,h,rng,p,s){
+    const count=Math.floor(5+8*s.detail);
+    c.save();c.globalCompositeOperation='screen';
+    for(let i=0;i<count;i++)bezierRibbon(c,w,h,rng,p,s,i,count,'stream');
+    c.globalCompositeOperation='source-over';
+    const y=h*s.horizon;
+    const ref=c.createLinearGradient(0,y,0,h);
+    ref.addColorStop(0,rgba(p.light,.12));ref.addColorStop(.3,rgba(p.mid,.08));ref.addColorStop(1,rgba(p.dark,.6));
+    c.fillStyle=ref;c.fillRect(0,y,w,h-y);
+    c.restore();
+  }
+  function drawDroplet(c,x,y,r,p,s,rng){
+    c.save();
+    c.shadowColor='rgba(0,0,0,.55)';c.shadowBlur=r*.45;c.shadowOffsetY=r*.22;
+    c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(x+r*.13,y+r*.58,r*.9,r*.25,0,0,Math.PI*2);c.fill();
+    c.shadowBlur=0;c.shadowOffsetY=0;
+    const gx=x-r*.35*Math.cos(s.lightAngle),gy=y-r*.35*Math.sin(s.lightAngle);
+    const g=c.createRadialGradient(gx,gy,r*.04,x,y,r);
+    g.addColorStop(0,rgba('#ffffff',.98));
+    g.addColorStop(.12,rgba(p.light,.92));
+    g.addColorStop(.35,rgba(p.mid,.48));
+    g.addColorStop(.7,rgba(p.dark,.9));
+    g.addColorStop(.88,rgba(p.light,.52));
+    g.addColorStop(1,rgba(p.dark,.98));
+    c.fillStyle=g;c.beginPath();c.ellipse(x,y,r,r*(.78+rng()*.18),rng()*.4-.2,0,Math.PI*2);c.fill();
+    c.strokeStyle=rgba(p.light,.45);c.lineWidth=Math.max(1,r*.025);c.stroke();
+    c.restore();
+  }
+  function drawDroplets(c,w,h,rng,p,s){
+    const count=Math.floor(14+48*s.detail);
+    const arr=[];
+    for(let i=0;i<count;i++){
+      const focus=i<5;
+      const r=(focus?mix(.045,.095,rng()):mix(.006,.032,rng()))*Math.min(w,h);
+      arr.push({x:mix(.06,.94,rng())*w,y:mix(s.horizon-.18,.91,rng())*h,r});
+    }
+    arr.sort((a,b)=>a.r-b.r);
+    for(const d of arr)drawDroplet(c,d.x,d.y,d.r,p,s,rng);
+  }
+  function drawRipple(c,w,h,rng,p,s){
+    c.save();
+    const cx=w*(.5+(rng()-.5)*.08),cy=h*(s.horizon+.08);
+    const max=Math.min(w,h)*.6;
+    for(let i=0;i<24+24*s.detail;i++){
+      const t=i/(23+24*s.detail),rx=max*t,ry=rx*.20;
+      c.beginPath();c.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
+      c.strokeStyle=rgba(i%3===0?p.light:p.mid,(1-t)*(.34+.26*s.glow));
+      c.lineWidth=Math.max(1,(2.2-t*1.5)*(w/1600));c.stroke();
+    }
+    const dropY=cy-h*.16;
+    for(let i=0;i<3;i++){
+      const r=(11-i*2)*(w/1600), y=dropY-i*h*.07;
+      drawDroplet(c,cx,y,r,p,s,rng);
+    }
+    const plume=c.createLinearGradient(cx,dropY,cx,cy);
+    plume.addColorStop(0,rgba(p.light,.95));plume.addColorStop(1,rgba(p.dark,.4));
+    c.fillStyle=plume;c.beginPath();c.moveTo(cx-10*w/1600,cy);c.quadraticCurveTo(cx-2*w/1600,dropY,cx,dropY);
+    c.quadraticCurveTo(cx+3*w/1600,dropY,cx+11*w/1600,cy);c.closePath();c.fill();
+    c.restore();
+  }
+  function drawInk(c,w,h,rng,p,s){
+    c.save();c.globalCompositeOperation='screen';
+    const clusters=Math.floor(4+7*s.detail);
+    for(let k=0;k<clusters;k++){
+      const side=k%2===0?-1:1;
+      let x=side<0?w*mix(.03,.32,rng()):w*mix(.68,.97,rng());
+      let y=h*mix(.34,.82,rng());
+      const steps=Math.floor(28+45*s.detail);
+      for(let i=0;i<steps;i++){
+        const t=i/steps;
+        x+=side*(rng()-.42)*w*.025 + Math.sin(t*8+k)*w*.004*s.turbulence;
+        y+=(rng()-.52)*h*.035;
+        const r=h*mix(.018,.075,rng())*(1-t*.45);
+        const g=c.createRadialGradient(x-r*.18,y-r*.18,0,x,y,r);
+        g.addColorStop(0,rgba(k%3===0?p.light:p.bg2,.18+.22*s.glow));
+        g.addColorStop(.52,rgba(p.mid,.14+.18*s.viscosity));
+        g.addColorStop(1,rgba(p.dark,0));
+        c.fillStyle=g;c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fill();
+      }
+    }
+    c.globalCompositeOperation='source-over';c.restore();
+  }
+  function drawSplash(c,w,h,rng,p,s){
+    c.save();
+    const cx=w*(.48+(rng()-.5)*.12),base=h*(s.horizon+.11);
+    const radius=Math.min(w,h)*(.18+.10*s.viscosity);
+    const spikes=Math.floor(12+18*s.detail);
+    c.fillStyle=rgba(p.dark,.82);
+    c.beginPath();c.ellipse(cx,base,radius*1.25,radius*.24,0,0,Math.PI*2);c.fill();
+    for(let i=0;i<spikes;i++){
+      const a=Math.PI+(i/(spikes-1))*Math.PI;
+      const x=cx+Math.cos(a)*radius, y=base+Math.sin(a)*radius*.34;
+      const tipX=x+(rng()-.5)*radius*.35;
+      const tipY=y-radius*mix(.25,1.15,rng())*(.5+s.turbulence);
+      c.beginPath();c.moveTo(x-radius*.08,y);c.quadraticCurveTo(x,tipY,tipX,tipY);
+      c.quadraticCurveTo(x+radius*.08,y,x+radius*.12,y);c.closePath();
+      const g=c.createLinearGradient(x,y,tipX,tipY);
+      g.addColorStop(0,rgba(p.dark,.9));g.addColorStop(.55,rgba(p.mid,.82));g.addColorStop(1,rgba(p.light,.8*s.glow));
+      c.fillStyle=g;c.fill();
+      if(rng()>.35)drawDroplet(c,tipX,tipY-radius*.07,radius*.025*(.5+rng()),p,s,rng);
+    }
+    const basin=c.createRadialGradient(cx-radius*.3,base-radius*.1,0,cx,base,radius*1.35);
+    basin.addColorStop(0,rgba(p.light,.48*s.glow));basin.addColorStop(.35,rgba(p.mid,.76));basin.addColorStop(1,rgba(p.dark,.95));
+    c.fillStyle=basin;c.beginPath();c.ellipse(cx,base,radius*1.3,radius*.25,0,0,Math.PI*2);c.fill();
+    c.restore();
+  }
+  function addGrain(c,w,h,rng){
+    const size=128, tile=document.createElement('canvas');tile.width=tile.height=size;
+    const tc=tile.getContext('2d'),im=tc.createImageData(size,size);
+    for(let i=0;i<im.data.length;i+=4){const v=120+rng()*135;im.data[i]=im.data[i+1]=im.data[i+2]=v;im.data[i+3]=10+rng()*12}
+    tc.putImageData(im,0,0);
+    const pat=c.createPattern(tile,'repeat');c.save();c.globalCompositeOperation='soft-light';c.fillStyle=pat;c.fillRect(0,0,w,h);c.restore();
+  }
+  function addVignette(c,w,h){
+    const g=c.createRadialGradient(w*.5,h*.46,Math.min(w,h)*.16,w*.5,h*.46,Math.max(w,h)*.72);
+    g.addColorStop(.35,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.66)');
+    c.fillStyle=g;c.fillRect(0,0,w,h);
+  }
+  /* baked export guides recoloured to the RENKON flow-teal / structural cue */
+  function drawGuides(c,w,h,s){
+    c.save();c.strokeStyle='rgba(79,209,217,.85)';c.lineWidth=Math.max(1,w/1800);c.setLineDash([9*w/1600,7*w/1600]);
+    c.strokeRect(w*.1,h*.1,w*.8,h*.8);c.setLineDash([]);
+    c.strokeStyle='rgba(79,209,217,.9)';c.beginPath();c.moveTo(w*.075,h*s.horizon);c.lineTo(w*.925,h*s.horizon);c.stroke();
+    c.fillStyle='rgba(79,209,217,.9)';c.font=`700 ${Math.max(12,w/120)}px "Space Mono", ui-monospace, monospace`;c.fillText('PRODUCT SAFE AREA',w*.74,h*.14);
+    c.restore();
+  }
+  function render(target,w,h,s,withGuides){
+    target.width=w;target.height=h;
+    const c=target.getContext('2d',{alpha:false});
+    const p=palettes[s.palette];
+    const rng=mulberry32(hashString([s.seed,s.style,s.palette,s.turbulence,s.viscosity,s.detail,s.lightAngle,s.glow,s.horizon].join('|')));
+    setupBase(c,w,h,p,s);
+    ({viscous:drawViscous,stream:drawStream,droplets:drawDroplets,ripple:drawRipple,ink:drawInk,splash:drawSplash}[s.style])(c,w,h,rng,p,s);
+    if(s.grain)addGrain(c,w,h,rng);
+    if(s.vignette)addVignette(c,w,h);
+    if(withGuides)drawGuides(c,w,h,s);
+  }
+  function updateOutputs(){
+    for(const id of ['turbulence','viscosity','detail','glow'])$('#'+id+'Out').textContent=$('#'+id).value;
+    $('#lightAngleOut').textContent=$('#lightAngle').value+'°';
+    $('#horizonOut').textContent=$('#horizon').value+'%';
+    safeGuide.style.setProperty('--horizon',$('#horizon').value+'%');
+  }
+  function generate(){
+    updateOutputs();
+    const s=state();
+    render(canvas,1600,900,s,false);
+    $('#activeStyle').textContent=styleNames[s.style]+' · '+$('#palette').selectedOptions[0].text;
+  }
+  function randomSeed(){
+    const a=['FLUX','AQUA','VISC','RIPPLE','CRYO','INK','MERCURY','TIDE'];
+    $('#seed').value=a[Math.floor(Math.random()*a.length)]+'-'+Math.floor(1000+Math.random()*9000);
+    generate();
+  }
+  function exportImage(){
+    const [w,h]=$('#resolution').value.split('x').map(Number);
+    const off=document.createElement('canvas');
+    render(off,w,h,state(),$('#exportGuides').checked);
+    const fmt=$('#format').value;
+    const mime=fmt==='jpg'?'image/jpeg':'image/png';
+    const quality=fmt==='jpg'?.95:undefined;
+    const link=document.createElement('a');
+    const clean=$('#seed').value.replace(/[^a-z0-9_-]+/gi,'_');
+    link.download=`renkon_backplate_${$('#style').value}_${clean}_${w}x${h}.${fmt}`;
+    link.href=off.toDataURL(mime,quality);link.click();
+  }
+
+  document.querySelectorAll('#panel-generate input[type="range"]').forEach(el=>el.addEventListener('input',updateOutputs));
+  $('#showGuides').addEventListener('change',e=>guideLayer.classList.toggle('show',e.target.checked));
+  $('#generate').addEventListener('click',generate);
+  $('#randomSeed').addEventListener('click',randomSeed);
+  $('#download').addEventListener('click',exportImage);
+  document.querySelectorAll('.preset').forEach(btn=>btn.addEventListener('click',()=>{
+    $('#style').value=btn.dataset.style;$('#palette').value=btn.dataset.palette;randomSeed();
+  }));
+  ['style','palette','grain','vignette'].forEach(id=>$('#'+id).addEventListener('change',generate));
+  $('#seed').addEventListener('keydown',e=>{if(e.key==='Enter')generate()});
+
+  /* =========================================================
+     CURATED MODE  —  6-JPG gallery: filters, guides, modal
+     ========================================================= */
+  const gallery = $('#gallery');
+  const modal = $('#modal');
+  const modalImage = $('#modalImage');
+  const modalTitle = $('#modalTitle');
+
+  function openCard(card){
+    modalImage.src = card.dataset.src;
+    modalImage.alt = card.dataset.title;
+    modalTitle.textContent = card.dataset.title;
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal(){
+    modal.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  document.querySelectorAll('.image-button, .view-btn').forEach(el=>{
+    el.addEventListener('click', () => openCard(el.closest('.card')));
+  });
+  $('.modal-close').addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  $('#guideToggle').addEventListener('change', e => {
+    gallery.classList.toggle('show-guides', e.target.checked);
+  });
+  document.querySelectorAll('.filter-btn').forEach(btn=>{
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.documentElement.style.setProperty('--preview-filter', btn.dataset.filter);
+      modalImage.style.filter = btn.dataset.filter === 'none' ? '' : btn.dataset.filter;
+    });
+  });
+
+  /* boot */
+  setMode('generate');
+  updateOutputs();
+  generate();
+})();
+</script>
+<script src="../../assets/menu.js"></script>
+</body>
+</html>
