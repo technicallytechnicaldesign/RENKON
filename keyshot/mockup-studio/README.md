@@ -2,6 +2,10 @@
 
 A single-file browser tool for compositing a transparent product cutout onto a
 procedurally generated fluid-industrial scene, then art-directing the result live.
+Two tabs: **Compositor** (below) and **Presets** &mdash; a side-by-side comparison
+of four looping/parallax motion-backplate concepts, absorbed from the former
+Motion Lab tool (`keyshot/motion-lab/` now redirects to `#presets` here). The
+Presets tab is a direction-finding viewer only &mdash; no export pipeline.
 
 - **Scene generator** — the same deterministic Canvas engine as the Backplate
   Creator: 6 fluid styles (Viscous Current, Laminar Stream, Liquid Metal

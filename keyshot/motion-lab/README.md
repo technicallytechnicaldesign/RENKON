@@ -1,4 +1,10 @@
-# KeyShot Motion Lab
+# KeyShot Motion Lab (merged into Mockup Studio)
+
+> **This page now redirects** to `../mockup-studio/index.html#presets`. The
+> tool below lives on as the **Presets** tab of Mockup Studio &mdash; kept
+> functionally identical, just reskinned into that page's tab layout. This
+> folder stays as a redirect stub so old links/bookmarks keep working; the
+> description below is the donor tool's original spec.
 
 A single-file browser tool for comparing four motion concepts side by side, so
 the team can pick a direction before committing to a deeper build. This is a
