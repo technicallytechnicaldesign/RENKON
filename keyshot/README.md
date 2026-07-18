@@ -7,7 +7,10 @@ Live pages: [`index.html`](index.html) &mdash; hub tile grid, Scripts is the
 first live area; [`scripts.html`](scripts.html) &mdash; script inventory
 (filterable, active-only by default), backlog, and conventions;
 [`backplate-creator/`](backplate-creator/) &mdash; procedural fluid-backplate
-generator + a curated pack of six rendered 16:9 render environments.
+generator + a curated pack of six rendered 16:9 render environments. A fluid
+Alembic-cache generator for KeyShot import lives at
+[`../blender/fluid-cache-gen/`](../blender/fluid-cache-gen/) &mdash; not here,
+since it runs in Blender rather than KeyShot or a browser.
 
 ## Structure
 
@@ -50,6 +53,18 @@ don't replace it, as scripts move through the pipeline.
 |---|---|
 | `batch_turntable.py` | `2a_BAT_TURNTABLE_AA01.py` |
 | `batch_import_and_render_all_views.py` | `2a_BAT_STD_VIEW_AA01.py` |
+
+## Adjacent asset-prep (not a lux script)
+
+[`backplate-creator/`](backplate-creator/) lives under `keyshot/` as asset-prep
+for the pipeline without being KeyShot-native automation itself — a browser
+tool (no build step), not run via `lux`/`luxmath`, generating/curating
+photographic backplates that sit behind the camera in a KeyShot scene, so it
+doesn't follow the `{PREFIX}_{AREA}_{NAME}_{REV}.py` naming below.
+
+A second adjacent tool, the fluid Alembic-cache generator, runs in Blender
+rather than KeyShot or a browser, so it lives one level up at
+[`../blender/fluid-cache-gen/`](../blender/fluid-cache-gen/) instead of here.
 
 ## Naming convention
 
