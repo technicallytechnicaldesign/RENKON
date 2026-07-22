@@ -164,8 +164,23 @@ var BEAM_CALC = {
 // outputs once those exist) — for now mass/cycle time are direct entries,
 // and it already composes on the shared MATERIALS table (pricePerKg).
 
+// Fixed illustrative FX snapshot, not a live rate feed (same "edit before a
+// real quote" caveat as MATERIALS.pricePerKg). MATERIALS.pricePerKg is
+// USD-denominated, so only the material line gets converted by `rate` —
+// machine/labour rates are typed directly in whatever currency is selected.
+var CURRENCIES = {
+  USD: { symbol: "$", label: "USD — US Dollar", rate: 1 },
+  EUR: { symbol: "€", label: "EUR — Euro", rate: 0.92 },
+  GBP: { symbol: "£", label: "GBP — British Pound", rate: 0.79 },
+  JPY: { symbol: "¥", label: "JPY — Japanese Yen", rate: 156 },
+  CAD: { symbol: "CA$", label: "CAD — Canadian Dollar", rate: 1.37 },
+  AUD: { symbol: "AU$", label: "AUD — Australian Dollar", rate: 1.52 },
+  CHF: { symbol: "CHF", label: "CHF — Swiss Franc", rate: 0.90 },
+};
+var CURRENCY_ORDER = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF"];
+
 function costCompute(i) {
-  var material = i.mass * i.pricePerKg * (1 + i.scrapPct / 100);
+  var material = i.mass * i.pricePerKg * i.currencyRate * (1 + i.scrapPct / 100);
   var machine = (i.setupTime / i.qty + i.cycleTime) * i.machineRate;
   var labour = i.labourTime * i.labourRate;
   var direct = material + machine + labour;
@@ -183,6 +198,12 @@ var COST_CALC = {
   refs: "Standard shop-rate / absorption costing model.",
   buildInputs: function (getVals, recompute) {
     var wrap = document.createElement("div");
+    var currencySel = fieldSelect(wrap, "Currency", CURRENCY_ORDER.map(function (k) { return [k, CURRENCIES[k].label]; }), "USD", function () {
+      var sym = CURRENCIES[currencySel.value].symbol;
+      machineRate.unitEl.textContent = sym + "/h";
+      labourRate.unitEl.textContent = sym + "/h";
+      recompute();
+    });
     var mass = fieldNumber(wrap, "Mass", "kg", 1.2, 0.001, recompute);
     var matSel = fieldSelect(wrap, "Material", MATERIAL_ORDER.map(function (k) { return [k, MATERIALS[k].label]; }), "mild_steel", recompute);
     var scrapPct = fieldNumber(wrap, "Scrap", "%", 15, 0, recompute);
@@ -202,7 +223,9 @@ var COST_CALC = {
     var marginPct = fieldNumber(wrap, "Margin", "%", 25, 0, recompute);
 
     getVals.get = function () {
+      var currency = CURRENCIES[currencySel.value];
       return {
+        currencyCode: currencySel.value, currencySymbol: currency.symbol, currencyRate: currency.rate,
         mass: mass.value, pricePerKg: MATERIALS[matSel.value].pricePerKg, scrapPct: scrapPct.value,
         setupTime: setupTime.value, cycleTime: cycleTime.value, machineRate: machineRate.value,
         labourTime: labourTime.value, labourRate: labourRate.value,
@@ -214,9 +237,10 @@ var COST_CALC = {
   compute: costCompute,
   buildOutputs: function (root, v, out) {
     root.innerHTML = "";
+    var sym = v.currencySymbol;
     var list = document.createElement("div"); list.className = "out-list";
-    outRow(list, "Unit price", "$" + money(out.unit), "", null, null, true);
-    outRow(list, "Lot price (×" + v.qty + ")", "$" + money(out.lot), "");
+    outRow(list, "Unit price", sym + money(out.unit), "", null, null, true);
+    outRow(list, "Lot price (×" + v.qty + ")", sym + money(out.lot), "");
     root.appendChild(list);
 
     var segs = [
@@ -237,13 +261,51 @@ var COST_CALC = {
       var li = document.createElement("div"); li.className = "li";
       var sw = document.createElement("span"); sw.className = "sw"; sw.style.background = s.color;
       li.appendChild(sw);
-      li.appendChild(document.createTextNode(s.key + " $" + money(s.val)));
+      li.appendChild(document.createTextNode(s.key + " " + sym + money(s.val)));
       legend.appendChild(li);
     });
     root.appendChild(bar); root.appendChild(legend);
     var cap = document.createElement("div"); cap.className = "cap"; cap.style.marginTop = "10px";
     cap.textContent = "Per-part direct-cost breakdown, before overhead + margin";
     root.appendChild(cap);
+
+    var exportBtn = document.createElement("button");
+    exportBtn.type = "button";
+    exportBtn.textContent = "↓ Export .xls";
+    exportBtn.style.background = "var(--panel-bg-raised)";
+    exportBtn.style.border = "1px solid var(--line)";
+    exportBtn.style.color = "var(--text)";
+    exportBtn.style.fontFamily = "var(--font-mono)";
+    exportBtn.style.fontSize = "11px";
+    exportBtn.style.textTransform = "uppercase";
+    exportBtn.style.letterSpacing = "0.05em";
+    exportBtn.style.padding = "8px 12px";
+    exportBtn.style.cursor = "pointer";
+    exportBtn.style.marginTop = "16px";
+    exportBtn.addEventListener("click", function () {
+      downloadXLS("cost-estimate-" + v.currencyCode + ".xls", "Cost Estimate", [
+        ["Field", "Value"],
+        ["Currency", v.currencyCode],
+        ["Mass (kg)", v.mass],
+        ["Material price/kg (" + v.currencyCode + ")", money(v.pricePerKg * v.currencyRate)],
+        ["Scrap (%)", v.scrapPct],
+        ["Lot size (parts)", v.qty],
+        ["Setup time (h/lot)", v.setupTime],
+        ["Cycle time (h/part)", v.cycleTime],
+        ["Machine rate (" + sym + "/h)", v.machineRate],
+        ["Labour time (h/part)", v.labourTime],
+        ["Labour rate (" + sym + "/h)", v.labourRate],
+        ["Overhead (%)", v.overheadPct],
+        ["Margin (%)", v.marginPct],
+        ["Material cost", sym + money(out.material)],
+        ["Machine cost", sym + money(out.machine)],
+        ["Labour cost", sym + money(out.labour)],
+        ["Overhead cost", sym + money(out.overhead)],
+        ["Unit price", sym + money(out.unit)],
+        ["Lot price (×" + v.qty + ")", sym + money(out.lot)],
+      ]);
+    });
+    root.appendChild(exportBtn);
   },
 };
 

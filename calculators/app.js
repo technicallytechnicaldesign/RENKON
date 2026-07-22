@@ -21,6 +21,39 @@ function fmt(n, sig) {
 
 function money(n) { return isFinite(n) ? n.toFixed(2) : "—"; }
 
+function xlsEscape(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Zero-dependency ".xls" export: SpreadsheetML (Excel 2003 XML) is a plain-text
+// format Excel opens natively as a real worksheet — no zip/OOXML generation and
+// no CDN library needed, same "native browser APIs only" policy as the rest of
+// the site. `rows` is an array of [label, value] pairs; the first row is styled
+// as a bold header.
+function downloadXLS(filename, sheetName, rows) {
+  var body = rows.map(function (r, i) {
+    var style = i === 0 ? ' ss:StyleID="Header"' : "";
+    return "<Row>" +
+      '<Cell' + style + '><Data ss:Type="String">' + xlsEscape(r[0]) + "</Data></Cell>" +
+      '<Cell' + style + '><Data ss:Type="String">' + xlsEscape(r[1]) + "</Data></Cell>" +
+      "</Row>";
+  }).join("");
+  var xml = '<?xml version="1.0"?>' +
+    '<?mso-application progid="Excel.Sheet"?>' +
+    '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" ' +
+    'xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' +
+    '<Styles><Style ss:ID="Header"><Font ss:Bold="1"/></Style></Styles>' +
+    '<Worksheet ss:Name="' + xlsEscape(sheetName).slice(0, 31) + '">' +
+    "<Table>" + body + "</Table>" +
+    "</Worksheet></Workbook>";
+  var blob = new Blob([xml], { type: "application/vnd.ms-excel" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = filename;
+  a.click();
+  setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+}
+
 function fieldNumber(root, label, unit, def, min, onChange) {
   var f = document.createElement("div"); f.className = "field";
   var l = document.createElement("label");
@@ -34,8 +67,10 @@ function fieldNumber(root, label, unit, def, min, onChange) {
   root.appendChild(f);
   input.addEventListener("input", onChange);
   // calculators.js reads `.value` expecting a number — wrap the element
-  // rather than shadow its native (string) value property.
-  return { el: input, get value() { return parseFloat(input.value) || 0; } };
+  // rather than shadow its native (string) value property. unitEl is exposed
+  // so a calculator can relabel the unit later (e.g. cost estimator swapping
+  // "$/h" for "€/h" when the currency changes).
+  return { el: input, unitEl: u, get value() { return parseFloat(input.value) || 0; } };
 }
 
 function fieldSelect(root, label, options, def, onChange) {

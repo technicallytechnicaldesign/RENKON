@@ -1,5 +1,29 @@
 # Changelog — Calculators
 
+## 2026-07-22 — Cost Estimator: currency + .xls export
+
+- Added a **currency picker** to Cost Estimator (`CURRENCIES` table in
+  `calculators.js`: USD/EUR/GBP/JPY/CAD/AUD/CHF, symbol + fixed illustrative
+  FX rate per code — same "edit before a real quote" caveat as
+  `MATERIALS.pricePerKg`). Only the material line (sourced from the shared,
+  USD-denominated `MATERIALS.pricePerKg`) gets converted by the rate;
+  machine/labour rates are user-typed and assumed already in the selected
+  currency, so changing currency just relabels their `$/h` unit live
+  (`fieldNumber` in `app.js` now also returns `unitEl` so a calculator can
+  do that relabelling — the one shell change this needed).
+- Added an **Export .xls** button to Cost Estimator's results panel. Writes
+  every input + the full cost breakdown (material/machine/labour/overhead/
+  unit/lot) as a SpreadsheetML (Excel 2003 XML) file via a new shared
+  `downloadXLS()` helper in `app.js` — plain text, no zip/OOXML step, no CDN
+  library, opens natively in Excel. Kept to the same zero-dependency,
+  blob-URL-download policy already established elsewhere in this repo
+  (see `proc-gen/parametric-generators/docs/ANIMATED_EXPORT.md`).
+- Verified live in-browser: switching currency recomputes correctly (EUR
+  case hand-checked: material 1.2kg × 1.2 × 0.92 rate × 1.15 scrap =
+  €1.52 ✓) and relabels the rate units; Export .xls produces a valid
+  SpreadsheetML file with the converted values and downloads under
+  `cost-estimate-<CODE>.xls`. Zero console errors.
+
 ## 2026-07-18 — flagship 5 completed (RNK-0009)
 
 - Built the remaining three of five flagship calculators from

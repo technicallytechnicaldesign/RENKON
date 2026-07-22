@@ -13,7 +13,7 @@ Specs for all five flagship calculators (this + three more): RENKON's
 | File | What |
 |---|---|
 | `index.html` | Page chrome + the tab shell markup. |
-| `app.js` | Shared shell: tabs, `fieldNumber`/`fieldSelect`/`outRow` builders, `fmt`/`money` formatters, mount/recompute wiring. Calculator-agnostic — new calculators shouldn't need to touch this. |
+| `app.js` | Shared shell: tabs, `fieldNumber`/`fieldSelect`/`outRow` builders, `fmt`/`money` formatters, `downloadXLS()` (SpreadsheetML export), mount/recompute wiring. Calculator-agnostic — new calculators shouldn't need to touch this. |
 | `calculators.js` | The Beam + Cost descriptors (`BEAM_CALC`, `COST_CALC`) and the `CALCULATORS` array that assembles all five in tab order. |
 | `calc-bolted.js` | `BOLTED_CALC` — torque & shear descriptor. |
 | `calc-bend.js` | `BEND_CALC` — sheet-metal bend descriptor (with a side-view SVG). |
@@ -51,7 +51,13 @@ every descriptor), and `app.js` loads last.
 - **Cost Estimator** (`cost-estimator`): shop-rate absorption costing,
   composes on the same `MATERIALS` table Beam uses (proving the cross-
   calculator composition pattern the roadmap cares about). Renders a
-  material/machine/labour/overhead stacked-bar breakdown.
+  material/machine/labour/overhead stacked-bar breakdown. A currency picker
+  (`CURRENCIES` in `calculators.js`) converts the `MATERIALS.pricePerKg`
+  line by a fixed FX snapshot and relabels the machine/labour rate units;
+  those two rates are typed directly in whatever currency is selected, not
+  converted. An "Export .xls" button (`downloadXLS()` in `app.js`) writes
+  the full input + output breakdown as a SpreadsheetML (Excel 2003 XML)
+  file — plain text, no zip/OOXML generation, opens natively in Excel.
 
 ## Adding another calculator
 
@@ -68,3 +74,5 @@ disabled "not built yet" tab — a visible roadmap marker for future scope.
 temper, not a mill certificate — confirm against the actual material cert
 before trusting an FoS output for anything load-bearing. `pricePerKg` is
 illustrative and drifts with the market; edit it to match your supplier.
+Same caveat for `CURRENCIES`' `rate` values (Cost Estimator) — a fixed
+snapshot, not a live feed; edit before using for a real quote.
