@@ -866,9 +866,10 @@ Risk: highest — everything here is gated on a probe by design.
    is stable, but which build is the real target? Affects nothing designed
    here except probe expectations. _Rec: record the build number in the
    probe-pack output header._ #triage:routine
-4. **How bold on displacement** — even if P4 passes, displacement changes
-   render cost materially. Opt-in flag per material, or a "hero" quality
-   toggle? _Rec: opt-in, off by default._ #triage:eyes
+4. **How bold on displacement** — **Resolved 2026-07-22 (RNK-0064): opt-in
+   flag per material, defaulting to True/checked** (overrides this doc's own
+   "off by default" rec). No existing "hero quality" gate to hook into —
+   build it as a standalone boolean. Still blocked on P4 passing.
 
 ---
 
