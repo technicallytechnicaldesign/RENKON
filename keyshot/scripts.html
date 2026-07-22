@@ -146,6 +146,13 @@
   .row.first { border-top: none; }
   .row:hover { background: var(--panel-bg-raised); }
 
+  /* collapsed row for "in work" scripts — heading only, no note/updated */
+  .row-compact { padding: 8px 18px; grid-template-columns: 66px 1fr auto; }
+  .row-compact .name { font-size: 11.5px; color: var(--text); }
+  .row-compact .name a { color: var(--c-accent); }
+  .row-compact .name a:hover { text-decoration: underline; }
+  .row-compact .status { align-self: center; }
+
   .row .tag {
     font-family: var(--font-mono);
     font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
@@ -168,6 +175,7 @@
   .status.archive { color: var(--muted); text-decoration: line-through; }
   .status.locked { color: var(--muted); border-style: dashed; }
   .status.unfiled { color: var(--c-accent); border-color: var(--c-accent); border-style: dashed; }
+  .status.inwork { color: var(--muted); border-style: dotted; }
 
   /* status + last-updated stack, right-aligned in the third column */
   .status-col { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
@@ -194,20 +202,6 @@
     font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
     color: var(--muted); border: 1px solid var(--line); padding: 3px 8px; white-space: nowrap; height: fit-content;
   }
-
-  /* ---- backlog ---- */
-  .backlog { border: 1px solid var(--line); background: var(--panel-bg); }
-  .backlog li {
-    list-style: none; display: grid; grid-template-columns: 40px 1fr;
-    gap: 14px; padding: 10px 18px; border-top: 1px solid var(--line);
-    font-size: 11px; line-height: 1.6;
-  }
-  .backlog li:first-child { border-top: none; }
-  .backlog .pri { font-family: var(--font-mono); color: var(--c-accent); font-size: 10px; letter-spacing: 0.04em; padding-top: 1px; }
-  .backlog .idea { color: var(--text); }
-  .backlog .idea .stage { color: var(--muted); }
-  .backlog .idea em { color: var(--c-fluid); font-style: normal; }
-  .backlog ul { margin: 0; padding: 0; }
 
   .notes {
     border: 1px solid var(--line); background: var(--panel-bg);
@@ -283,48 +277,42 @@
      * Single source of truth. Both groupings (by stage, by pipeline/type)
      * render from these arrays — edit here, never in two places.
      * script: [stage, area, status, file, hasLink, noteHTML]
-     *   status: current | archive | locked | unfiled
+     *   status: current | inwork | archive | locked | unfiled
+     *   current = approved, runs in the Main pipeline zone.
+     *   inwork  = not yet render-confirmed; renders collapsed (heading only).
      * ------------------------------------------------------------------ */
     var SCRIPTS = [
-      ['0','VAL','current','0_VAL_STEP_PREFLIGHT_AA01.py',true,
+      ['0','VAL','inwork','0_VAL_STEP_PREFLIGHT_AA01.py',true,
         'STEP-file preflight before KeyShot opens the file: checks unit/scale, filename hygiene, duplicate names, and material-name hints against a <code>1_HLP_MAT_LOOKUP</code> map.'],
-      ['0','VAL','current','0_VAL_IMPORT_HEALTH_AA01.py',true,
+      ['0','VAL','inwork','0_VAL_IMPORT_HEALTH_AA01.py',true,
         'Trial-import health check, no render. Flags import failures, bounding-box anomalies, assemblies that came in as one object, and parts with no Studios or cameras.'],
-      ['0','VAL','current','0_VAL_ORIENTATION_CHECK_AA01.py',true,
+      ['0','VAL','inwork','0_VAL_ORIENTATION_CHECK_AA01.py',true,
         'Up-axis sanity check: footprint ratio per part from its bounding box, flagging outliers across the batch. Flags for review, does not fix.'],
-      ['0','CHK','current','0_CHK_MATGRAPH_PROBE_AA01.py',true,
+      ['0','CHK','inwork','0_CHK_MATGRAPH_PROBE_AA01.py',true,
         'One-off diagnostic, not a pipeline stage: builds a throwaway material and runs 13 probes to confirm what the material graph actually supports. Delete the probe material after.'],
-      ['0','VAL','current','0_VAL_LOAD_SAFETY_AA01.py',true,
+      ['0','VAL','inwork','0_VAL_LOAD_SAFETY_AA01.py',true,
         'Dev guard in plain Python, not KeyShot: scans every script for the two things that block console load, f-strings and non-ASCII. PASS/FAIL per file, 18/18 pass.'],
-      ['1','HLP','current','1_HLP_MAT_PREFLIGHT_AA01.py',true,
+      ['1','HLP','inwork','1_HLP_MAT_PREFLIGHT_AA01.py',true,
         'Material-template coverage check before a batch: applies a template and reports which objects did not change, meaning the template has no entry for that material. No render.'],
-      ['1','HLP','current','1_HLP_MAT_LOOKUP_AA01.py',true,
+      ['1','HLP','inwork','1_HLP_MAT_LOOKUP_AA01.py',true,
         'Creo to KeyShot material-name lookup: maps native appearance names to KeyShot templates and applies them across a batch import. Per-object apply is unconfirmed on this build.'],
       ['1','HLP','current','1_HLP_MAT_GENERATOR_AB06.py',true,
         'Procedural material variant generator, current rev. Optional emulated image-label (off by default) on top of AB05: image maps into the bump, roughness and colour channels. Experimental, in render-validation.'],
-      ['1','HLP','current','1_HLP_MAT_GENERATOR_AB05.py',true,
-        'Prior rev: makes texture scaling part-size aware. Queries the part bounding box, sets Center On: Part, and scales every texture to a fraction of part size. Superseded by AB06.'],
-      ['1','HLP','current','1_HLP_MAT_GENERATOR_AB04.py',true,
-        'Prior rev: adds four shader families (anisotropic metal, clear and frosted glass, thin film, anodised) as data, with per-family wear gating so glass never gets grime. Superseded by AB05.'],
-      ['1','HLP','current','1_HLP_MAT_GENERATOR_AB03.py',true,
-        'Prior rev: three confirmed bugfixes against a real AB02 run (roughness composite, seeded anti-repetition placement, recursive auto-apply). Superseded by AB04.'],
-      ['1','HLP','current','1_HLP_MAT_GENERATOR_AA02.py',true,
-        'Previous stable rev, kept as the fallback until AB06 is render-confirmed. 12-material palette with toggleable wear layers on a metal, plastic or paint base; recessed matte scratches.'],
-      ['2a','BAT','current','2a_BAT_STD_VIEW_AA01.py',true,
+      ['2a','BAT','inwork','2a_BAT_STD_VIEW_AA01.py',true,
         'Studios-first multi-view batch render: imports every part in a folder, applies an optional template, and renders every Studio per part (falls back to cameras). Logs a CSV manifest.'],
-      ['2a','BAT','current','2a_BAT_TURNTABLE_AA01.py',true,
+      ['2a','BAT','inwork','2a_BAT_TURNTABLE_AA01.py',true,
         'Studios-first 360 turntable batch: spins each part and encodes an mp4. Continuous spin on purpose; the fade-between-angles version is a separate <code>3_</code> script.'],
-      ['2b','ANI','current','2b_ANI_HERO_REVEAL_AA01.py',true,
+      ['2b','ANI','inwork','2b_ANI_HERO_REVEAL_AA01.py',true,
         'Hero-reveal shot: a single zoom into a camera or Studio framing, with optional crane, HDRI rotation, brightness ramp and Model Set playback. Ground-setter and animation API probed on this build.'],
-      ['2b','ANI','current','2b_ANI_CUTAWAY_REVEAL_AA01.py',true,
+      ['2b','ANI','inwork','2b_ANI_CUTAWAY_REVEAL_AA01.py',true,
         'Cutaway reveal: sweeps a clip plane through an assembly bounding box with the camera static. Clip-plane and bbox APIs unconfirmed, degrades to unclipped with a warning.'],
-      ['2b','ANI','current','2b_ANI_ASSEMBLY_PROCEDURAL_AA01.py',true,
+      ['2b','ANI','inwork','2b_ANI_ASSEMBLY_PROCEDURAL_AA01.py',true,
         'Assembly reveal: parts converge into their final positions, camera static, in four modes (scatter, staggered build, spiral, ghost fade). Sub-assembly build is a follow-on.'],
-      ['3','PRC','current','3_PRC_CONTACT_SHEET_AA01.py',true,
+      ['3','PRC','inwork','3_PRC_CONTACT_SHEET_AA01.py',true,
         'Standalone HTML contact sheet from a batch output, plain Python. Scans for stills and turntable videos, groups them by part, writes one <code>contact_sheet.html</code>.'],
-      ['3','PRC','current','3_PRC_FADE_REEL_AA01.py',true,
+      ['3','PRC','inwork','3_PRC_FADE_REEL_AA01.py',true,
         'Multi-angle fade reel: a turntable fade from fixed stills instead of a spin. Writes one self-contained HTML per part with a pure-CSS crossfade, no ffmpeg.'],
-      ['4','CHK','current','4_CHK_AUDIT_AA01.py',true,
+      ['4','CHK','inwork','4_CHK_AUDIT_AA01.py',true,
         'Naming and completeness audit: checks every filename against the naming convention and cross-checks each <code>*_manifest.csv</code> path against disk, flagging missing files and failed statuses.'],
 
       ['2a','BAT','archive','batch_turntable.py',true,
@@ -350,12 +338,6 @@
       '0_VAL_LOAD_SAFETY_AA01.py': '2026-07-15 18:54',
       '1_HLP_MAT_PREFLIGHT_AA01.py': '2026-07-11 02:12',
       '1_HLP_MAT_LOOKUP_AA01.py': '2026-07-11 02:20',
-      '1_HLP_MAT_GENERATOR_AA02.py': '2026-07-15 15:16',
-      '1_HLP_MAT_GENERATOR_AB01.py': '2026-07-15 17:02',
-      '1_HLP_MAT_GENERATOR_AB02.py': '2026-07-16 00:00',
-      '1_HLP_MAT_GENERATOR_AB03.py': '2026-07-16 12:06',
-      '1_HLP_MAT_GENERATOR_AB04.py': '2026-07-16 13:00',
-      '1_HLP_MAT_GENERATOR_AB05.py': '2026-07-16 14:30',
       '1_HLP_MAT_GENERATOR_AB06.py': '2026-07-16 16:00',
       '2a_BAT_STD_VIEW_AA01.py': '2026-07-15 18:54',
       '2a_BAT_TURNTABLE_AA01.py': '2026-07-15 18:54',
@@ -418,14 +400,22 @@
       return 'scripts/' + file;
     }
     function statusLabel(st) {
-      return st === 'current' ? 'Current' : st === 'archive' ? 'Archive'
-        : st === 'locked' ? 'Elsewhere' : 'Unfiled';
+      return st === 'current' ? 'Approved' : st === 'inwork' ? 'In work'
+        : st === 'archive' ? 'Archive' : st === 'locked' ? 'Elsewhere' : 'Unfiled';
     }
     function rowHTML(s, first) {
       var stage = s[0], area = s[1], status = s[2], file = s[3];
       var path = scriptPath(s), note = s[5];
-      var updated = UPDATED[file] || '';
       var nameHTML = path ? '<a href="' + path + '">' + file + '</a>' : file;
+      /* in-work scripts collapse to a heading — no note, no updated stamp */
+      if (status === 'inwork') {
+        return '<div class="row row-compact' + (first ? ' first' : '') + '" data-stage="' + stage + '">' +
+          '<div class="tag">' + stage.toUpperCase() + '<span class="area">' + area + '</span></div>' +
+          '<div class="name">' + nameHTML + '</div>' +
+          '<div class="status inwork">' + statusLabel(status) + '</div>' +
+        '</div>';
+      }
+      var updated = UPDATED[file] || '';
       var updatedHTML = updated
         ? '<div class="updated" title="Last touched (git commit date)">updated ' + updated + '</div>' : '';
       return '<div class="row' + (first ? ' first' : '') + '" data-stage="' + stage + '">' +
@@ -444,13 +434,13 @@
         '</div><div class="zone-body">' + bodyHTML + '</div></div>';
     }
 
-    /* ---- VIEW A: by pipeline stage (current + unfiled shown; ref/archive live in the type view) ---- */
+    /* ---- VIEW A: by pipeline stage (current + inwork + unfiled shown; ref/archive live in the type view) ---- */
     (function renderStage() {
       var host = document.getElementById('view-stage');
       var html = '';
       STAGE_ORDER.forEach(function (st) {
         var rows = SCRIPTS.filter(function (s) {
-          return s[0] === st && (s[2] === 'current' || s[2] === 'unfiled');
+          return s[0] === st && (s[2] === 'current' || s[2] === 'inwork' || s[2] === 'unfiled');
         });
         var meta = STAGE[st];
         var body = rows.length
@@ -467,7 +457,7 @@
       var host = document.getElementById('view-type');
       var html = '';
 
-      // Main pipeline zone — current scripts, sub-grouped by stage.
+      // Main pipeline zone — approved scripts only, sub-grouped by stage.
       var pipeBody = '', total = 0;
       STAGE_ORDER.forEach(function (st) {
         var rows = SCRIPTS.filter(function (s) { return s[0] === st && s[2] === 'current'; });
@@ -476,7 +466,20 @@
         pipeBody += '<div class="substage">Stage ' + st + ' &middot; ' + STAGE[st].title + '</div>';
         pipeBody += rows.map(function (s) { return rowHTML(s, false); }).join('');
       });
-      html += zone('Main pipeline', '', 'Runs against real parts', 'Stage-ordered <code>0</code>&rarr;<code>4</code>; every script slots into exactly one stage. This is what actually runs against a batch.', total + ' scripts', pipeBody);
+      html += zone('Main pipeline', '', 'Approved only', 'Stage-ordered <code>0</code>&rarr;<code>4</code>, approved scripts only. This is what actually runs against a batch.', total + ' script' + (total > 1 ? 's' : ''), pipeBody);
+
+      // In-work zone — everything else, collapsed to a heading until promoted.
+      var workBody = '', workTotal = 0;
+      STAGE_ORDER.forEach(function (st) {
+        var rows = SCRIPTS.filter(function (s) { return s[0] === st && s[2] === 'inwork'; });
+        if (!rows.length) return;
+        workTotal += rows.length;
+        workBody += '<div class="substage">Stage ' + st + ' &middot; ' + STAGE[st].title + '</div>';
+        workBody += rows.map(function (s) { return rowHTML(s, false); }).join('');
+      });
+      if (workTotal) {
+        html += zone('In work', '', 'Not yet promoted', 'Runs, but not yet render-confirmed. Collapsed until moved into the main pipeline.', workTotal + ' scripts', workBody);
+      }
 
       // Supporting groups.
       SUPPORT.forEach(function (g) {
@@ -512,30 +515,6 @@
       set('stage');
     })();
     </script>
-
-    <section>
-      <h2>Backlog<span class="rule"></span></h2>
-      <ul class="backlog">
-        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Hand-staged one-off reveal (particles, rain): design stage</span></li>
-        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Assembly reveal, Creo-driven: animate an authored explode state; depends on verifying explode data survives the plugin import</span></li>
-        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Assembly reveal, procedural modes: scatter/settle, staggered build, spiral converge, ghost fade-in <em>(done, see pipeline)</em> (sub-assembly build remains a follow-on)</span></li>
-        <li><span class="pri">P1</span><span class="idea"><span class="stage">2b &middot;</span> Cutaway / cross-section reveal <em>(done, see pipeline)</em></span></li>
-        <li><span class="pri">P1</span><span class="idea"><span class="stage">1 &middot;</span> Material-name lookup table (Creo &rarr; KeyShot) <em>(done, see pipeline)</em></span></li>
-        <li><span class="pri">P1</span><span class="idea"><span class="stage">- &middot;</span> Shared module (L3): de-duplicate Studio resolution, manifest, framing/padding &amp; classify out of the ~4 scripts that copy it; the unblocker for the launcher &amp; scale classifier</span></li>
-        <li><span class="pri">P1</span><span class="idea"><span class="stage">- &middot;</span> <code>RUN_ALL.py</code> launcher: one spine, two doors (AUTO headless / PRO dialog): import &rarr; classify tier &rarr; preflight hard-gate &rarr; stage router &rarr; contact sheet</span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">- &middot;</span> <code>watch.py</code> orchestrator (out-of-KeyShot): hot-folder watch, resolve mode from subfolder, move-on-success lifecycle</span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> 5-tier bbox-diagonal scale classification (2 mm &rarr; 70 m, ~35,000:1): per-tier overrides; needs a calibration pass over real parts</span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">3 &middot;</span> Multi-angle fade reel: crossfade between Studios/cameras; consumes stills from the turntable/std-view batches <em>(done, see pipeline)</em></span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">3 &middot;</span> BOM-driven manifest (opt-in): BOM access method still TBD</span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">2b &middot;</span> Dynamic BOM callouts on assembly renders: depends on the BOM manifest above</span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">1 &middot;</span> Studio/camera-rig template library</span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> STEP-file preflight (units, filename hygiene, material hints) <em>(done, see pipeline)</em></span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> Trial-import geometry/appearance health check <em>(done, see pipeline)</em> (the original "pre-import validator", split into 3)</span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">0 &middot;</span> Orientation / up-axis sanity check <em>(done, see pipeline)</em></span></li>
-        <li><span class="pri">P2</span><span class="idea"><span class="stage">4 &middot;</span> Naming-compliance + render-completeness audit <em>(done, see pipeline)</em></span></li>
-        <li><span class="pri">P3</span><span class="idea"><span class="stage">- &middot;</span> Archive superseded batch scripts <em>(done)</em></span></li>
-      </ul>
-    </section>
 
     <div class="notes">
       <h3>Conventions</h3>

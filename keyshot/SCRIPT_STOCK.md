@@ -1,7 +1,19 @@
 # Script Stock
 
 Project ID: `ksrp-efbe4961`
-Last updated: 2026-07-18 (moved the Blender fluid-cache generators —
+Last updated: 2026-07-22 (reworked `scripts.html`'s interface, per direct
+call — it had gotten dense. Split script status into `current` (**Approved**
+— renders in full in the Main pipeline zone) vs a new `inwork` (**In work**
+— renders collapsed to a one-line heading, no note/updated stamp) so the
+approved-only pipeline is legible at a glance; every script except
+`1_HLP_MAT_GENERATOR_AB06.py` is flagged `inwork` for now (a working default,
+not a maturity judgment — reassess as scripts get render-confirmed). Dropped
+the page's Backlog section entirely (planning content, redundant with this
+file). Removed `1_HLP_MAT_GENERATOR_AA02/AB03/AB04/AB05.py` from the
+scripts.html inventory list (superseded revs, only AB06 is current per this
+repo's REV convention) — their history stays below and in this file's own
+changelog; the files themselves are untouched on disk, still pending the
+operator's own recycle call. Earlier: 2026-07-18 (moved the Blender fluid-cache generators —
 `fluidgen.py`, real Mantaflow FLIP sims, + the new `make_fluids.py`,
 procedural no-solver surfaces — out of `keyshot/` entirely to a top-level
 `blender/fluid-cache-gen/`, since neither runs via KeyShot's `lux`/`luxmath`
