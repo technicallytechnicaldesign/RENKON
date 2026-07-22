@@ -102,10 +102,17 @@
   .card.active { cursor: pointer; }
   .card.active:hover { background: var(--panel-bg-raised); }
   .card .tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-accent); }
+  .card .tag.inwork { color: var(--muted); }
   .card.planned .tag { color: var(--muted); }
   .card h2 { font-family: var(--font-display); font-size: 13px; margin: 0; font-weight: 500; }
   .card p { font-size: 12px; color: var(--muted); margin: 0; line-height: 1.6; }
   .card.planned { opacity: 0.55; border: 1px dashed var(--line); background: transparent; }
+  .card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 4px; }
+  .card-tag {
+    font-family: var(--font-mono);
+    font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--muted); border: 1px solid var(--line); padding: 2px 7px;
+  }
   .card.subtype-card { padding-bottom: 12px; }
   .mini-stage {
     margin-top: 4px; background: var(--stage-bg, #060a10); border: 1px solid var(--line);
@@ -2224,17 +2231,39 @@ ${orbit(120, 4.4, 1.5, 2.7)}
       id: "overlay-kit",
       title: "Overlay Asset Customizer",
       description: "Browse by type, pick a variant, then recolor, retext, adjust and export.",
-      status: "active",
+      status: "inwork",
+      tags: ["overlay", "svg", "motion"],
       mount: mountOverlayKit
     },
     {
       id: "texture-generator",
       title: "Texture & Bump Map Generator",
       description: "Procedural grayscale texture and bump-map previews.",
-      status: "active",
+      status: "inwork",
+      tags: ["texture", "bump-map", "procedural"],
       mount: mountTextureTool
     }
   ];
+
+  // Cards for tools that live in their own file — link out rather than mount.
+  const EXTERNAL_TOOLS = [
+    { title: "Render Labels", href: "../label-generator/index.html", status: "inwork",
+      tags: ["label", "decal", "raster"],
+      description: "Placeable decals (fingerprints, scuffs, machining marks) with opacity, bump and spec maps." },
+    { title: "Signage &amp; Stickers", href: "../signage/index.html", status: "inwork",
+      tags: ["signage", "decal", "warning"],
+      description: "Placeable warning, data-plate and certification decals with opacity, bump and spec maps." },
+    { title: "Hydroform", href: "../hydroform/index.html", status: "inwork",
+      tags: ["fluid", "canvas", "realtime"],
+      description: "A real-time Canvas fluid generator for jets, fountains and pipe flow, with WebM and PNG export." }
+  ];
+
+  function statusTagHTML(status) {
+    return status === "active" ? '<div class="tag">Active</div>' : '<div class="tag inwork">In work</div>';
+  }
+  function cardTagsHTML(tags) {
+    return `<div class="card-tags">${tags.map(t => `<span class="card-tag">${t}</span>`).join("")}</div>`;
+  }
 
   function mountHome(main) {
     main.innerHTML = "";
@@ -2249,31 +2278,19 @@ ${orbit(120, 4.4, 1.5, 2.7)}
     TOOLS.forEach(tool => {
       const card = document.createElement("button");
       card.className = "card active";
-      card.innerHTML = `<div class="tag">Active</div><h2>${tool.title}</h2><p>${tool.description}</p>`;
+      card.innerHTML = `${statusTagHTML(tool.status)}<h2>${tool.title}</h2><p>${tool.description}</p>${cardTagsHTML(tool.tags)}`;
       card.addEventListener("click", () => { location.hash = "#" + tool.id; });
       grid.appendChild(card);
     });
 
-    // Render Labels lives in its own file — link out to it.
-    const labelCard = document.createElement("button");
-    labelCard.className = "card active";
-    labelCard.innerHTML = `<div class="tag">Active</div><h2>Render Labels</h2><p>Placeable decals (fingerprints, scuffs, machining marks) with opacity, bump and spec maps.</p>`;
-    labelCard.addEventListener("click", () => { window.location.href = "../label-generator/index.html"; });
-    grid.appendChild(labelCard);
-
-    // Signage & Stickers lives in its own file — link out to it.
-    const signageCard = document.createElement("button");
-    signageCard.className = "card active";
-    signageCard.innerHTML = `<div class="tag">Active</div><h2>Signage &amp; Stickers</h2><p>Warning stickers, data plates, certification badges, pipe markers and lockout tags &mdash; placeable decals with opacity, bump and spec maps.</p>`;
-    signageCard.addEventListener("click", () => { window.location.href = "../signage/index.html"; });
-    grid.appendChild(signageCard);
-
-    // Hydroform lives in its own file — link out to it.
-    const hydroformCard = document.createElement("button");
-    hydroformCard.className = "card active";
-    hydroformCard.innerHTML = `<div class="tag">Active</div><h2>Hydroform</h2><p>Procedural water, jets, fountains and pipe / process-flow &mdash; a real-time Canvas fluid generator with studio-turntable presentation and PNG export.</p>`;
-    hydroformCard.addEventListener("click", () => { window.location.href = "../hydroform/index.html"; });
-    grid.appendChild(hydroformCard);
+    // Tools that live in their own file — link out to them.
+    EXTERNAL_TOOLS.forEach(tool => {
+      const card = document.createElement("button");
+      card.className = "card active";
+      card.innerHTML = `${statusTagHTML(tool.status)}<h2>${tool.title}</h2><p>${tool.description}</p>${cardTagsHTML(tool.tags)}`;
+      card.addEventListener("click", () => { window.location.href = tool.href; });
+      grid.appendChild(card);
+    });
 
     const placeholder = document.createElement("div");
     placeholder.className = "card planned";
