@@ -2,7 +2,7 @@
 
 A self-contained, single-file browser app: a deterministic, real-time **Canvas 2D
 procedural water / fluid generator** with pipe and process-flow networks and a
-studio-turntable presentation mode. No build step, no framework, no external JS —
+studio glass-tube presentation mode. No build step, no framework, no external JS —
 only the two RENKON brand fonts load from Google Fonts. Open `index.html` directly.
 
 Every seed produces a repeatable variation.
@@ -17,7 +17,7 @@ Every seed produces a repeatable variation.
   - **Single run / Tee branch / Manifold / Bypass loop** — a miniature process system with a centrifugal pump, animated impeller, junction collars, and valves (count + opening).
   - Pipe materials: industrial metal, transparent glass, frosted glass, clear acrylic, polished chrome, smoked glass, technical cutaway.
   - Illustrative live hydraulic readouts (inlet / outlet pressure, pressure loss, estimated flow). This is a visual model, **not** an engineering-certified hydraulic solver.
-- **Studio glass-tube presentation** — bright studio backdrop, soft floor reflection, hidden clutter, for KeyShot-style clean renders. Pairs with turntable + fullscreen.
+- **Studio glass-tube presentation** — bright studio backdrop, soft floor reflection, hidden clutter, for KeyShot-style clean renders. Pairs with fullscreen.
 
 ## Controls
 
@@ -26,12 +26,14 @@ tension, turbulence, wind, droplet scale), and look development (water/backgroun
 opacity, highlight, motion streak, depth/perspective, surface & ripples, specular sparkle).
 Presets: Clean studio, Violent impact, Silky jet, Fine mist, Process line, Simple straight
 pipe, Studio glass tube. Randomize re-rolls the seed and settings. Export writes a PNG
-(with optional transparent background).
+(with optional transparent background); Record writes a WebM clip of the live sim via
+`canvas.captureStream()` + `MediaRecorder` — native, no dependency, no fixed duration
+(click to start, click again to stop and download).
 
 ## Keyboard shortcuts
 
 - **H** — hide / show UI
-- **T** — toggle turntable
+- **V** — start / stop recording a WebM clip
 - **F** — fullscreen
 - **Space** — pause / resume
 - **R** — replay

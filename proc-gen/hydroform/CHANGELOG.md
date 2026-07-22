@@ -1,5 +1,20 @@
 # Changelog — Hydroform
 
+## 2026-07-22
+
+- Removed the turntable feature entirely (checkbox + speed slider, `T` shortcut, toolbar
+  and floating-dock buttons, per-preset flags, and the yaw rotation in `project()`) — judged
+  not visually interesting enough to keep.
+- Added a movement export: **Record WebM** (toolbar button, floating-dock button, `V`
+  shortcut). Uses `canvas.captureStream(60)` + `MediaRecorder` (vp9/vp8/webm, whichever the
+  browser supports) — native, zero dependencies, consistent with this repo's
+  no-external-JS policy and the "drop GIF, no Worker" call already made for the
+  parametric-generators tool (see `proc-gen/parametric-generators/docs/ANIMATED_EXPORT.md`).
+  Click to start, click again to stop; the clip downloads as
+  `hydroform-<mode>-seed-<seed>.webm`. Unlike the texture generator's deterministic
+  frame-sequence export, Hydroform's sim is stateful/live rather than time-parametrized, so
+  it records the actual running loop instead of scrubbing a `state.time` value.
+
 ## 2026-07-18
 
 - Imported from the Hydroform bundle (studio-turntable superset build) and reskinned into

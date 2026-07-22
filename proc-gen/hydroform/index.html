@@ -193,6 +193,12 @@
   .btn:hover { color: var(--c-accent); background: var(--panel-bg-raised); }
   .btn.primary { color: var(--c-accent); }
   .btn.primary:hover { background: var(--c-accent); color: var(--bg); }
+  .btn.recording, .dock-btn.recording { color: #ff4d4d; animation: recording-pulse 1.1s ease-in-out infinite; }
+
+  @keyframes recording-pulse {
+    0%, 100% { background: var(--panel-bg); }
+    50% { background: var(--panel-bg-raised); }
+  }
 
   .controls {
     min-height: 0;
@@ -470,8 +476,8 @@
     <div class="page-head">
       <h1>Hydroform</h1>
       <p>Deterministic, real-time Canvas fluid study &mdash; impact splashes, pressurized jets, vertical fountains,
-         and pipe / process-flow networks with a studio glass-tube turntable mode. Every seed is a repeatable variation.
-         Keys: <b>H</b> hide UI &middot; <b>T</b> turntable &middot; <b>F</b> fullscreen &middot; <b>Space</b> pause &middot; <b>R</b> replay.</p>
+         and pipe / process-flow networks with a studio glass-tube presentation mode. Every seed is a repeatable variation.
+         Keys: <b>H</b> hide UI &middot; <b>V</b> record clip &middot; <b>F</b> fullscreen &middot; <b>Space</b> pause &middot; <b>R</b> replay.</p>
     </div>
 
     <div class="app" id="app">
@@ -484,9 +490,9 @@
             <span>SEED <b id="seedReadout">2048</b></span>
           </div>
         </div>
-        <div class="hint">Pipe mode: choose Straight pipe for minimal flow · H hides UI · T rotates · F fullscreen · Space pauses · R replays</div>
+        <div class="hint">Pipe mode: choose Straight pipe for minimal flow · H hides UI · V records a clip · F fullscreen · Space pauses · R replays</div>
         <div class="presentation-dock" aria-label="Presentation controls">
-          <button class="dock-btn" id="floatingTurntableBtn" title="Toggle turntable">↻ Rotate</button>
+          <button class="dock-btn" id="floatingRecordBtn" title="Record a WebM clip">⏺ Record</button>
           <button class="dock-btn" id="floatingUiBtn" title="Hide or show controls"><span class="hide-label">Hide UI</span><span class="show-label">Show UI</span></button>
           <button class="dock-btn" id="floatingFullscreenBtn" title="Toggle fullscreen">⛶ Fullscreen</button>
         </div>
@@ -503,7 +509,7 @@
           <button class="btn" id="randomBtn">✦ Randomize</button>
           <button class="btn" id="pauseBtn">Ⅱ Pause</button>
           <button class="btn" id="exportBtn">↓ Export PNG</button>
-          <button class="btn" id="turntableBtn">↻ Turntable</button>
+          <button class="btn" id="recordBtn">⏺ Record WebM</button>
           <button class="btn" id="hideUiBtn">◫ Hide UI</button>
           <button class="btn" id="fullscreenBtn">⛶ Fullscreen</button>
         </div>
@@ -626,8 +632,6 @@
             <div class="control"><label for="trail">Motion streak</label><span class="value" data-for="trail"></span><input id="trail" type="range" min="0" max="100" value="24" step="1"></div>
             <div class="control"><label for="perspective">Depth / perspective</label><span class="value" data-for="perspective"></span><input id="perspective" type="range" min="0" max="100" value="42" step="1"></div>
             <div class="toggle-row"><span>Studio presentation</span><input id="presentationMode" type="checkbox"></div>
-            <div class="toggle-row"><span>Turntable animation</span><input id="turntable" type="checkbox"></div>
-            <div class="control"><label for="turntableSpeed">Turntable speed</label><span class="value" data-for="turntableSpeed"></span><input id="turntableSpeed" type="range" min="1" max="100" value="34" step="1"></div>
             <div class="toggle-row"><span>Surface & ripples</span><input id="surface" type="checkbox" checked></div>
             <div class="toggle-row"><span>Specular sparkle</span><input id="sparkle" type="checkbox" checked></div>
             <div class="toggle-row"><span>Transparent PNG export</span><input id="transparentExport" type="checkbox"></div>
@@ -655,7 +659,7 @@
     'mode','seed','preset','autoReplay','pressure','spread','angle','nozzle','density',
     'pipeNetwork','pipeMaterial','pipeDiameter','pipeFill','pipeComplexity','branchCount','flowSpeed','bubbleRate','pumpPower','valveCount','valveOpening',
     'gravity','drag','tension','turbulence','wind','droplet','waterColor','waterHex',
-    'bgColor','bgHex','opacity','highlight','trail','perspective','presentationMode','turntable','turntableSpeed','surface','sparkle','transparentExport'
+    'bgColor','bgHex','opacity','highlight','trail','perspective','presentationMode','surface','sparkle','transparentExport'
   ];
   const ui = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
 
@@ -666,7 +670,7 @@
     flowSpeed: 62, bubbleRate: 36, pumpPower: 72, valveCount: 2, valveOpening: 82,
     gravity: 100, drag: 18, tension: 62, turbulence: 22, wind: 0, droplet: 34,
     waterColor: '#4fd1d9', bgColor: '#060a10', opacity: 64, highlight: 62,
-    trail: 24, perspective: 42, presentationMode: false, turntable: false, turntableSpeed: 34, surface: true, sparkle: true, transparentExport: false
+    trail: 24, perspective: 42, presentationMode: false, surface: true, sparkle: true, transparentExport: false
   };
 
   const presets = {
@@ -674,9 +678,9 @@
     violent: { mode:'splash', pressure:92, spread:76, angle:28, nozzle:66, density:2200, pipeNetwork:'tee', pipeMaterial:'cutaway', pipeDiameter:50, pipeFill:88, pipeComplexity:62, branchCount:3, flowSpeed:78, bubbleRate:58, pumpPower:92, valveCount:3, valveOpening:68, gravity:118, drag:12, tension:40, turbulence:72, wind:9, droplet:38, opacity:82, highlight:68, trail:54, perspective:55, waterColor:'#7cdfff', bgColor:'#03070a' },
     silky:   { mode:'jet', pressure:74, spread:9, angle:20, nozzle:43, density:1800, pipeNetwork:'single', pipeMaterial:'glass', pipeDiameter:44, pipeFill:84, pipeComplexity:40, branchCount:2, flowSpeed:74, bubbleRate:18, pumpPower:76, valveCount:1, valveOpening:94, gravity:82, drag:9, tension:90, turbulence:4, wind:0, droplet:62, opacity:68, highlight:92, trail:74, perspective:35, waterColor:'#b2f2ff', bgColor:'#050d13' },
     mist:    { mode:'fountain', pressure:55, spread:73, angle:82, nozzle:52, density:2350, pipeNetwork:'manifold', pipeMaterial:'glass', pipeDiameter:52, pipeFill:64, pipeComplexity:56, branchCount:4, flowSpeed:58, bubbleRate:72, pumpPower:62, valveCount:4, valveOpening:76, gravity:68, drag:65, tension:18, turbulence:58, wind:18, droplet:22, opacity:42, highlight:75, trail:18, perspective:60, waterColor:'#b9f5ff', bgColor:'#07131a' },
-    process: { mode:'pipe', pressure:66, spread:18, angle:10, nozzle:34, density:1600, pipeNetwork:'manifold', pipeMaterial:'cutaway', pipeDiameter:68, pipeFill:86, pipeComplexity:58, branchCount:3, flowSpeed:78, bubbleRate:28, pumpPower:84, valveCount:4, valveOpening:78, gravity:92, drag:10, tension:76, turbulence:24, wind:0, droplet:50, opacity:70, highlight:88, trail:56, perspective:32, presentationMode:false, turntable:false, turntableSpeed:34, waterColor:'#9beaff', bgColor:'#08111a' },
-    simplepipe: { mode:'pipe', pressure:30, spread:8, angle:8, nozzle:24, density:1200, pipeNetwork:'straight', pipeMaterial:'glass', pipeDiameter:58, pipeFill:88, pipeComplexity:10, branchCount:2, flowSpeed:72, bubbleRate:18, pumpPower:0, valveCount:0, valveOpening:100, gravity:86, drag:8, tension:84, turbulence:8, wind:0, droplet:54, opacity:68, highlight:90, trail:58, perspective:18, presentationMode:false, turntable:false, turntableSpeed:34, waterColor:'#a9efff', bgColor:'#081019' },
-    studio: { mode:'pipe', pressure:22, spread:4, angle:8, nozzle:22, density:1000, pipeNetwork:'straight', pipeMaterial:'glass', pipeDiameter:64, pipeFill:92, pipeComplexity:10, branchCount:2, flowSpeed:66, bubbleRate:10, pumpPower:0, valveCount:0, valveOpening:100, gravity:82, drag:6, tension:92, turbulence:4, wind:0, droplet:60, opacity:58, highlight:100, trail:52, perspective:8, presentationMode:true, turntable:true, turntableSpeed:28, waterColor:'#b6f4ff', bgColor:'#eef4f8' }
+    process: { mode:'pipe', pressure:66, spread:18, angle:10, nozzle:34, density:1600, pipeNetwork:'manifold', pipeMaterial:'cutaway', pipeDiameter:68, pipeFill:86, pipeComplexity:58, branchCount:3, flowSpeed:78, bubbleRate:28, pumpPower:84, valveCount:4, valveOpening:78, gravity:92, drag:10, tension:76, turbulence:24, wind:0, droplet:50, opacity:70, highlight:88, trail:56, perspective:32, presentationMode:false, waterColor:'#9beaff', bgColor:'#08111a' },
+    simplepipe: { mode:'pipe', pressure:30, spread:8, angle:8, nozzle:24, density:1200, pipeNetwork:'straight', pipeMaterial:'glass', pipeDiameter:58, pipeFill:88, pipeComplexity:10, branchCount:2, flowSpeed:72, bubbleRate:18, pumpPower:0, valveCount:0, valveOpening:100, gravity:86, drag:8, tension:84, turbulence:8, wind:0, droplet:54, opacity:68, highlight:90, trail:58, perspective:18, presentationMode:false, waterColor:'#a9efff', bgColor:'#081019' },
+    studio: { mode:'pipe', pressure:22, spread:4, angle:8, nozzle:22, density:1000, pipeNetwork:'straight', pipeMaterial:'glass', pipeDiameter:64, pipeFill:92, pipeComplexity:10, branchCount:2, flowSpeed:66, bubbleRate:10, pumpPower:0, valveCount:0, valveOpening:100, gravity:82, drag:6, tension:92, turbulence:4, wind:0, droplet:60, opacity:58, highlight:100, trail:52, perspective:8, presentationMode:true, waterColor:'#b6f4ff', bgColor:'#eef4f8' }
   };
 
   const state = {
@@ -686,7 +690,7 @@
     width: 0, height: 0, dpr: 1, waterline: 0, scale: 1,
     cycle: 0, nozzlePulse: 0,
     pipe: { runs: [], valves: [], junctions: [], pressure: { inlet:0, outlet:0, loss:0, flow:0 }, pumpPhase:0 },
-    turntableAngle: 0, uiHidden: false
+    uiHidden: false, recorder: null, recordedChunks: []
   };
 
   function hashSeed(n) {
@@ -737,11 +741,8 @@
 
   function project(p) {
     const depth = settings.perspective / 100;
-    const useTurntable = settings.mode === 'pipe';
-    const yaw = useTurntable ? state.turntableAngle : 0;
-    const c = Math.cos(yaw), s = Math.sin(yaw);
-    const rx = p.x * c - p.z * s;
-    const rz = p.x * s + p.z * c;
+    const rx = p.x;
+    const rz = p.z;
     const perspective = 1 / (1 + Math.max(-.7, rz) * .18 * depth);
     return {
       x: state.width * .5 + state.targetX * state.scale + rx * state.scale * perspective,
@@ -1109,9 +1110,6 @@
   function update(dt) {
     state.burstAge += dt;
     state.nozzlePulse += dt;
-    if(settings.mode==='pipe' && settings.turntable) {
-      state.turntableAngle = (state.turntableAngle + dt * (0.10 + settings.turntableSpeed/100 * 0.62)) % (Math.PI*2);
-    }
 
     if (settings.mode === 'jet') emitJet(dt);
     if (settings.mode === 'fountain') emitFountain(dt);
@@ -1561,7 +1559,7 @@
       pumpPower:`${n}%`, valveCount:`${n}`, valveOpening:`${n}%`,
       gravity:`${(n/100).toFixed(2)} g`, drag:`${n}%`, tension:`${n}%`, turbulence:`${n}%`,
       wind:n===0?'Still':`${n>0?'+':''}${n}%`, droplet:`${n}%`, opacity:`${n}%`, highlight:`${n}%`,
-      trail:`${n}%`, perspective:`${n}%`, turntableSpeed:`${n}%`
+      trail:`${n}%`, perspective:`${n}%`
     };
     return map[id] ?? String(v);
   }
@@ -1574,7 +1572,7 @@
     if(out) out.textContent=formatValue(id,el.value);
   }
 
-  const rangeIds=['pressure','spread','angle','nozzle','density','pipeDiameter','pipeFill','pipeComplexity','branchCount','flowSpeed','bubbleRate','pumpPower','valveCount','valveOpening','gravity','drag','tension','turbulence','wind','droplet','opacity','highlight','trail','perspective','turntableSpeed'];
+  const rangeIds=['pressure','spread','angle','nozzle','density','pipeDiameter','pipeFill','pipeComplexity','branchCount','flowSpeed','bubbleRate','pumpPower','valveCount','valveOpening','gravity','drag','tension','turbulence','wind','droplet','opacity','highlight','trail','perspective'];
   rangeIds.forEach(id=>{
     syncRange(id);
     ui[id].addEventListener('input',()=>{
@@ -1601,21 +1599,12 @@
     app.classList.toggle('presentation-clean', settings.presentationMode && settings.mode==='pipe');
     app.classList.toggle('ui-hidden', state.uiHidden);
     document.getElementById('hideUiBtn').textContent = state.uiHidden ? '◫ Show UI' : '◫ Hide UI';
-    document.getElementById('turntableBtn').textContent = settings.turntable ? '■ Stop rotation' : '↻ Turntable';
-    document.getElementById('floatingTurntableBtn').textContent = settings.turntable ? '■ Stop' : '↻ Rotate';
   }
 
   function setUiHidden(hidden) {
     state.uiHidden = !!hidden;
     syncPresentationClasses();
     requestAnimationFrame(resize);
-  }
-
-  function setTurntable(enabled) {
-    settings.turntable = !!enabled;
-    ui.turntable.checked = settings.turntable;
-    ui.preset.value='custom';
-    syncPresentationClasses();
   }
 
   async function toggleFullscreen() {
@@ -1628,7 +1617,6 @@
   }
 
   ui.presentationMode.addEventListener('change',()=>{settings.presentationMode=ui.presentationMode.checked; ui.preset.value='custom'; syncPresentationClasses(); if(settings.mode==='pipe') reset();});
-  ui.turntable.addEventListener('change',()=>setTurntable(ui.turntable.checked));
   ui.surface.addEventListener('change',()=>settings.surface=ui.surface.checked);
   ui.sparkle.addEventListener('change',()=>settings.sparkle=ui.sparkle.checked);
   ui.transparentExport.addEventListener('change',()=>settings.transparentExport=ui.transparentExport.checked);
@@ -1654,9 +1642,7 @@
     const p=presets[name];
     if(!p) return;
     settings.presentationMode = false;
-    settings.turntable = false;
     ui.presentationMode.checked = false;
-    ui.turntable.checked = false;
     Object.assign(settings,p);
     Object.entries(p).forEach(([key,value])=>{
       if(!ui[key]) return;
@@ -1666,7 +1652,6 @@
     });
     ui.waterHex.value=settings.waterColor; ui.bgHex.value=settings.bgColor;
     ui.presentationMode.checked = !!settings.presentationMode;
-    ui.turntable.checked = !!settings.turntable;
     syncPresentationClasses();
     modeHelp.textContent=modeDescriptions[settings.mode];
     reset();
@@ -1693,15 +1678,12 @@
     const randomValues={ pressure:choose(38,96), spread:choose(8,82), angle:choose(12,84), nozzle:choose(15,75), density:choose(900,2300), pipeDiameter:choose(28,86), pipeFill:choose(42,96), pipeComplexity:choose(18,92), branchCount:choose(2,5), flowSpeed:choose(18,94), bubbleRate:choose(0,82), pumpPower:choose(24,98), valveCount:choose(0,6), valveOpening:choose(22,100), gravity:choose(65,135), drag:choose(4,55), tension:choose(20,94), turbulence:choose(4,72), wind:choose(-25,25), droplet:choose(22,78), opacity:choose(48,88), highlight:choose(55,96), trail:choose(12,78), perspective:choose(18,72) };
     Object.entries(randomValues).forEach(([k,v])=>{ ui[k].value=v; syncRange(k); });
     settings.presentationMode = false; ui.presentationMode.checked = false;
-    settings.turntable = false; ui.turntable.checked = false;
     syncPresentationClasses();
     ui.preset.value='custom';
     modeHelp.textContent=modeDescriptions[settings.mode];
     reset();
   });
 
-  document.getElementById('turntableBtn').addEventListener('click',()=>setTurntable(!settings.turntable));
-  document.getElementById('floatingTurntableBtn').addEventListener('click',()=>setTurntable(!settings.turntable));
   document.getElementById('hideUiBtn').addEventListener('click',()=>setUiHidden(true));
   document.getElementById('floatingUiBtn').addEventListener('click',()=>setUiHidden(!state.uiHidden));
   document.getElementById('fullscreenBtn').addEventListener('click',toggleFullscreen);
@@ -1723,6 +1705,51 @@
     requestAnimationFrame(()=>render(false));
   });
 
+  function pickRecordingMimeType() {
+    const candidates = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+    return candidates.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
+  }
+
+  function setRecordingUi(recording) {
+    [document.getElementById('recordBtn'), document.getElementById('floatingRecordBtn')].forEach(btn => {
+      btn.classList.toggle('recording', recording);
+      btn.textContent = recording ? '■ Stop recording' : '⏺ Record WebM';
+    });
+  }
+
+  function toggleRecording() {
+    if (!window.MediaRecorder) {
+      console.warn('MediaRecorder is unavailable in this browser.');
+      return;
+    }
+    if (state.recorder && state.recorder.state === 'recording') {
+      state.recorder.stop();
+      return;
+    }
+    const mimeType = pickRecordingMimeType();
+    const stream = canvas.captureStream(60);
+    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    state.recordedChunks = [];
+    recorder.ondataavailable = e => { if (e.data.size > 0) state.recordedChunks.push(e.data); };
+    recorder.onstop = () => {
+      const blob = new Blob(state.recordedChunks, { type: mimeType || 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `hydroform-${settings.mode}-seed-${settings.seed}.webm`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      state.recorder = null;
+      setRecordingUi(false);
+    };
+    recorder.start();
+    state.recorder = recorder;
+    setRecordingUi(true);
+  }
+
+  document.getElementById('recordBtn').addEventListener('click', toggleRecording);
+  document.getElementById('floatingRecordBtn').addEventListener('click', toggleRecording);
+
   canvas.addEventListener('pointerdown',e=>{
     const r=canvas.getBoundingClientRect();
     const x=(e.clientX-r.left-r.width*.5)/state.scale;
@@ -1739,7 +1766,7 @@
     }
     if(e.key.toLowerCase()==='r') reset();
     if(e.key.toLowerCase()==='h') setUiHidden(!state.uiHidden);
-    if(e.key.toLowerCase()==='t') setTurntable(!settings.turntable);
+    if(e.key.toLowerCase()==='v') toggleRecording();
     if(e.key.toLowerCase()==='f') toggleFullscreen();
   });
 
