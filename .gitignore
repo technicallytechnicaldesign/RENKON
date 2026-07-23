@@ -1,3 +1,7 @@
 # Python bytecode from local syntax checks / KeyShot script runs
 __pycache__/
 *.pyc
+
+# Baked fluid caches / Alembic exports (blender/fluid-cache-gen) -- large,
+# regeneratable, not source. Preview-tier full run was ~1.4GB.
+blender/fluid-cache-gen/fluid_out/

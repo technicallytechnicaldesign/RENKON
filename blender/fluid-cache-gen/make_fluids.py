@@ -171,10 +171,14 @@ def export(domain, path, f0, f1):
     for o in bpy.context.scene.objects: o.select_set(False)
     domain.select_set(True); bpy.context.view_layer.objects.active = domain
     kw = dict(filepath=path, start=f0, end=f1, selected=True,
-              triangulate=True, quad_method='FIXED', ngon_method='BEAUTY')
-    try: bpy.ops.wm.alembic_export(**kw)
-    except TypeError:                                       # older builds: fewer args
-        bpy.ops.wm.alembic_export(filepath=path, start=f0, end=f1, selected=True)
+              triangulate=True, quad_method='FIXED', ngon_method='BEAUTY',
+              as_background_job=False)                       # force sync: interactive GUI runs
+    try: bpy.ops.wm.alembic_export(**kw)                      # this as an async job otherwise, and
+    except TypeError:                                         # the next preset's reset() kills it
+        kw.pop("as_background_job", None)
+        try: bpy.ops.wm.alembic_export(**kw)
+        except TypeError:                                     # older builds: fewer args
+            bpy.ops.wm.alembic_export(filepath=path, start=f0, end=f1, selected=True)
 
 # ---------------------------------------------------------------- run one preset
 def build(name, tier):

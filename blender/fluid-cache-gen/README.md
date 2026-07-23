@@ -78,12 +78,51 @@ written for) — all `# CHECK`-flagged API names still resolve.
   frame 60). `pipe` and `splash` were unaffected. All four presets in
   `fluidgen.py` are now confirmed producing real liquid mesh at preview res.
 
-**Not yet checked**: `final` resolution tier for either script (only
-`preview` was smoke-tested), and neither script's output has been round-
-tripped into an actual KeyShot import yet — that's the next real gap before
-calling this production-ready. `splash` at preview res alone was **595 MB**
-— worth a size/resolution gut-check before committing to `final` tier
-routinely.
+**Not yet checked**: `final` resolution tier for either script, and neither
+script's output has been round-tripped into an actual KeyShot import yet —
+that's the next real gap before calling this production-ready (see RNK-0229).
+
+**2026-07-19 — third bug found + fixed, full fresh preview-tier bake run.**
+A GUI run (Text Editor "Run Script") after the `active_object` fix above
+showed correct viewport animation but produced **zero `.abc` files on disk**
+— `bpy.ops.wm.alembic_export` runs as an async background job in that
+interactive context, and the next preset's `reset()` (`read_factory_settings`)
+tears down the session before the export job finishes. Fixed in both
+scripts' `export()` by passing `as_background_job=False` (forces synchronous
+export), with a nested try/except fallback for older Blender builds that
+don't take that kwarg.
+
+With that fix in place, ran a full fresh headless bake of all four
+`fluidgen.py` presets at `preview` res from Blender 5.0.1
+(`E:\blender\blender.exe`), one invocation per preset:
+
+| preset | frames | bake time | `.abc` size | `cache_*/` dir | verify (min→max verts) |
+|---|---|---|---|---|---|
+| jet    | 1–80  | 17.1s | 257.2 MB | 69.9 MB  | 334 → 39,008 (peaks f60, drains by f80) |
+| pipe   | 1–90  | 8.9s  | 109.3 MB | 32.2 MB  | 284 → 11,524 |
+| drip   | 1–110 | 16.0s | 129.3 MB | 37.9 MB  | 270 → 10,480 |
+| splash | 1–70  | 53.3s | 567.8 MB | 156.7 MB | 1,016 → 73,634 |
+
+Total wall-clock for all four bakes: **~114s**. Total `fluid_out/` size:
+**1.36 GB** — confirms the earlier ~595 MB `splash` figure was in the right
+ballpark and that `preview` tier alone is already a real-storage concern;
+`final` tier (160 vs 48 resolution_max) would be substantially larger and
+slower, and remains untested. `fluid_out/` is gitignored — never commit it.
+
+Verified with a reimport-and-measure harness (same method as the jet/drip
+fix above): every preset shows non-zero, growing evaluated-mesh vertex
+counts across sampled frames — no silent-empty regressions. Also rendered a
+quick diagnostic still per preset (Eevee, simple blue water-ish material) at
+an early/mid-action frame rather than a late/settled one — preview
+resolution's marching-cubes reconstruction is genuinely chunky/faceted at
+res 48 (expected, not a bug), and picking a mid-action frame instead of a
+settled/pooled one is what actually shows each preset's distinct dynamics
+(jet's arcing stream, pipe's fan-out, drip's falling column, splash's crown
+spray) rather than a generic blob.
+
+This run confirms the synchronous-export fix works headless. It has **not**
+yet been re-confirmed by re-running interactively in the Blender GUI (the
+original motivating case) — that check is still open.
 
 **GUI run path bug found + fixed (same day)**: the checks above were all run
 headless (`blender -b -P ...`). Running either script interactively via the

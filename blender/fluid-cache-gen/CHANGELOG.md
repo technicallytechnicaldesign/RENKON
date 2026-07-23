@@ -1,5 +1,26 @@
 # Changelog — KeyShot Fluid Cache Generator
 
+## 2026-07-19 — Async-export bug fixed, fresh full preview-tier bake run
+
+Third bug, found via the same "interactive GUI diverges from headless"
+pattern as the `active_object` fix: `bpy.ops.wm.alembic_export` runs as an
+async background job when called from the Text Editor's Run Script button,
+so the next preset's scene `reset()` was killing in-flight exports before
+they finished writing — GUI runs showed correct viewport animation but wrote
+zero `.abc` files. Fixed by adding `as_background_job=False` to the `kw`
+dict in both scripts' `export()` (forces synchronous export), with a
+try/except fallback for older Blender builds.
+
+Then ran a full fresh headless bake of all four `fluidgen.py` presets
+(jet/pipe/drip/splash) at `preview` res from `E:\blender\blender.exe`
+(5.0.1) — ~114s total wall-clock, verified via the reimport-and-measure
+harness (real, non-zero, growing vertex counts on every preset), and
+rendered one diagnostic still per preset confirming visually distinct
+dynamics (jet arc, pipe fan-out, drip column, splash crown). Total output:
+1.36 GB (`fluid_out/` — now gitignored, never commit). Full numbers in
+`README.md`'s Status section. Synchronous-export fix confirmed headless;
+not yet re-confirmed in the GUI (the case it was written for).
+
 ## 2026-07-18 — Smoke-tested against real Blender 5.0.1, jet/drip bug fixed
 
 Ran both scripts for the first time against a real Blender install
