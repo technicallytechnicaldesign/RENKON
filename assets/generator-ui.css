@@ -1,0 +1,92 @@
+/* RENKON generator UI — shared "quick-start" chrome for the parametric
+ * generators. One stylesheet, dropped into every generator page alongside
+ * theme.js / menu.js / reveal.js, so the onboarding controls read identically
+ * everywhere:
+ *
+ *   - .gen-quickstart : the "start here" strip — a curated Starter dropdown
+ *                       plus a Randomize button, first thing on the page.
+ *   - .gen-randomize  : the single standard "surprise me" button (accent, dice).
+ *   - .gen-section    : a collapsible parameter group (progressive disclosure),
+ *                       so a busy tool opens as a short, calm list of headers.
+ *
+ * Everything is namespaced `.gen-*` and only styles NEW elements, so it layers
+ * over each tool's own CSS without overriding it. Uses the shared token set
+ * (--c-accent, --line, --panel-bg, --font-mono, …) so it inherits light/dark
+ * theming from theme.js for free.
+ */
+
+/* --- Quick-start strip ---------------------------------------------------- */
+.gen-quickstart {
+  display: flex; align-items: center; gap: 12px 18px; flex-wrap: wrap;
+  background: var(--panel-bg, #14202C); border: 1px solid var(--line, #22303E);
+  padding: 12px 16px; margin-bottom: 16px;
+}
+.gen-quickstart .qs-label {
+  font-family: var(--font-mono, monospace); font-size: 10px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--c-accent, #F08A3C); font-weight: 700;
+  border-right: 1px solid var(--line, #22303E); padding-right: 16px; flex: none;
+}
+.gen-quickstart .qs-field { display: flex; align-items: center; gap: 8px; flex: none; }
+.gen-quickstart .qs-field label {
+  font-family: var(--font-mono, monospace); font-size: 10px; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--muted, #6E7E8C);
+}
+.gen-quickstart select {
+  background: var(--stage-bg, #060a10); border: 1px solid var(--line, #22303E);
+  color: var(--text, #ECF2F6); font-family: var(--font-display, sans-serif);
+  font-size: 12px; padding: 7px 10px; min-width: 190px; border-radius: 0; cursor: pointer;
+}
+.gen-quickstart select:hover { border-color: var(--c-accent, #F08A3C); }
+.gen-quickstart select:focus-visible { outline: 2px solid var(--c-accent, #F08A3C); outline-offset: 2px; }
+.gen-quickstart .qs-hint {
+  font-family: var(--font-mono, monospace); font-size: 10px; letter-spacing: 0.04em;
+  color: var(--muted, #6E7E8C); flex: 1 1 200px; text-align: right; min-width: 0;
+}
+@media (max-width: 760px) {
+  .gen-quickstart { gap: 10px 12px; }
+  .gen-quickstart .qs-hint { display: none; }
+  .gen-quickstart .qs-field { flex: 1 1 auto; }
+  .gen-quickstart select { flex: 1 1 auto; min-width: 0; }
+}
+
+/* --- Randomize button — the one standard "surprise me" action ------------- */
+.gen-randomize {
+  display: inline-flex; align-items: center; gap: 8px; flex: none;
+  font-family: var(--font-mono, monospace); font-size: 11px; letter-spacing: 0.08em;
+  text-transform: uppercase; font-weight: 700;
+  background: var(--c-accent, #F08A3C); color: var(--bg, #0C141D);
+  border: 1px solid var(--c-accent, #F08A3C); border-radius: 0;
+  padding: 8px 16px; cursor: pointer;
+  transition: filter 0.15s ease, transform 0.12s ease;
+}
+.gen-randomize svg { width: 15px; height: 15px; display: block; }
+.gen-randomize:hover { filter: brightness(1.12); }
+.gen-randomize:active { transform: scale(0.96); }
+.gen-randomize:focus-visible { outline: 2px solid var(--c-accent, #F08A3C); outline-offset: 3px; }
+.gen-randomize.rolling svg { animation: gen-roll 0.5s ease; }
+@keyframes gen-roll { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .gen-randomize.rolling svg { animation: none; } }
+
+/* --- Collapsible parameter section --------------------------------------- */
+/* A <details class="gen-section"> whose <summary> carries the page's own
+ * .section-label look plus a rotating accent chevron. Collapsed by default;
+ * first section is opened by the tool so there's always something visible. */
+.gen-section { border: none; margin: 0 0 4px; }
+.gen-section > summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
+  user-select: none;
+}
+.gen-section > summary::-webkit-details-marker { display: none; }
+.gen-section > summary .chev {
+  color: var(--c-accent, #F08A3C); font-size: 13px; line-height: 1; flex: none;
+  transition: transform 0.18s ease; transform: rotate(0deg);
+}
+.gen-section[open] > summary .chev { transform: rotate(90deg); }
+.gen-section > summary:hover .sec-name { color: var(--c-accent, #F08A3C); }
+.gen-section > summary .sec-name { flex: 1 1 auto; }
+.gen-section > summary .sec-count {
+  font-family: var(--font-mono, monospace); font-size: 9px; letter-spacing: 0.06em;
+  color: var(--muted, #6E7E8C); flex: none;
+}
+.gen-section .gen-section-body { padding: 12px 2px 6px; }
+@media (prefers-reduced-motion: reduce) { .gen-section > summary .chev { transition: none; } }
