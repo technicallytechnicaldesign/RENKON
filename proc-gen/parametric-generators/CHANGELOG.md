@@ -11,6 +11,37 @@ Versioning: informal `vN` milestones tagged in git as `paramgen-vN`.
 
 ## [Unreleased]
 
+### Added — Texture & Bump Map Generator: WebM single-file export (ANIMATED_EXPORT.md priority 2)
+Direct call — the PNG frame sequence (priority 1) was the only animated export,
+and a numbered-image gallery isn't always what someone wants when they just
+want one file to save or share.
+
+- **"Export WebM (single file)" button**, next to Export Frame Sequence in the
+  Animated export group. `canvas.captureStream(30)` on the live preview
+  canvas (`textureCanvas`, the same height-map data the frame sequence
+  exports) + `MediaRecorder`, native, zero dependencies — the same approach
+  already shipped for Hydroform's clip recording. Records for one loop
+  duration (the existing Animate-panel loop-length slider); since `state.time`
+  is periodic in that duration regardless of phase, any loop-length-long
+  capture window plays back seamlessly.
+- Downloads as `texture_<pattern>_<seed>.webm`. Auto-starts Play if the
+  preview wasn't already animating, and restores the prior Play/paused state
+  afterward.
+- Explicitly framed as a shareable preview convenience, not a texture-data
+  source — video is lossy-compressed; the PNG frame sequence stays the
+  precise path for feeding a render engine. Footer notes and the page-head
+  description updated to say so.
+- Verified live in-browser: button wires up, zero console errors, and the
+  `captureStream`/`MediaRecorder`/blob-download pipeline itself confirmed
+  functional via an isolated canvas-recording test. Could not confirm a
+  full-length, full-motion capture in this session's headless preview pane —
+  it runs the tab as `document.hidden = true`, which fully pauses
+  `requestAnimationFrame` (confirmed directly: 0 rAF callbacks fired over 1s),
+  so the live preview canvas never repaints during the recording window there.
+  That's a background-tab throttling behavior of the automated preview pane,
+  not a code path exercised differently in a normal foreground tab — flagging
+  explicitly rather than claiming a full end-to-end confirmation.
+
 ### Added — Overlay Asset Customizer: FN/VIBE tag filter (HANDOFF_BRIEF_v3 §3, Task B)
 Builds the two-axis function×vibe tag filter on top of the 69-asset base the
 previous entry below just landed. With 8 categories the type grid was at the

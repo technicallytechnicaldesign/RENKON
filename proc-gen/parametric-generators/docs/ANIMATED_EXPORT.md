@@ -1,10 +1,11 @@
 # Animated export plan — "blob-URL gallery" (BLOB-URL-GALL)
 
-**Status: priority (1) shipped.** The Texture & Bump Map Generator has an
-"Export Frame Sequence (PNG)" control (12/24/48 frames) that opens a numbered
-blob-URL gallery in a new tab, per the plan below. Priority (2) (WebM) and
-(3) (drop GIF from the Overlay Asset Customizer) are still open — see
-`CHANGELOG.md`.
+**Status: priorities (1) and (2) shipped.** The Texture & Bump Map Generator
+has an "Export Frame Sequence (PNG)" control (12/24/48 frames) that opens a
+numbered blob-URL gallery in a new tab, and an "Export WebM (single file)"
+control that records one loop via `MediaRecorder` + `canvas.captureStream()`,
+per the plan below. Priority (3) (drop GIF from the Overlay Asset Customizer)
+is done too — the repo has zero external JS dependencies. See `CHANGELOG.md`.
 
 Export for the **animated** maps on the Texture & Bump Map Generator. This is
 the plan we settled on; it reuses the static export mechanism already shipped

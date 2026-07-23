@@ -14,14 +14,18 @@ pipeline. Two procedural/parametric generators under one shell:
    (OR within an axis, AND across axes — "flow AND dramatic"), with the
    active filter bookmarkable in the URL hash (`#overlay-kit?fn=flow&vibe=dramatic`).
 2. **Texture & Bump Map Generator** — procedural grayscale texture/height maps
-   (noise, grid, scratches, splotches) with a simulated-relief bump preview and
-   PNG export. Static output for now; animated maps are the next milestone.
+   (noise, grid, scratches, splotches, plus a "Pro Finish" group) with a
+   simulated-relief bump preview. Every pattern has a live, seamless-looping
+   animation (Play); export a static PNG, the animated loop as a numbered PNG
+   frame sequence (precise, for feeding a render engine), or that same loop as
+   a single WebM clip (convenient, lossy — a shareable preview, not
+   texture-precision data).
 
 ## Run it
 
-Open [`index.html`](index.html) directly in a browser. No build step, no install.
-One CDN dependency (`gif.js`, for the not-yet-working GIF export); everything else
-is self-contained.
+Open [`index.html`](index.html) directly in a browser. No build step, no install,
+no external JS dependencies — everything is native browser APIs (Canvas,
+`blob:` URLs, `MediaRecorder`/`captureStream`).
 
 ## Files
 
@@ -45,9 +49,3 @@ is self-contained.
   results with no other wiring. New tag values need a `TAG_ICONS` entry (16×16,
   stroke-only) and a slot in `TAG_AXES`.
 
-## Known issue
-
-**GIF export does not work** in the artifact/sandbox environment (cross-origin
-Worker + CSP). PNG export works. The recommended fix is to route around `gif.js`
-entirely (`MediaRecorder` + `canvas.captureStream()`, or a PNG frame sequence) —
-full diagnosis in [`docs/HANDOFF_BRIEF_v2.md`](docs/HANDOFF_BRIEF_v2.md) §3.

@@ -2255,7 +2255,10 @@ ${orbit(120, 4.4, 1.5, 2.7)}
       description: "Placeable warning, data-plate and certification decals with opacity, bump and spec maps." },
     { title: "Hydroform", href: "../hydroform/index.html", status: "inwork",
       tags: ["fluid", "canvas", "realtime"],
-      description: "A real-time Canvas fluid generator for jets, fountains and pipe flow, with WebM and PNG export." }
+      description: "A real-time Canvas fluid generator for splashes, jets and fountains, with WebM and PNG export." },
+    { title: "Pipeform", href: "../pipeform/index.html", status: "inwork",
+      tags: ["pipe", "canvas", "process"],
+      description: "A real-time Canvas pipe / process-flow generator, split out of Hydroform, with WebM and PNG export." }
   ];
 
   function statusTagHTML(status) {
@@ -3651,7 +3654,7 @@ ${orbit(120, 4.4, 1.5, 2.7)}
 
     main.appendChild(buildPageHead(
       "Texture & Bump Map Generator",
-      "Procedural grayscale texture and bump previews, driven by a few seeded generation criteria. Hit Play for a live, seamless-looping animation of any pattern — each has its own motion. Export a single static PNG, or the full animated loop as a numbered frame sequence.",
+      "Procedural grayscale texture and bump previews, driven by a few seeded generation criteria. Hit Play for a live, seamless-looping animation of any pattern — each has its own motion. Export a single static PNG, the full animated loop as a numbered frame sequence, or that same loop as a single WebM clip.",
       { label: "Parametric Assets", hash: "" }
     ));
 
@@ -4333,11 +4336,68 @@ ${orbit(120, 4.4, 1.5, 2.7)}
       }
     }
 
+    function pickWebMMimeType() {
+      const candidates = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+      return candidates.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || "";
+    }
+
+    const exportWebMBtn = document.createElement("button");
+    exportWebMBtn.className = "btn";
+    exportWebMBtn.textContent = "Export WebM (single file)";
+    exportWebMBtn.title = "Records one seamless loop of the height/bump map as a single .webm clip — a shareable preview, not texture-precision data (use the PNG frame sequence for that)";
+    exportWebMBtn.addEventListener("click", exportWebM);
+
+    async function exportWebM() {
+      if (!window.MediaRecorder) {
+        statusLine.textContent = "WebM export needs MediaRecorder — unavailable in this browser";
+        setTimeout(() => statusLine.textContent = "", 3500);
+        return;
+      }
+      exportFramesBtn.disabled = true;
+      frameCountSelect.disabled = true;
+      exportWebMBtn.disabled = true;
+      const seedTag = state.pattern + "_" + state.seed;
+      const wasAnimating = animate;
+      // state.time is periodic in loopMs regardless of phase, so any loopMs-long
+      // capture window loops seamlessly on playback — just make sure it's running.
+      if (!wasAnimating) setAnimate(true);
+      const mimeType = pickWebMMimeType();
+      const stream = textureCanvas.captureStream(30);
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      const chunks = [];
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+      const stopped = new Promise(resolve => { recorder.onstop = resolve; });
+      recorder.start();
+      statusLine.textContent = "Recording one loop (" + (loopMs / 1000).toFixed(1) + "s)…";
+      await new Promise(r => setTimeout(r, loopMs + 60));
+      recorder.stop();
+      try {
+        await stopped;
+        const blob = new Blob(chunks, { type: mimeType || "video/webm" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "texture_" + seedTag + ".webm";
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+        statusLine.textContent = "WebM clip downloaded";
+      } catch (e) {
+        statusLine.textContent = "WebM export failed";
+      } finally {
+        if (!wasAnimating) setAnimate(false);
+        exportFramesBtn.disabled = false;
+        frameCountSelect.disabled = false;
+        exportWebMBtn.disabled = false;
+        setTimeout(() => statusLine.textContent = "", 3500);
+      }
+    }
+
     actions.appendChild(exportTextureBtn);
     actions.appendChild(exportPreviewBtn);
     actions.appendChild(exportNormalBtn);
     animActions.appendChild(frameCountSelect);
     animActions.appendChild(exportFramesBtn);
+    animActions.appendChild(exportWebMBtn);
 
     const foot = document.createElement("footer");
     foot.className = "note";
@@ -4347,6 +4407,7 @@ ${orbit(120, 4.4, 1.5, 2.7)}
       '<li><span class="k">Preview Render</span> simulated relief shading of that data to judge depth and light. Not a texture map itself.</li>' +
       '<li><span class="k">Normal Map</span> tangent-space RGB from the height via a Sobel filter (strength = Bump Strength). What most engines want over a height map.</li>' +
       '<li><span class="k">Frame Sequence</span> the animated height map across one loop as numbered PNGs (new tab). For an animated bump channel.</li>' +
+      '<li><span class="k">WebM</span> the same animated loop as one single-file video clip — convenient to save or share, but lossy-compressed. Use the frame sequence when the receiving pipeline wants precise per-frame texture data.</li>' +
       '</ul>';
     main.appendChild(foot);
 
