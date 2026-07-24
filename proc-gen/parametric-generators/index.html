@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap"></noscript>
+<link rel="stylesheet" href="../../assets/generator-ui.css">
 <style>
   :root {
     --bg: #0C141D;
@@ -3658,6 +3659,25 @@ ${orbit(120, 4.4, 1.5, 2.7)}
       { label: "Parametric Assets", hash: "" }
     ));
 
+    // Quick-start strip: the standard full Randomize (shared look via
+    // assets/generator-ui.css). The Preset section below serves as the curated
+    // "starter" list. randomizeAll() is defined further down (hoisted).
+    const quickstart = document.createElement("div");
+    quickstart.className = "gen-quickstart";
+    quickstart.innerHTML =
+      '<span class="qs-label">Start</span>' +
+      '<button class="gen-randomize" type="button" title="Randomize all settings">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="1"/><circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none"/><circle cx="16" cy="8" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="8" cy="16" r="1.3" fill="currentColor" stroke="none"/><circle cx="16" cy="16" r="1.3" fill="currentColor" stroke="none"/></svg>Randomize</button>' +
+      '<span class="qs-hint">Roll a random texture, or load a preset below.</span>';
+    main.appendChild(quickstart);
+    const quickRandomBtn = quickstart.querySelector(".gen-randomize");
+    quickRandomBtn.addEventListener("click", () => {
+      randomizeAll();
+      quickRandomBtn.classList.remove("rolling");
+      void quickRandomBtn.offsetWidth; // reflow so the dice spin restarts each click
+      quickRandomBtn.classList.add("rolling");
+    });
+
     const state = {
       pattern: "noise",
       scale: 60,
@@ -3808,7 +3828,8 @@ ${orbit(120, 4.4, 1.5, 2.7)}
     seedValue.style.minWidth = "90px";
     const randomizeBtn = document.createElement("button");
     randomizeBtn.className = "btn";
-    randomizeBtn.textContent = "Randomize";
+    randomizeBtn.textContent = "Roll";
+    randomizeBtn.title = "Re-roll the seed (keeps the current settings)";
     randomizeBtn.addEventListener("click", () => {
       state.seed = Math.floor(Math.random() * 1e9);
       seedValue.textContent = String(state.seed);
@@ -4010,6 +4031,47 @@ ${orbit(120, 4.4, 1.5, 2.7)}
       patternGroup.appendChild(groupWrap);
     });
     applyPatternFilter("all");
+
+    // Full "surprise me" for the top quick-start Randomize: roll the shape /
+    // surface sliders (keeping Levels, which clip if inverted), the current
+    // pattern's own options, invert, and a fresh seed. Pattern choice is kept —
+    // it's the equivalent of the "generator" in the other tools.
+    function randomizeAll() {
+      const skip = { levelsBlack: 1, levelsWhite: 1, levelsGamma: 1 };
+      function rollInput(inp) {
+        const min = parseFloat(inp.min), max = parseFloat(inp.max), step = parseFloat(inp.step) || 1;
+        let n = min + Math.random() * (max - min);
+        n = Math.round(n / step) * step;
+        return Math.min(max, Math.max(min, parseFloat(n.toFixed(4))));
+      }
+      Object.keys(sliderRefs).forEach(key => {
+        if (skip[key]) return;
+        const ref = sliderRefs[key];
+        ref.input.value = rollInput(ref.input);
+        state[key] = parseFloat(ref.input.value);
+        ref.valSpan.textContent = state[key];
+      });
+      state.invert = Math.random() < 0.5;
+      invertInput.checked = state.invert;
+      const pk = state.pattern;
+      const cr = customRangeRefs[pk];
+      if (cr) Object.keys(cr).forEach(key => {
+        const ref = cr[key];
+        ref.input.value = rollInput(ref.input);
+        state.custom[pk][key] = parseFloat(ref.input.value);
+        ref.valSpan.textContent = state.custom[pk][key];
+      });
+      const cs = customSelectRefs[pk];
+      if (cs) Object.keys(cs).forEach(key => {
+        const ref = cs[key];
+        const opt = ref.def.options[Math.floor(Math.random() * ref.def.options.length)];
+        state.custom[pk][key] = opt.value;
+        ref.btns.forEach(b => b.classList.toggle("primary", b.textContent === opt.label));
+      });
+      state.seed = Math.floor(Math.random() * 1e9);
+      seedValue.textContent = String(state.seed);
+      regenerate();
+    }
 
     // --- Preset library wiring (backlog #3) --------------------------------
     // Storage: window.storage (used by the Overlay Customizer's palette

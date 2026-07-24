@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap"></noscript>
+<link rel="stylesheet" href="../../assets/generator-ui.css">
 <style>
   :root {
     --bg: #0C141D;
@@ -203,6 +204,28 @@
       <h1>Render Labels</h1>
       <p>Placeable label decals for KeyShot. Pick a generator, set the parameters, and export the
          opacity / bump / spec (and optional normal) maps.</p>
+    </div>
+
+    <!-- Quick-start strip: curated starting point + one-click randomize.
+         Shared look via assets/generator-ui.css, wired in the script below. -->
+    <div class="gen-quickstart" id="quickstart">
+      <span class="qs-label">Start</span>
+      <div class="qs-field">
+        <label for="starter-select">Starter</label>
+        <select id="starter-select" aria-label="Pick a starting point"></select>
+      </div>
+      <button class="gen-randomize" id="gen-randomize-btn" type="button" title="Randomize all settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="1"/>
+          <circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none"/>
+          <circle cx="16" cy="8" r="1.3" fill="currentColor" stroke="none"/>
+          <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/>
+          <circle cx="8" cy="16" r="1.3" fill="currentColor" stroke="none"/>
+          <circle cx="16" cy="16" r="1.3" fill="currentColor" stroke="none"/>
+        </svg>
+        Randomize
+      </button>
+      <span class="qs-hint">Pick a starting point or roll a random one, then fine-tune below.</span>
     </div>
 
     <div class="layout">
@@ -1594,6 +1617,87 @@
   GENERATORS.forEach(g => GEN_BY_ID[g.id] = g);
 
   /* =========================================================
+     ONBOARDING — curated starters + section grouping.
+     Drives the quick-start strip (Starter dropdown) and the
+     collapsible parameter accordions. Randomize logic lives in
+     the WIRE UP block below.
+     ========================================================= */
+  // Curated starting points per generator: partial param sets applied over the
+  // generator's own defaults (kept near-default, so every one renders cleanly).
+  // Invalid keys / out-of-set option values are skipped by applyStarter.
+  const STARTERS = {
+    fingerprint: [
+      { name: "Clean Press",     set: { smudge: 0.10, pressure: 0.7, partial: 0 } },
+      { name: "Greasy",          set: { smudge: 0.6, pressure: 0.85, ridgeContrast: 1.2 } },
+      { name: "Partial Smudge",  set: { partial: 0.6, smudge: 0.4, pressure: 0.5 } }
+    ],
+    scuff: [
+      { name: "Light Rub",       set: { intensity: 0.4, streakDensity: 0.4, patchSize: 0.5 } },
+      { name: "Heavy Wear",      set: { intensity: 0.9, streakDensity: 0.75, patchSize: 0.7, roughBias: 0.7 } }
+    ],
+    turned: [
+      { name: "Fine Finish",     set: { feedPitch: 0.18, grooveDepth: 0.4, chatter: 0.15 } },
+      { name: "Coarse Turn",     set: { feedPitch: 0.5, grooveDepth: 0.75, chatter: 0.5 } }
+    ],
+    cast: [
+      { name: "Fine Grain",      set: { grain: 0.35, coarse: 0.3, pits: 0.25, seam: 0 } },
+      { name: "Rough Cast",      set: { grain: 0.7, coarse: 0.7, pits: 0.6, seam: 0.5 } }
+    ],
+    ground: [
+      { name: "Brushed",         set: { grit: 0.5, depth: 0.35, crosshatch: 0 } },
+      { name: "Cross-Hatched",   set: { crosshatch: 1, grit: 0.6, depth: 0.45 } }
+    ],
+    erode: [
+      { name: "Fine Blast",      set: { craterSize: 0.3, density: 0.7, depth: 0.4 } },
+      { name: "Coarse Erode",    set: { craterSize: 0.65, density: 0.5, depth: 0.7, uniformity: 0.3 } }
+    ],
+    paint: [
+      { name: "Safety Red",      set: { tone: "Safety Red", chip: 0.2, gloss: 0.5 } },
+      { name: "Weathered Yellow", set: { tone: "Safety Yellow", chip: 0.6, drip: 0.4, gloss: 0.3 } },
+      { name: "Matte Black",     set: { tone: "Matte Black", gloss: 0.15, chip: 0.3 } }
+    ],
+    grime: [
+      { name: "Light Dust",      set: { tone: "Water Grey", darkness: 0.4, coverage: 0.4 } },
+      { name: "Heavy Soot",      set: { tone: "Soot Black", darkness: 0.8, coverage: 0.7 } },
+      { name: "Rust Stains",     set: { tone: "Rust Orange", streakiness: 0.6, darkness: 0.55 } }
+    ],
+    stamped: [
+      { name: "Debossed Steel",  set: { tone: "Steel", direction: "Debossed", box: true } },
+      { name: "Embossed Brass",  set: { tone: "Brass", direction: "Embossed", box: false } },
+      { name: "Black Oxide",     set: { tone: "Black Oxide", direction: "Debossed", depth: 0.7 } }
+    ],
+    waterring: [
+      { name: "Single Ring",     set: { ringCount: 1, ringSize: 0.55, rimDarkness: 0.6 } },
+      { name: "Multiple Rings",  set: { ringCount: 3, ringSize: 0.45, irregularity: 0.4 } }
+    ],
+    oilsmear: [
+      { name: "Motor Black",     set: { tone: "Motor Black", intensity: 0.6, gloss: 0.75 } },
+      { name: "Amber Oil",       set: { tone: "Amber Oil", intensity: 0.5, gloss: 0.85 } },
+      { name: "Dry Grease",      set: { tone: "Grease Grey", intensity: 0.7, gloss: 0.5, drip: 0.5 } }
+    ]
+  };
+
+  // Split a generator's params into progressive-disclosure sections. Texture
+  // params are homogeneous, so group generically: non-slider "Setup" first,
+  // then sliders halved into "Shape" / "Detail". Keeps the panel from opening
+  // as one long undifferentiated stack. First group is opened by the panel.
+  function sectionsFor(gen) {
+    const isSetup = p => p.type === "select" || p.type === "text" || p.type === "check";
+    const setup = gen.params.filter(isSetup);
+    const ranges = gen.params.filter(p => !isSetup(p));
+    const groups = [];
+    if (setup.length) groups.push({ name: "Setup", params: setup });
+    if (ranges.length <= 4) {
+      if (ranges.length) groups.push({ name: "Adjust", params: ranges });
+    } else {
+      const half = Math.ceil(ranges.length / 2);
+      groups.push({ name: "Shape", params: ranges.slice(0, half) });
+      groups.push({ name: "Detail", params: ranges.slice(half) });
+    }
+    return groups.length ? groups : [{ name: "Parameters", params: gen.params }];
+  }
+
+  /* =========================================================
      CHANNEL DERIVATION ENGINE
      Runs the active generator's draw* methods, then derives the
      four export channels from what they paint.
@@ -1785,6 +1889,7 @@
     state.genId = id;
     resetParamsFor(GEN_BY_ID[id]);
     buildLibrary();
+    buildStarterSelect();
     buildParamPanel();
     render();
   }
@@ -1856,18 +1961,34 @@
     return row;
   }
 
+  function makeParamRow(def) {
+    const onChange = v => { state.params[def.key] = v; render(); };
+    if (def.type === "select") return makeSelectRow(def, state.params[def.key], onChange);
+    if (def.type === "text") return makeTextRow(def, state.params[def.key], onChange);
+    if (def.type === "check") return makeCheckRow(def, state.params[def.key], onChange);
+    return makeSliderRow(def, state.params[def.key], onChange);
+  }
   function buildParamPanel() {
     const gen = GEN_BY_ID[state.genId];
-    genTitle.textContent = gen.name + " — Parameters";
+    genTitle.textContent = gen.name;
     paramPanel.innerHTML = "";
-    gen.params.forEach(def => {
-      const onChange = v => { state.params[def.key] = v; render(); };
-      let row;
-      if (def.type === "select") row = makeSelectRow(def, state.params[def.key], onChange);
-      else if (def.type === "text") row = makeTextRow(def, state.params[def.key], onChange);
-      else if (def.type === "check") row = makeCheckRow(def, state.params[def.key], onChange);
-      else row = makeSliderRow(def, state.params[def.key], onChange);
-      paramPanel.appendChild(row);
+    // Progressive disclosure: one collapsible <details> per section, first open.
+    sectionsFor(gen).forEach((grp, i) => {
+      const det = document.createElement("details");
+      det.className = "gen-section";
+      if (i === 0) det.open = true;
+      const sum = document.createElement("summary");
+      sum.className = "section-label";
+      sum.innerHTML =
+        '<span class="chev" aria-hidden="true">›</span>' +
+        '<span class="sec-name">' + grp.name + '</span>' +
+        '<span class="sec-count">' + grp.params.length + '</span>';
+      det.appendChild(sum);
+      const body = document.createElement("div");
+      body.className = "gen-section-body";
+      grp.params.forEach(def => body.appendChild(makeParamRow(def)));
+      det.appendChild(body);
+      paramPanel.appendChild(det);
     });
   }
 
@@ -2013,7 +2134,7 @@
     state.seed = obj.seed != null ? String(obj.seed) : state.seed;
     Object.assign(state.globals, obj.globals || {});
     seedInput.value = state.seed;
-    buildLibrary(); buildParamPanel(); buildGlobalPanel();
+    buildLibrary(); buildStarterSelect(); buildParamPanel(); buildGlobalPanel();
     render();
     statusLine.textContent = 'Loaded preset "' + name + '".';
   }
@@ -2061,6 +2182,82 @@
   document.getElementById("randomize-btn").addEventListener("click", () => {
     state.seed = randomSeedString(); seedInput.value = state.seed; render();
   });
+
+  /* --- Quick-start: Starter dropdown + full Randomize -------------------- */
+  const starterSelect = document.getElementById("starter-select");
+  const genRandomBtn = document.getElementById("gen-randomize-btn");
+
+  function buildStarterSelect() {
+    const list = STARTERS[state.genId] || [];
+    starterSelect.innerHTML = "";
+    const def = document.createElement("option");
+    def.value = "__default"; def.textContent = "Default setup";
+    starterSelect.appendChild(def);
+    list.forEach((s, i) => {
+      const o = document.createElement("option");
+      o.value = String(i); o.textContent = s.name;
+      starterSelect.appendChild(o);
+    });
+    starterSelect.value = "__default";
+  }
+  // Apply a starter's partial set over defaults, skipping unknown keys and
+  // out-of-range option values so a slightly-off starter degrades gracefully.
+  function applyStarter(gen, set) {
+    resetParamsFor(gen);
+    gen.params.forEach(def => {
+      if (!(def.key in set)) return;
+      const v = set[def.key];
+      if (def.type === "select") {
+        const vals = (def.options || []).map(o => (typeof o === "string" ? o : o.value));
+        if (vals.indexOf(v) === -1) return;
+      }
+      state.params[def.key] = v;
+    });
+  }
+  starterSelect.addEventListener("change", () => {
+    const gen = GEN_BY_ID[state.genId];
+    if (starterSelect.value === "__default") {
+      resetParamsFor(gen);
+    } else {
+      const s = (STARTERS[state.genId] || [])[parseInt(starterSelect.value, 10)];
+      if (s) applyStarter(gen, s.set);
+    }
+    buildParamPanel();
+    render();
+  });
+
+  // Full "surprise me": roll every non-text param within its own bounds, plus a
+  // fresh seed. Text (the stamped serial etc.) is kept so it stays legible.
+  function randomizeParams() {
+    const gen = GEN_BY_ID[state.genId];
+    gen.params.forEach(def => {
+      if (def.type === "text") return;
+      if (def.type === "select") {
+        const vals = (def.options || []).map(o => (typeof o === "string" ? o : o.value));
+        if (vals.length) state.params[def.key] = vals[Math.floor(Math.random() * vals.length)];
+      } else if (def.type === "check") {
+        state.params[def.key] = Math.random() < 0.5;
+      } else {
+        const min = def.min, max = def.max, step = def.step || 1;
+        let n = min + Math.random() * (max - min);
+        n = Math.round(n / step) * step;
+        n = Math.min(max, Math.max(min, n));
+        state.params[def.key] = parseFloat(n.toFixed(4));
+      }
+    });
+    state.seed = randomSeedString();
+    seedInput.value = state.seed;
+    if (starterSelect) starterSelect.value = "__default";
+    buildParamPanel();
+    render();
+  }
+  genRandomBtn.addEventListener("click", () => {
+    randomizeParams();
+    genRandomBtn.classList.remove("rolling");
+    void genRandomBtn.offsetWidth; // reflow so the dice spin restarts each click
+    genRandomBtn.classList.add("rolling");
+  });
+
   basenameInput.addEventListener("input", () => { state.basename = basenameInput.value; });
   includeNormalCb.addEventListener("change", () => { state.includeNormal = includeNormalCb.checked; });
   resSelect.addEventListener("change", () => {});
@@ -2081,6 +2278,7 @@
   seedInput.value = state.seed;
   basenameInput.value = state.basename;
   buildLibrary();
+  buildStarterSelect();
   buildParamPanel();
   buildGlobalPanel();
   buildPresetList();
