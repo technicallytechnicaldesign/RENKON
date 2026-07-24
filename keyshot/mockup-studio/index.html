@@ -310,8 +310,10 @@
       <h1>Mockup Studio</h1>
       <p>Drop a transparent product cutout onto a procedurally generated fluid-industrial scene, then
          position, scale, rotate and light it live. Add shadow, reflection and a pedestal, and export a
-         clean composite for KeyShot comps, decks or concept boards. Switch to <strong>Presets</strong> to
-         compare four ambient motion-backplate concepts side by side before committing to a deeper build.</p>
+         clean composite for KeyShot comps, decks or concept boards. Or set the background to an
+         <strong>animated backplate</strong>, add a <strong>title</strong>, and export a looping
+         <strong>WebM</strong> for motion decks &mdash; preview the four loops side by side under
+         <strong>Presets</strong>.</p>
     </div>
 
     <div class="tabs" role="tablist" aria-label="Mockup Studio sections">
@@ -338,6 +340,16 @@
 
         <div>
           <span class="section-label">Scene</span>
+          <div class="field">
+            <label for="bg">Background</label>
+            <select id="bg">
+              <option value="static">Procedural scene (static)</option>
+              <option value="orbitLoop">Fluid Orbit Loop (animated)</option>
+              <option value="reactorLoop">Reactor Flow Loop (animated)</option>
+              <option value="parallaxHero">Orbital Parallax Hero (animated)</option>
+              <option value="studioSweep">Studio Sweep Cinematic (animated)</option>
+            </select>
+          </div>
           <div class="field-grid-3">
             <div class="field">
               <label for="style">Fluid style</label>
@@ -456,6 +468,27 @@
         </div>
 
         <div>
+          <span class="section-label">Title</span>
+          <label class="toggle-inline"><input id="showTitle" type="checkbox"> Show title overlay</label>
+          <div class="field">
+            <label for="titleText">Title</label>
+            <input id="titleText" type="text" placeholder="Product name" spellcheck="false">
+          </div>
+          <div class="field">
+            <label for="subText">Subtitle</label>
+            <input id="subText" type="text" placeholder="Tagline / model no." spellcheck="false">
+          </div>
+          <div class="field">
+            <label for="titlePos">Position</label>
+            <select id="titlePos">
+              <option value="top">Top</option>
+              <option value="center">Center</option>
+              <option value="bottom" selected>Bottom</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
           <span class="section-label">Export</span>
           <div class="field-grid-2">
             <div class="field">
@@ -483,6 +516,29 @@
             <button class="btn" id="resetPlacement">Reset placement</button>
           </div>
           <button class="btn primary full" id="exportComposite">Export composite</button>
+
+          <div id="motionExport" style="display:none; margin-top:12px; padding-top:12px; border-top:1px solid var(--line);">
+            <span class="section-label" style="margin-bottom:8px;">Motion export (WebM)</span>
+            <div class="field-grid-2">
+              <div class="field">
+                <label for="clipDuration">Clip length</label>
+                <select id="clipDuration">
+                  <option value="4">4 seconds</option>
+                  <option value="6" selected>6 seconds</option>
+                  <option value="8">8 seconds</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="videoSize">Video size</label>
+                <select id="videoSize">
+                  <option value="1280x720">1280 &times; 720</option>
+                  <option value="1920x1080" selected>1920 &times; 1080</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn primary full" id="exportWebM">Export WebM loop</button>
+            <div class="stage-hint" id="webmStatus" style="margin-top:6px; min-height:14px;"></div>
+          </div>
         </div>
       </div>
 
@@ -506,8 +562,9 @@
         <span class="ml-badge">Compare first, build bigger second</span>
         <button class="btn primary" id="mlPauseToggle">Pause all</button>
         <button class="btn" id="mlResetView">Reset demos</button>
-        <span class="ml-note">Use the fullscreen button on each card for a closer read. All four are
-          lightweight prototypes &mdash; direction-finding only, no export pipeline.</span>
+        <span class="ml-note">Use the fullscreen button on each card for a closer read. Pick any of
+          these as the <strong>Compositor</strong> background to drop a product and title on top and
+          export a looping WebM.</span>
       </div>
 
       <section class="ml-grid">
@@ -620,6 +677,7 @@
   const styleNames = {viscous:'Viscous Current',stream:'Laminar Stream',droplets:'Liquid Metal Droplets',ripple:'Ripple Impact',ink:'Ink Bloom',splash:'Splash Crown'};
   const themeNames = {none:'Pure Fluid',industry:'Industrial',space:'Space',hybrid:'Industry + Space'};
   const motifNames = {bay:'Mechanical Bay',ring:'Orbital Ring',planet:'Planet Horizon',hangar:'Docking Hangar',pipes:'Pipe Trench',vents:'Vent Array',conduit:'Conduit Wall',reactor:'Reactor Core',bulkhead:'Ribbed Bulkhead',docklights:'Docking Lights',panel:'Panel Grid'};
+  const bgNames = {orbitLoop:'Fluid Orbit Loop',reactorLoop:'Reactor Flow Loop',parallaxHero:'Orbital Parallax Hero',studioSweep:'Studio Sweep Cinematic'};
 
   const canvas = $('#canvas');
   const modal = $('#modal');
@@ -631,6 +689,7 @@
 
   let productImage = null;
   let dragState = {active:false, offsetX:0, offsetY:0};
+  let animRAF = null, animStart = performance.now();
 
   function hashString(str){ let h=2166136261>>>0; for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)} return h>>>0; }
   function mulberry32(a){ return function(){ let t=a+=0x6D2B79F5; t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return((t^t>>>14)>>>0)/4294967296 } }
@@ -645,9 +704,12 @@
       themeIntensity:+$('#themeIntensity').value/100, detail:+$('#detail').value/100, lightAngle:+$('#lightAngle').value*Math.PI/180, horizon:+$('#horizon').value/100,
       posX:+$('#posX').value/100, posY:+$('#posY').value/100, scale:+$('#scale').value/100, rotation:+$('#rotation').value*Math.PI/180,
       shadow:+$('#shadow').value/100, reflection:+$('#reflection').value/100, pedestalSize:+$('#pedestalSize').value/100, pedestalGlow:+$('#pedestalGlow').value/100,
-      showPedestal:$('#showPedestal').checked, showShadow:$('#showShadow').checked, showReflection:$('#showReflection').checked
+      showPedestal:$('#showPedestal').checked, showShadow:$('#showShadow').checked, showReflection:$('#showReflection').checked,
+      bg:$('#bg').value,
+      showTitle:$('#showTitle').checked, titleText:$('#titleText').value, subText:$('#subText').value, titlePos:$('#titlePos').value
     };
   }
+  function isAnimatedBg(){ const v = $('#bg').value; return !!v && v !== 'static'; }
 
   function setupBase(c,w,h,p,s){
     const g=c.createLinearGradient(0,0,w,h);
@@ -1006,18 +1068,62 @@
     c.drawImage(productImage, -m.drawW/2, -m.drawH/2, m.drawW, m.drawH);
     c.restore();
   }
-  function renderScene(target,w,h,s){
-    target.width=w; target.height=h;
+  function drawTitle(c,w,h,s){
+    if(!s.showTitle) return;
+    const title=(s.titleText||'').trim(), sub=(s.subText||'').trim();
+    if(!title && !sub) return;
+    c.save();
+    c.textAlign='center';
+    const cx=w/2;
+    const baseY = s.titlePos==='top' ? h*0.16 : s.titlePos==='center' ? h*0.5 : h*0.86;
+    c.shadowColor='rgba(0,0,0,0.55)'; c.shadowBlur=h*0.022; c.shadowOffsetY=h*0.005;
+    if(title){
+      c.fillStyle='rgba(255,255,255,0.97)';
+      c.textBaseline = sub ? 'alphabetic' : 'middle';
+      c.font=`700 ${Math.round(h*0.072)}px "Space Grotesk", system-ui, sans-serif`;
+      c.fillText(title, cx, baseY);
+    }
+    if(sub){
+      c.fillStyle='rgba(220,231,240,0.86)';
+      c.textBaseline='top';
+      if('letterSpacing' in c){ try{ c.letterSpacing=`${Math.round(h*0.006)}px`; }catch(e){} }
+      c.font=`400 ${Math.round(h*0.03)}px "Space Mono", ui-monospace, monospace`;
+      c.fillText(sub.toUpperCase(), cx, baseY + (title ? h*0.022 : -h*0.015));
+      if('letterSpacing' in c){ try{ c.letterSpacing='0px'; }catch(e){} }
+    }
+    c.restore();
+  }
+  function renderScene(target,w,h,s,t){
+    if(target.width!==w) target.width=w;
+    if(target.height!==h) target.height=h;
     const c=target.getContext('2d',{alpha:false});
-    renderBackground(c,w,h,s);
+    const anims = window.__mockupAnims;
+    if(s.bg && s.bg!=='static' && anims && anims[s.bg]){
+      anims[s.bg](c,w,h,t||0);
+    } else {
+      renderBackground(c,w,h,s);
+    }
     drawProduct(c,w,h,s);
+    drawTitle(c,w,h,s);
   }
 
   function renderMain(){
     const s=state();
-    renderScene(canvas,1600,900,s);
-    $('#activeMeta').textContent = `${themeNames[s.theme]} · ${motifNames[s.motif]} · ${styleNames[s.style]}`;
+    const t=(performance.now()-animStart)/1000;
+    renderScene(canvas,1600,900,s,t);
+    $('#activeMeta').textContent = s.bg && s.bg!=='static'
+      ? `${bgNames[s.bg]} · animated backplate`
+      : `${themeNames[s.theme]} · ${motifNames[s.motif]} · ${styleNames[s.style]}`;
   }
+
+  // Live preview loop — runs only while an animated background is selected.
+  function animTick(){
+    if(!isAnimatedBg()){ animRAF=null; return; }
+    if(!document.getElementById('tab-compositor').hidden) renderMain();
+    animRAF=requestAnimationFrame(animTick);
+  }
+  function startAnim(){ if(animRAF===null){ animStart=performance.now(); animRAF=requestAnimationFrame(animTick); } }
+  function stopAnim(){ if(animRAF!==null){ cancelAnimationFrame(animRAF); animRAF=null; } }
 
   function updateOutputs(){
     for(const id of ['themeIntensity','detail','posX','posY','scale','shadow','reflection','pedestalSize','pedestalGlow']) $('#'+id+'Out').textContent = $('#'+id).value;
@@ -1062,7 +1168,7 @@
     const s=state();
     const [w,h] = $('#resolution').value.split('x').map(Number);
     const off=document.createElement('canvas');
-    renderScene(off,w,h,s);
+    renderScene(off,w,h,s,(performance.now()-animStart)/1000);
     const fmt=$('#format').value;
     const mime=fmt==='jpg' ? 'image/jpeg' : 'image/png';
     const quality=fmt==='jpg' ? .95 : undefined;
@@ -1071,8 +1177,48 @@
     a.href=off.toDataURL(mime, quality);
     a.click();
   }
+  function pickWebmMime(){
+    const c=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+    return c.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
+  }
+  // Record the animated composite (backplate + product + title) to a WebM loop.
+  function exportWebM(){
+    const status=$('#webmStatus'), btn=$('#exportWebM');
+    if(!isAnimatedBg()){ status.textContent='Pick an animated background first.'; return; }
+    if(!window.MediaRecorder){ status.textContent='WebM recording is not supported in this browser.'; return; }
+    const s=state();
+    const [w,h]=$('#videoSize').value.split('x').map(Number);
+    const dur=+$('#clipDuration').value, fps=30;
+    const off=document.createElement('canvas'); off.width=w; off.height=h;
+    const mime=pickWebmMime();
+    let rec;
+    try { rec=new MediaRecorder(off.captureStream(fps), mime ? {mimeType:mime, videoBitsPerSecond:12000000} : undefined); }
+    catch(err){ status.textContent='Could not start the recorder.'; return; }
+    const chunks=[];
+    rec.ondataavailable=e=>{ if(e.data && e.data.size) chunks.push(e.data); };
+    rec.onstop=()=>{
+      const blob=new Blob(chunks, {type: mime || 'video/webm'});
+      const a=document.createElement('a');
+      a.download=`mockup_${s.bg}_${cleanSeed(s.seed)}_${w}x${h}.webm`;
+      a.href=URL.createObjectURL(blob);
+      a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+      status.textContent='Saved '+a.download;
+      btn.disabled=false; btn.textContent='Export WebM loop';
+    };
+    btn.disabled=true;
+    const t0=performance.now();
+    rec.start();
+    (function frame(){
+      const elapsed=(performance.now()-t0)/1000;
+      renderScene(off,w,h,s,elapsed);
+      btn.textContent=`Recording… ${Math.max(0,dur-elapsed).toFixed(1)}s`;
+      if(elapsed<dur){ requestAnimationFrame(frame); }
+      else { try{ rec.stop(); }catch(e){} }
+    })();
+  }
   function renderQuickScenes(){
-    const base=state();
+    const base={...state(), bg:'static', showTitle:false};
     const sceneDefs = [
       {...base, motif:'pipes', palette:'hangar', theme:'industry', seed:base.seed+'-A'},
       {...base, motif:'ring', palette:'orbital', theme:'space', seed:base.seed+'-B'},
@@ -1158,7 +1304,22 @@
   $('#clearProduct').addEventListener('click', clearProduct);
   $('#resetPlacement').addEventListener('click', resetPlacement);
   $('#exportComposite').addEventListener('click', exportComposite);
+  $('#exportWebM').addEventListener('click', exportWebM);
   $('#showGuides').addEventListener('change', e => guideLayer.classList.toggle('show', e.target.checked));
+
+  // Background switch: show motion-export controls + drive the live loop.
+  $('#bg').addEventListener('change', () => {
+    const anim = isAnimatedBg();
+    $('#motionExport').style.display = anim ? 'block' : 'none';
+    $('#webmStatus').textContent = '';
+    if(anim) startAnim(); else { stopAnim(); renderMain(); }
+  });
+  // Title controls: re-render live (the animated loop already redraws itself).
+  ['showTitle','titleText','subText','titlePos'].forEach(id => {
+    const el = $('#'+id);
+    el.addEventListener('input', () => { if(!isAnimatedBg()) renderMain(); });
+    el.addEventListener('change', () => { if(!isAnimatedBg()) renderMain(); });
+  });
 
   ['style','theme','palette','motif','seed','showPedestal','showShadow','showReflection','resolution','format'].forEach(id => $('#'+id).addEventListener('change', renderAll));
   document.querySelectorAll('input[type="range"]').forEach(el => el.addEventListener('input', renderAll));
@@ -1502,6 +1663,9 @@
     parallaxHero: drawParallaxHero,
     studioSweep: drawStudioSweep,
   };
+  // Expose the animated-backplate frame renderers so the Compositor can use
+  // them as live backgrounds (each is a pure (ctx,w,h,t) frame painter).
+  window.__mockupAnims = demoFns;
 
   Object.keys(demoFns).forEach(id => {
     const canvas = document.getElementById(id);
