@@ -153,20 +153,22 @@
     gap: 1px; background: var(--line); border: 1px solid var(--line);
   }
   @media (max-width: 1150px) { .gen-layout { grid-template-columns: 1fr; } }
-  .col { background: var(--panel-bg); padding: 16px; display: flex; flex-direction: column; gap: 18px; }
+  .col { background: var(--panel-bg); padding: 16px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 
-  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; min-width: 0; }
   .field:last-child { margin-bottom: 0; }
   .field label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
   .field select, .field input[type=text] {
     background: var(--bg); border: 1px solid var(--line); color: var(--text);
-    padding: 7px 9px; font-size: 12px;
+    padding: 7px 9px; font-size: 12px; width: 100%; min-width: 0;
   }
   .field select:focus-visible, .field input[type=text]:focus-visible { border-color: var(--c-accent); }
-  .field-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-  .field-grid-2 .field, .field-grid-3 .field { margin-bottom: 0; }
-  .field-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-  @media (max-width: 1400px) and (min-width: 1151px) { .field-grid-3 { grid-template-columns: 1fr; } }
+  /* Side columns are a fixed 300px; grids inside must shrink (minmax 0) rather
+     than overflow under the canvas. field-grid-3 stacks — three selects can't
+     read across 300px. */
+  .field-grid-2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8px; margin-bottom: 10px; }
+  .field-grid-2 .field, .field-grid-3 .field { margin-bottom: 0; min-width: 0; }
+  .field-grid-3 { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 10px; }
   .seed-row { display: flex; gap: 6px; }
   .seed-row input { flex: 1 1 auto; min-width: 0; }
   .seed-row button { flex: none; }
