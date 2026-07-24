@@ -478,13 +478,23 @@
             <label for="subText">Subtitle</label>
             <input id="subText" type="text" placeholder="Tagline / model no." spellcheck="false">
           </div>
-          <div class="field">
-            <label for="titlePos">Position</label>
-            <select id="titlePos">
-              <option value="top">Top</option>
-              <option value="center">Center</option>
-              <option value="bottom" selected>Bottom</option>
-            </select>
+          <div class="field-grid-2">
+            <div class="field">
+              <label for="titlePos">Vertical</label>
+              <select id="titlePos">
+                <option value="top">Top</option>
+                <option value="center">Center</option>
+                <option value="bottom" selected>Bottom</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="titleAlign">Align</label>
+              <select id="titleAlign">
+                <option value="left">Left</option>
+                <option value="center" selected>Center</option>
+                <option value="right">Right</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -706,7 +716,7 @@
       shadow:+$('#shadow').value/100, reflection:+$('#reflection').value/100, pedestalSize:+$('#pedestalSize').value/100, pedestalGlow:+$('#pedestalGlow').value/100,
       showPedestal:$('#showPedestal').checked, showShadow:$('#showShadow').checked, showReflection:$('#showReflection').checked,
       bg:$('#bg').value,
-      showTitle:$('#showTitle').checked, titleText:$('#titleText').value, subText:$('#subText').value, titlePos:$('#titlePos').value
+      showTitle:$('#showTitle').checked, titleText:$('#titleText').value, subText:$('#subText').value, titlePos:$('#titlePos').value, titleAlign:$('#titleAlign').value
     };
   }
   function isAnimatedBg(){ const v = $('#bg').value; return !!v && v !== 'static'; }
@@ -1073,8 +1083,10 @@
     const title=(s.titleText||'').trim(), sub=(s.subText||'').trim();
     if(!title && !sub) return;
     c.save();
-    c.textAlign='center';
-    const cx=w/2;
+    const align = s.titleAlign || 'center';
+    c.textAlign = align;
+    const margin = w*0.06;
+    const cx = align==='left' ? margin : align==='right' ? w-margin : w/2;
     const baseY = s.titlePos==='top' ? h*0.16 : s.titlePos==='center' ? h*0.5 : h*0.86;
     c.shadowColor='rgba(0,0,0,0.55)'; c.shadowBlur=h*0.022; c.shadowOffsetY=h*0.005;
     if(title){
@@ -1099,7 +1111,15 @@
     const c=target.getContext('2d',{alpha:false});
     const anims = window.__mockupAnims;
     if(s.bg && s.bg!=='static' && anims && anims[s.bg]){
-      anims[s.bg](c,w,h,t||0);
+      // Feed the scene parameters through so the animated backplate is
+      // parametric too — palette, seed, atmosphere all drive it live.
+      anims[s.bg](c,w,h,t||0,{
+        colors: palettes[s.palette],
+        detail: s.detail,
+        intensity: s.themeIntensity,
+        seed: hashString(s.seed),
+        light: s.lightAngle
+      });
     } else {
       renderBackground(c,w,h,s);
     }
@@ -1315,7 +1335,7 @@
     if(anim) startAnim(); else { stopAnim(); renderMain(); }
   });
   // Title controls: re-render live (the animated loop already redraws itself).
-  ['showTitle','titleText','subText','titlePos'].forEach(id => {
+  ['showTitle','titleText','subText','titlePos','titleAlign'].forEach(id => {
     const el = $('#'+id);
     el.addEventListener('input', () => { if(!isAnimatedBg()) renderMain(); });
     el.addEventListener('change', () => { if(!isAnimatedBg()) renderMain(); });
@@ -1385,9 +1405,23 @@
     return `rgba(${r},${g},${b},${a})`;
   }
 
-  function drawStars(ctx,w,h,t,count=80,color='#dff6ff',twinkle=.45,zone=1){
+  // Normalize the optional parametric opts passed by the Compositor. Every
+  // factor defaults to identity when opts is absent, so the Presets tab (which
+  // calls the loops with no opts) renders exactly as it always has.
+  function animOpts(opts){
+    const P = (opts && opts.colors) || null;
+    return {
+      P,
+      col: (role, fb) => (P && P[role]) ? P[role] : fb, // palette role, else original color
+      density: (opts && opts.detail!=null) ? (0.55 + opts.detail) : 1,
+      glow: (opts && opts.intensity!=null) ? (0.6 + opts.intensity*0.85) : 1,
+      seedOff: (opts && opts.seed!=null) ? ((opts.seed>>>0)%1000) : 0,
+      lightA: (opts && opts.light!=null) ? opts.light : null
+    };
+  }
+  function drawStars(ctx,w,h,t,count=80,color='#dff6ff',twinkle=.45,zone=1,seedOff=0){
     for(let i=0;i<count;i++){
-      const seed=i*12.9898;
+      const seed=(i+seedOff)*12.9898;
       const x=((Math.sin(seed*7.13)*43758.5453)%1+1)%1 * w;
       const y=((Math.sin(seed*5.91)*24634.6345)%1+1)%1 * h * zone;
       const base=((Math.sin(seed*3.1)*12345.12)%1+1)%1;
@@ -1426,55 +1460,62 @@
     ctx.stroke();
     ctx.restore();
   }
-  function drawOrbitLoop(ctx,w,h,t){
+  function drawOrbitLoop(ctx,w,h,t,opts){
+    const o=animOpts(opts);
     const bg=ctx.createLinearGradient(0,0,w,h);
-    bg.addColorStop(0,'#030912'); bg.addColorStop(.48,'#081828'); bg.addColorStop(1,'#010307');
+    bg.addColorStop(0,o.col('bg0','#030912')); bg.addColorStop(.48,o.col('bg1','#081828')); bg.addColorStop(1,o.col('dark','#010307'));
     ctx.fillStyle=bg; ctx.fillRect(0,0,w,h);
 
-    const rg=ctx.createRadialGradient(w*.55,h*.22,0,w*.55,h*.22,w*.7);
-    rg.addColorStop(0,'rgba(102,189,255,.20)'); rg.addColorStop(.3,'rgba(40,117,196,.12)'); rg.addColorStop(1,'rgba(0,0,0,0)');
+    const gx = o.lightA!=null ? w*(.5+Math.cos(o.lightA)*.28) : w*.55;
+    const gy = o.lightA!=null ? h*(.24+Math.sin(o.lightA)*.12) : h*.22;
+    const rg=ctx.createRadialGradient(gx,gy,0,gx,gy,w*.7);
+    rg.addColorStop(0,rgba(o.col('bg2','#66bdff'),.20*o.glow)); rg.addColorStop(.3,rgba(o.col('mid','#2875c4'),.12*o.glow)); rg.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=rg; ctx.fillRect(0,0,w,h);
 
-    drawStars(ctx,w,h,t,95,'#dff6ff',.55,.78);
+    drawStars(ctx,w,h,t,Math.round(95*o.density),o.col('light','#dff6ff'),.55,.78,o.seedOff);
 
     ctx.save();
-    ctx.strokeStyle='rgba(166,212,255,.12)';
+    ctx.strokeStyle=rgba(o.col('bg2','#a6d4ff'),.12);
     ctx.lineWidth=w/260;
     ctx.beginPath();
     ctx.ellipse(w*.53,h*.46,w*.42,h*.16,0,0,Math.PI*2);
     ctx.stroke();
-    ctx.strokeStyle='rgba(95,169,255,.16)';
+    ctx.strokeStyle=rgba(o.col('accent','#5fa9ff'),.16);
     ctx.lineWidth=w/520;
     ctx.beginPath();
     ctx.ellipse(w*.53,h*.46,w*.52,h*.22,0,0,Math.PI*2);
     ctx.stroke();
     ctx.restore();
 
-    ribbonPath(ctx,w,h,t*0.9,-0.02,1.15,'rgba(12,29,44,.9)','rgba(219,247,255,.42)');
-    ribbonPath(ctx,w,h,t*0.9+1.6,0.06,1.0,'rgba(8,24,36,.88)','rgba(132,224,255,.36)');
-    ribbonPath(ctx,w,h,t*0.9+3.4,0.15,.9,'rgba(5,18,29,.86)','rgba(107,165,255,.34)');
+    ribbonPath(ctx,w,h,t*0.9,-0.02,1.15,rgba(o.col('bg1','#0c1d2c'),.9),rgba(o.col('light','#dbf7ff'),.42));
+    ribbonPath(ctx,w,h,t*0.9+1.6,0.06,1.0,rgba(o.col('bg1','#081824'),.88),rgba(o.col('bg2','#84e0ff'),.36));
+    ribbonPath(ctx,w,h,t*0.9+3.4,0.15,.9,rgba(o.col('dark','#05121d'),.86),rgba(o.col('accent','#6ba5ff'),.34));
 
-    for(let i=0;i<14;i++){
-      const x=((i*77.7)%1)*w;
-      const y=h*(.38 + ((i*17.3)%1)*.36);
+    const count=Math.round(14*o.density);
+    for(let i=0;i<count;i++){
+      const x=(((i*77.7)+o.seedOff*0.137)%1)*w;
+      const y=h*(.38 + (((i*17.3)+o.seedOff*0.311)%1)*.36);
       const r=(2 + (i%3))*w/960;
-      const alpha=.15 + .12*Math.sin(t*1.6 + i);
+      const alpha=(.15 + .12*Math.sin(t*1.6 + i))*o.glow;
       const g=ctx.createRadialGradient(x-r*.3,y-r*.3,0,x,y,r*5);
-      g.addColorStop(0,`rgba(255,255,255,${.6+alpha})`);
-      g.addColorStop(.3,`rgba(125,211,255,${.26+alpha*.4})`);
+      g.addColorStop(0,rgba(o.col('light','#ffffff'),.6+alpha));
+      g.addColorStop(.3,rgba(o.col('accent','#7dd3ff'),.26+alpha*.4));
       g.addColorStop(1,'rgba(0,0,0,0)');
       ctx.fillStyle=g;
       ctx.beginPath(); ctx.arc(x,y,r*5,0,Math.PI*2); ctx.fill();
     }
   }
-  function drawReactorLoop(ctx,w,h,t){
+  function drawReactorLoop(ctx,w,h,t,opts){
+    const o=animOpts(opts);
     const bg=ctx.createLinearGradient(0,0,w,h);
-    bg.addColorStop(0,'#060709'); bg.addColorStop(.45,'#14171b'); bg.addColorStop(1,'#020304');
+    bg.addColorStop(0,o.col('bg0','#060709')); bg.addColorStop(.45,o.col('bg1','#14171b')); bg.addColorStop(1,o.col('dark','#020304'));
     ctx.fillStyle=bg; ctx.fillRect(0,0,w,h);
 
-    const amber=ctx.createRadialGradient(w*.5,h*.44,0,w*.5,h*.44,w*.4);
-    amber.addColorStop(0,'rgba(255,146,81,.16)');
-    amber.addColorStop(.25,'rgba(255,111,36,.12)');
+    const ax = o.lightA!=null ? w*(.5+Math.cos(o.lightA)*.22) : w*.5;
+    const ay = o.lightA!=null ? h*(.46+Math.sin(o.lightA)*.12) : h*.44;
+    const amber=ctx.createRadialGradient(ax,ay,0,ax,ay,w*.4);
+    amber.addColorStop(0,rgba(o.col('accent','#ff9251'),.16*o.glow));
+    amber.addColorStop(.25,rgba(o.col('accent','#ff6f24'),.12*o.glow));
     amber.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=amber; ctx.fillRect(0,0,w,h);
 
@@ -1483,17 +1524,17 @@
       const y=h*(.16+i*.12);
       const r=h*(.024 + (i%2)*.006);
       const grad=ctx.createLinearGradient(0,y-r,w,y+r);
-      grad.addColorStop(0,'rgba(4,4,5,.95)');
-      grad.addColorStop(.34,'rgba(88,100,112,.75)');
-      grad.addColorStop(.52,'rgba(190,202,210,.42)');
-      grad.addColorStop(1,'rgba(7,8,9,.96)');
+      grad.addColorStop(0,rgba(o.col('dark','#040405'),.95));
+      grad.addColorStop(.34,rgba(o.col('mid','#586470'),.75));
+      grad.addColorStop(.52,rgba(o.col('bg2','#becad2'),.42));
+      grad.addColorStop(1,rgba(o.col('dark','#070809'),.96));
       ctx.fillStyle=grad;
       roundRect(ctx,w*.04,y-r,w*.92,r*2,r); ctx.fill();
     }
 
     // vertical conduits
     ctx.save();
-    ctx.strokeStyle='rgba(93,149,188,.14)';
+    ctx.strokeStyle=rgba(o.col('mid','#5d95bc'),.14);
     ctx.lineWidth=w/260;
     for(let i=0;i<7;i++){
       const x=w*(.08+i*.13);
@@ -1507,24 +1548,24 @@
     // reactor core
     const cx=w*.54, cy=h*.55, R=w*.09;
     const core=ctx.createRadialGradient(cx,cy,0,cx,cy,R*1.9);
-    core.addColorStop(0,'rgba(255,244,222,.55)');
-    core.addColorStop(.18,'rgba(255,177,109,.42)');
-    core.addColorStop(.38,'rgba(255,108,42,.24)');
+    core.addColorStop(0,rgba(o.col('light','#fff4de'),.55*o.glow));
+    core.addColorStop(.18,rgba(o.col('accent','#ffb16d'),.42*o.glow));
+    core.addColorStop(.38,rgba(o.col('accent','#ff6c2a'),.24*o.glow));
     core.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=core;
     ctx.beginPath(); ctx.arc(cx,cy,R*1.9,0,Math.PI*2); ctx.fill();
 
-    ctx.strokeStyle='rgba(255,194,133,.22)';
+    ctx.strokeStyle=rgba(o.col('accent','#ffc285'),.22);
     ctx.lineWidth=w/320;
     ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.stroke();
     ctx.beginPath(); ctx.arc(cx,cy,R*.64,0,Math.PI*2); ctx.stroke();
 
     for(let i=0;i<5;i++){
-      const pulseX=((t*.19 + i*.18)%1)*w*1.2 - w*.1;
+      const pulseX=((t*.19 + i*.18 + o.seedOff*0.017)%1)*w*1.2 - w*.1;
       const py=h*(.16 + (i%5)*.12);
       const glow=ctx.createRadialGradient(pulseX,py,0,pulseX,py,w*.05);
-      glow.addColorStop(0,'rgba(255,207,146,.55)');
-      glow.addColorStop(.18,'rgba(255,124,66,.38)');
+      glow.addColorStop(0,rgba(o.col('accent','#ffcf92'),.55*o.glow));
+      glow.addColorStop(.18,rgba(o.col('accent','#ff7c42'),.38*o.glow));
       glow.addColorStop(1,'rgba(0,0,0,0)');
       ctx.fillStyle=glow;
       ctx.beginPath(); ctx.arc(pulseX,py,w*.05,0,Math.PI*2); ctx.fill();
@@ -1532,10 +1573,10 @@
 
     // scrolling flow lines
     ctx.save();
-    ctx.strokeStyle='rgba(255,153,86,.23)';
+    ctx.strokeStyle=rgba(o.col('accent','#ff9956'),.23);
     ctx.lineWidth=w/480;
     for(let i=0;i<3;i++){
-      const off=(t*.09 + i*.27)%1;
+      const off=(t*.09 + i*.27 + o.seedOff*0.013)%1;
       ctx.beginPath();
       ctx.moveTo(w*(off-.1),h*.72+i*h*.04);
       ctx.bezierCurveTo(w*(off+.08),h*.64,w*(off+.18),h*.58,w*(off+.32),h*.62);
@@ -1543,9 +1584,10 @@
     }
     ctx.restore();
   }
-  function drawParallaxHero(ctx,w,h,t){
+  function drawParallaxHero(ctx,w,h,t,opts){
+    const o=animOpts(opts);
     const bg=ctx.createLinearGradient(0,0,w,h);
-    bg.addColorStop(0,'#020812'); bg.addColorStop(.46,'#07172a'); bg.addColorStop(1,'#020307');
+    bg.addColorStop(0,o.col('bg0','#020812')); bg.addColorStop(.46,o.col('bg1','#07172a')); bg.addColorStop(1,o.col('dark','#020307'));
     ctx.fillStyle=bg; ctx.fillRect(0,0,w,h);
 
     // camera drift
@@ -1555,10 +1597,12 @@
     // far layer
     ctx.save();
     ctx.translate(driftX*.25, driftY*.25);
-    drawStars(ctx,w,h,t,120,'#e8f7ff',.25,.74);
-    const neb=ctx.createRadialGradient(w*.68,h*.26,0,w*.68,h*.26,w*.46);
-    neb.addColorStop(0,'rgba(112,145,255,.16)');
-    neb.addColorStop(.34,'rgba(82,87,214,.10)');
+    drawStars(ctx,w,h,t,Math.round(120*o.density),o.col('light','#e8f7ff'),.25,.74,o.seedOff);
+    const nx = o.lightA!=null ? w*(.5+Math.cos(o.lightA)*.26) : w*.68;
+    const ny = o.lightA!=null ? h*(.3+Math.sin(o.lightA)*.14) : h*.26;
+    const neb=ctx.createRadialGradient(nx,ny,0,nx,ny,w*.46);
+    neb.addColorStop(0,rgba(o.col('bg2','#7091ff'),.16*o.glow));
+    neb.addColorStop(.34,rgba(o.col('mid','#5257d6'),.10*o.glow));
     neb.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=neb; ctx.fillRect(0,0,w,h);
     ctx.restore();
@@ -1566,10 +1610,10 @@
     // middle layer rings
     ctx.save();
     ctx.translate(driftX*.55, driftY*.55);
-    ctx.strokeStyle='rgba(185,225,255,.10)';
+    ctx.strokeStyle=rgba(o.col('bg2','#b9e1ff'),.10);
     ctx.lineWidth=w/240;
     ctx.beginPath(); ctx.ellipse(w*.57,h*.45,w*.40,h*.17,0,0,Math.PI*2); ctx.stroke();
-    ctx.strokeStyle='rgba(111,183,255,.14)';
+    ctx.strokeStyle=rgba(o.col('accent','#6fb7ff'),.14);
     ctx.lineWidth=w/500;
     ctx.beginPath(); ctx.ellipse(w*.57,h*.45,w*.52,h*.22,0,0,Math.PI*2); ctx.stroke();
     ctx.restore();
@@ -1578,74 +1622,77 @@
     ctx.save();
     ctx.translate(driftX*.9, driftY*.9);
     const p1=ctx.createLinearGradient(0,h*.58,w,h*.9);
-    p1.addColorStop(0,'rgba(5,15,23,.0)');
-    p1.addColorStop(.42,'rgba(8,28,43,.38)');
-    p1.addColorStop(1,'rgba(2,6,10,.88)');
+    p1.addColorStop(0,rgba(o.col('dark','#050f17'),0));
+    p1.addColorStop(.42,rgba(o.col('bg1','#081c2b'),.38));
+    p1.addColorStop(1,rgba(o.col('dark','#02060a'),.88));
     ctx.fillStyle=p1;
     ctx.fillRect(0,h*.50,w,h*.5);
 
-    ribbonPath(ctx,w,h,t*.35,0.07,.84,'rgba(7,18,30,.70)','rgba(198,245,255,.20)');
+    ribbonPath(ctx,w,h,t*.35,0.07,.84,rgba(o.col('bg1','#07121e'),.70),rgba(o.col('light','#c6f5ff'),.20));
     ctx.restore();
 
     // interface glow accents
-    ctx.fillStyle='rgba(208,241,255,.14)';
+    ctx.fillStyle=rgba(o.col('light','#d0f1ff'),.14);
     ctx.fillRect(w*.09 + driftX*.9,h*.16 + driftY*.6,w*.13,h*.008);
     ctx.fillRect(w*.09 + driftX*.9,h*.18 + driftY*.6,w*.08,h*.006);
     ctx.fillRect(w*.78 + driftX*.7,h*.20 + driftY*.3,w*.09,h*.006);
   }
-  function drawStudioSweep(ctx,w,h,t){
+  function drawStudioSweep(ctx,w,h,t,opts){
+    const o=animOpts(opts);
     const bg=ctx.createLinearGradient(0,0,w,h);
-    bg.addColorStop(0,'#06080d'); bg.addColorStop(.4,'#10161c'); bg.addColorStop(1,'#05070b');
+    bg.addColorStop(0,o.col('bg0','#06080d')); bg.addColorStop(.4,o.col('bg1','#10161c')); bg.addColorStop(1,o.col('dark','#05070b'));
     ctx.fillStyle=bg; ctx.fillRect(0,0,w,h);
 
-    const warm=ctx.createRadialGradient(w*.62,h*.28,0,w*.62,h*.28,w*.44);
-    warm.addColorStop(0,'rgba(245,246,255,.08)');
-    warm.addColorStop(.32,'rgba(127,171,233,.05)');
+    const wx = o.lightA!=null ? w*(.5+Math.cos(o.lightA)*.24) : w*.62;
+    const wy = o.lightA!=null ? h*(.3+Math.sin(o.lightA)*.14) : h*.28;
+    const warm=ctx.createRadialGradient(wx,wy,0,wx,wy,w*.44);
+    warm.addColorStop(0,rgba(o.col('light','#f5f6ff'),.08*o.glow));
+    warm.addColorStop(.32,rgba(o.col('bg2','#7fabe9'),.05*o.glow));
     warm.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=warm; ctx.fillRect(0,0,w,h);
 
     // floor reflection plane
     const floor=ctx.createLinearGradient(0,h*.58,0,h);
-    floor.addColorStop(0,'rgba(29,39,49,.05)');
-    floor.addColorStop(.42,'rgba(25,34,42,.26)');
-    floor.addColorStop(1,'rgba(7,9,12,.84)');
+    floor.addColorStop(0,rgba(o.col('mid','#1d2731'),.05));
+    floor.addColorStop(.42,rgba(o.col('bg1','#19222a'),.26));
+    floor.addColorStop(1,rgba(o.col('dark','#07090c'),.84));
     ctx.fillStyle=floor; ctx.fillRect(0,h*.54,w,h*.46);
 
     // pedestal
     const cx=w*.52, cy=h*.70;
     const glow=ctx.createRadialGradient(cx,cy,0,cx,cy,w*.24);
-    glow.addColorStop(0,'rgba(190,225,255,.13)');
-    glow.addColorStop(.25,'rgba(125,175,245,.08)');
+    glow.addColorStop(0,rgba(o.col('bg2','#bee1ff'),.13*o.glow));
+    glow.addColorStop(.25,rgba(o.col('accent','#7daff5'),.08*o.glow));
     glow.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=glow; ctx.beginPath(); ctx.ellipse(cx,cy,w*.23,h*.10,0,0,Math.PI*2); ctx.fill();
 
     const ped=ctx.createLinearGradient(0,cy-h*.04,0,cy+h*.04);
-    ped.addColorStop(0,'rgba(221,234,245,.24)');
-    ped.addColorStop(.28,'rgba(100,120,139,.42)');
-    ped.addColorStop(1,'rgba(11,14,17,.92)');
+    ped.addColorStop(0,rgba(o.col('light','#ddeaf5'),.24));
+    ped.addColorStop(.28,rgba(o.col('mid','#64788b'),.42));
+    ped.addColorStop(1,rgba(o.col('dark','#0b0e11'),.92));
     ctx.fillStyle=ped; ctx.beginPath(); ctx.ellipse(cx,cy,w*.15,h*.05,0,0,Math.PI*2); ctx.fill();
 
     // softbox sweeps
     const sweepX = (Math.sin(t*0.35)*0.5 + 0.5) * w;
     const soft = ctx.createLinearGradient(sweepX-w*.28,0,sweepX+w*.28,0);
     soft.addColorStop(0,'rgba(255,255,255,0)');
-    soft.addColorStop(.48,'rgba(222,241,255,.11)');
-    soft.addColorStop(.52,'rgba(255,255,255,.18)');
+    soft.addColorStop(.48,rgba(o.col('bg2','#def1ff'),.11*o.glow));
+    soft.addColorStop(.52,rgba(o.col('light','#ffffff'),.18*o.glow));
     soft.addColorStop(1,'rgba(255,255,255,0)');
     ctx.fillStyle=soft; ctx.fillRect(0,0,w,h);
 
     // floating glass arcs
     ctx.save();
-    ctx.strokeStyle='rgba(215,237,255,.10)';
+    ctx.strokeStyle=rgba(o.col('bg2','#d7edff'),.10);
     ctx.lineWidth=w/360;
     ctx.beginPath(); ctx.arc(w*.54,h*.48,w*.19,Math.PI*1.12,Math.PI*1.88); ctx.stroke();
-    ctx.strokeStyle='rgba(171,214,255,.08)';
+    ctx.strokeStyle=rgba(o.col('accent','#abd6ff'),.08);
     ctx.lineWidth=w/600;
     ctx.beginPath(); ctx.arc(w*.50,h*.48,w*.28,Math.PI*1.16,Math.PI*1.84); ctx.stroke();
     ctx.restore();
 
     // tiny atmosphere dust
-    drawStars(ctx,w,h,t,56,'#f2fbff',.15,.95);
+    drawStars(ctx,w,h,t,Math.round(56*o.density),o.col('light','#f2fbff'),.15,.95,o.seedOff);
   }
   function roundRect(ctx,x,y,w,h,r){
     ctx.beginPath();

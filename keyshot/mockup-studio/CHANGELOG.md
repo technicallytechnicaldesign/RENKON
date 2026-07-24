@@ -17,6 +17,16 @@ appear when an animated background is selected. The animated frame renderers
 are shared with the Presets tab (one `(ctx,w,h,t)` painter each), so both
 surfaces stay in sync.
 
+**Parametric animated backplates + title alignment (same day).** The animated
+loops now take an optional `opts` — palette, seed, fluid detail, theme
+intensity and light angle — so as a Compositor background they are fully
+parametric: the selected palette recolors the whole loop, Roll/seed shifts the
+particle and highlight layout, and the atmosphere sliders drive density, glow
+and light position. Every factor defaults to identity, so the Presets tab
+(which calls the loops with no `opts`) still renders each concept's original
+signature look unchanged. The Title overlay also gained a horizontal **Align**
+control (left / center / right) alongside the vertical position.
+
 ## 2026-07-18 — Motion Lab absorbed as the Presets tab
 
 Mockup Studio is now tabbed: **Compositor** (everything that was already here)
