@@ -32,7 +32,7 @@
   text-transform: uppercase; color: var(--muted, #6E7E8C);
 }
 .gen-quickstart select {
-  background: var(--stage-bg, #060a10); border: 1px solid var(--line, #22303E);
+  background: var(--panel-bg-raised, #182635); border: 1px solid var(--line, #22303E);
   color: var(--text, #ECF2F6); font-family: var(--font-display, sans-serif);
   font-size: 12px; padding: 7px 10px; min-width: 190px; border-radius: 0; cursor: pointer;
 }
@@ -68,25 +68,24 @@
 @media (prefers-reduced-motion: reduce) { .gen-randomize.rolling svg { animation: none; } }
 
 /* --- Collapsible parameter section --------------------------------------- */
-/* A <details class="gen-section"> whose <summary> carries the page's own
- * .section-label look plus a rotating accent chevron. Collapsed by default;
- * first section is opened by the tool so there's always something visible. */
-.gen-section { border: none; margin: 0 0 4px; }
+/* A <details class="gen-section"> styled to match hydroform's accordion: a
+ * mono uppercase summary with a muted +/- marker and a hairline divider below.
+ * Collapsed by default; the tool opens the first section so something shows.
+ * The legacy chevron + count spans in the summary DOM are hidden here so the
+ * per-tool JS didn't need changing. */
+.gen-section { border-bottom: 1px solid var(--line, #22303E); padding: 2px 0 8px; margin: 0; }
+.gen-section:last-child { border-bottom: 0; }
 .gen-section > summary {
-  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
-  user-select: none;
+  list-style: none; cursor: pointer; user-select: none;
+  display: flex; align-items: center; justify-content: space-between; padding: 9px 2px;
+  font-family: var(--font-mono, monospace); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--text, #ECF2F6);
 }
 .gen-section > summary::-webkit-details-marker { display: none; }
-.gen-section > summary .chev {
-  color: var(--c-accent, #F08A3C); font-size: 13px; line-height: 1; flex: none;
-  transition: transform 0.18s ease; transform: rotate(0deg);
-}
-.gen-section[open] > summary .chev { transform: rotate(90deg); }
-.gen-section > summary:hover .sec-name { color: var(--c-accent, #F08A3C); }
+.gen-section > summary .chev,
+.gen-section > summary .sec-count { display: none; } /* replaced by the +/- marker */
 .gen-section > summary .sec-name { flex: 1 1 auto; }
-.gen-section > summary .sec-count {
-  font-family: var(--font-mono, monospace); font-size: 9px; letter-spacing: 0.06em;
-  color: var(--muted, #6E7E8C); flex: none;
-}
-.gen-section .gen-section-body { padding: 12px 2px 6px; }
-@media (prefers-reduced-motion: reduce) { .gen-section > summary .chev { transition: none; } }
+.gen-section > summary::after { content: "+"; color: var(--muted, #6E7E8C); font-size: 15px; font-weight: 400; }
+.gen-section[open] > summary::after { content: "\2013"; }
+.gen-section > summary:hover { color: var(--c-accent, #F08A3C); }
+.gen-section .gen-section-body { padding: 4px 2px 8px; }

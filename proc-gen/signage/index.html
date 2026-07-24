@@ -139,9 +139,9 @@
   .param-row label { font-family: var(--font-mono); flex: 0 0 96px; font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
   .param-row input[type=range] { flex: 1 1 auto; min-width: 0; accent-color: var(--c-accent); }
   .param-row input[type=checkbox] { accent-color: var(--c-accent); width: 16px; height: 16px; }
-  .param-row .param-value { flex: 0 0 40px; font-size: 10px; color: var(--text); text-align: right; }
+  .param-row .param-value { flex: 0 0 54px; font-family: var(--font-mono); font-size: 10px; color: var(--c-fluid); text-align: right; font-variant-numeric: tabular-nums; }
   .param-row select, .param-row input[type=text] {
-    flex: 1 1 auto; min-width: 0; background: var(--stage-bg); border: 1px solid var(--line);
+    flex: 1 1 auto; min-width: 0; background: var(--panel-bg); border: 1px solid var(--line);
     color: var(--text); padding: 6px 8px; font-size: 11px;
   }
   .param-row select:focus-visible, .param-row input[type=text]:focus-visible { border-color: var(--c-accent); }
@@ -151,7 +151,7 @@
   }
   .field label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
   .field input[type=text], .field select {
-    background: var(--stage-bg); border: 1px solid var(--line); color: var(--text);
+    background: var(--panel-bg); border: 1px solid var(--line); color: var(--text);
     padding: 7px 9px; font-size: 12px;
   }
   .field input[type=text]:focus-visible { border-color: var(--c-accent); }

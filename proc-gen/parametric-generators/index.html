@@ -153,7 +153,7 @@
   .param-row label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
   .param-row input[type=range] { width: 100px; accent-color: var(--c-accent); }
   .param-row input[type=checkbox] { accent-color: var(--c-accent); width: 16px; height: 16px; }
-  .param-value { font-family: var(--font-mono); font-size: 10px; color: var(--text); min-width: 34px; text-align: right; }
+  .param-value { font-family: var(--font-mono); font-size: 10px; color: var(--c-fluid); min-width: 54px; text-align: right; font-variant-numeric: tabular-nums; }
   .param-panel .btn { margin-left: auto; }
   .param-hint { flex-basis: 100%; font-size: 12px; color: var(--muted); }
 
@@ -204,10 +204,12 @@
     display: block; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
     color: var(--text); font-weight: 500; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 4px;
   }
-  summary.section-label { cursor: pointer; list-style: none; }
+  summary.section-label { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; }
+  summary.section-label:hover { color: var(--c-accent); }
   summary.section-label::-webkit-details-marker { display: none; }
-  summary.section-label .chev { display: inline-block; color: var(--c-accent); margin-right: 4px; transition: transform 0.15s ease; }
-  details[open] > summary.section-label .chev { transform: rotate(90deg); }
+  summary.section-label .chev { display: none; } /* replaced by +/- marker to match hydroform */
+  summary.section-label::after { content: "+"; color: var(--muted); font-size: 15px; font-weight: 400; }
+  details[open] > summary.section-label::after { content: "\2013"; }
   details.control-section > .texture-sliders { padding-top: 14px; }
   .export-section {
     padding: 14px 18px; background: var(--panel-bg); border: 1px solid var(--line);
