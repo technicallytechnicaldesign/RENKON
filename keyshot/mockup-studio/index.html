@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap"></noscript>
+<link rel="stylesheet" href="../../assets/generator-ui.css">
 <style>
   :root {
     --bg: #0C141D;
@@ -324,6 +325,24 @@
     </div>
 
     <div class="tab-panel" id="tab-compositor" data-tab-panel="compositor" role="tabpanel" aria-labelledby="tabBtnCompositor">
+
+    <!-- Quick-start: one-click full scene randomize (shared look via generator-ui.css). -->
+    <div class="gen-quickstart" id="quickstart">
+      <span class="qs-label">Start</span>
+      <button class="gen-randomize" id="randomizeScene" type="button" title="Randomize the whole scene">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="1"/>
+          <circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none"/>
+          <circle cx="16" cy="8" r="1.3" fill="currentColor" stroke="none"/>
+          <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/>
+          <circle cx="8" cy="16" r="1.3" fill="currentColor" stroke="none"/>
+          <circle cx="16" cy="16" r="1.3" fill="currentColor" stroke="none"/>
+        </svg>
+        Randomize
+      </button>
+      <span class="qs-hint">Shuffles background, palette, style, motif, atmosphere and seed. Your product placement and title stay put.</span>
+    </div>
+
     <div class="gen-layout">
 
       <!-- LEFT: product + scene -->
@@ -1146,6 +1165,28 @@
   }
   function startAnim(){ if(animRAF===null){ animStart=performance.now(); animRAF=requestAnimationFrame(animTick); } }
   function stopAnim(){ if(animRAF!==null){ cancelAnimationFrame(animRAF); animRAF=null; } }
+  // Reconcile the motion-export panel + live loop with the current background.
+  function applyBgMode(){
+    const anim = isAnimatedBg();
+    $('#motionExport').style.display = anim ? 'block' : 'none';
+    if(anim) startAnim(); else stopAnim();
+  }
+
+  // Full scene shuffle (the top Randomize button). Rolls the background,
+  // palette, style, motif and atmosphere, plus a fresh seed — but leaves the
+  // user's product placement, finish and title alone.
+  function randomizeScene(){
+    const rSel = id => { const el=$('#'+id); if(el.options.length) el.selectedIndex = Math.floor(Math.random()*el.options.length); };
+    const rRange = id => { const el=$('#'+id); const mn=+el.min, mx=+el.max, st=+el.step||1; let v=mn+Math.random()*(mx-mn); v=Math.round(v/st)*st; el.value=Math.min(mx,Math.max(mn,v)); };
+    ['bg','style','theme','palette','motif'].forEach(rSel);
+    ['themeIntensity','detail','lightAngle','horizon'].forEach(rRange);
+    const names=['MOCKUP','ATLAS','ORBIT','REACTOR','FLUX','AQUA','HANGAR','DOCK','FROST','NOVA','VAPOR','PRISM'];
+    $('#seed').value = names[Math.floor(Math.random()*names.length)] + '-' + Math.floor(1000+Math.random()*9000);
+    updateOutputs();
+    applyBgMode();
+    animStart = performance.now(); // restart the clock so motion visibly re-rolls
+    renderAll();
+  }
 
   function updateOutputs(){
     for(const id of ['themeIntensity','detail','posX','posY','scale','shadow','reflection','pedestalSize','pedestalGlow']) $('#'+id+'Out').textContent = $('#'+id).value;
@@ -1331,10 +1372,17 @@
 
   // Background switch: show motion-export controls + drive the live loop.
   $('#bg').addEventListener('change', () => {
-    const anim = isAnimatedBg();
-    $('#motionExport').style.display = anim ? 'block' : 'none';
     $('#webmStatus').textContent = '';
-    if(anim) startAnim(); else { stopAnim(); renderMain(); }
+    applyBgMode();
+    if(!isAnimatedBg()) renderMain();
+  });
+  // Top Randomize button — full scene shuffle.
+  const randomizeSceneBtn = $('#randomizeScene');
+  randomizeSceneBtn.addEventListener('click', () => {
+    randomizeScene();
+    randomizeSceneBtn.classList.remove('rolling');
+    void randomizeSceneBtn.offsetWidth; // restart the dice spin each click
+    randomizeSceneBtn.classList.add('rolling');
   });
   // Title controls: re-render live (the animated loop already redraws itself).
   ['showTitle','titleText','subText','titlePos','titleAlign'].forEach(id => {
@@ -1411,14 +1459,28 @@
   // factor defaults to identity when opts is absent, so the Presets tab (which
   // calls the loops with no opts) renders exactly as it always has.
   function animOpts(opts){
+    const has = !!opts;
     const P = (opts && opts.colors) || null;
+    const seed = (opts && opts.seed!=null) ? (opts.seed>>>0) : 0;
+    // Seeded RNG for structural variation. A fresh instance is built each frame
+    // from the same seed, so structure stays steady while t drives motion, and
+    // a new seed re-rolls the whole composition. Only used when opts is present.
+    let a = (seed || 0x9e3779b9) >>> 0;
+    const rng = () => { a = (a + 0x6D2B79F5) >>> 0; let x = Math.imul(a ^ (a>>>15), a|1); x ^= x + Math.imul(x ^ (x>>>7), x|61); return ((x ^ (x>>>14)) >>> 0) / 4294967296; };
+    // Consume two draws up front for speed + tilt so downstream pick() order is
+    // stable regardless of them.
+    const speed = has ? (0.5 + rng()*1.9) : 1;      // ~0.5x .. 2.4x motion
+    const angle = has ? (rng()-0.5)*0.6 : 0;         // +/-0.3 rad structural tilt
     return {
-      P,
+      P, has, speed, angle,
       col: (role, fb) => (P && P[role]) ? P[role] : fb, // palette role, else original color
       density: (opts && opts.detail!=null) ? (0.55 + opts.detail) : 1,
       glow: (opts && opts.intensity!=null) ? (0.6 + opts.intensity*0.85) : 1,
-      seedOff: (opts && opts.seed!=null) ? ((opts.seed>>>0)%1000) : 0,
-      lightA: (opts && opts.light!=null) ? opts.light : null
+      seedOff: (opts && opts.seed!=null) ? (seed%1000) : 0,
+      lightA: (opts && opts.light!=null) ? opts.light : null,
+      // Structural value: the original when there's no opts (Presets tab keeps
+      // its signature look); a seeded random in [lo,hi] when driven live.
+      pick: (orig, lo, hi) => has ? (lo + (hi-lo)*rng()) : orig
     };
   }
   function drawStars(ctx,w,h,t,count=80,color='#dff6ff',twinkle=.45,zone=1,seedOff=0){
@@ -1435,14 +1497,14 @@
       ctx.fill();
     }
   }
-  function ribbonPath(ctx,w,h,phase,offset,widthScale,color1,color2){
+  function ribbonPath(ctx,w,h,phase,offset,widthScale,color1,color2,amp=1,freq=1){
     const yBase = h*(0.55+offset);
     ctx.save();
     ctx.lineCap='round'; ctx.lineJoin='round';
     ctx.beginPath();
     for(let x=-.1*w;x<=1.1*w;x+=w/24){
       const n=(x/w);
-      const y=yBase + Math.sin(n*5.4 + phase)*h*0.07 + Math.cos(n*8.2 - phase*1.3)*h*0.03;
+      const y=yBase + Math.sin(n*5.4*freq + phase)*h*0.07*amp + Math.cos(n*8.2*freq - phase*1.3)*h*0.03*amp;
       if(x===-.1*w) ctx.moveTo(x,y); else ctx.lineTo(x,y);
     }
     ctx.strokeStyle=color1;
@@ -1453,7 +1515,7 @@
     ctx.beginPath();
     for(let x=-.1*w;x<=1.1*w;x+=w/24){
       const n=(x/w);
-      const y=yBase + Math.sin(n*5.4 + phase)*h*0.07 + Math.cos(n*8.2 - phase*1.3)*h*0.03 - h*0.004;
+      const y=yBase + Math.sin(n*5.4*freq + phase)*h*0.07*amp + Math.cos(n*8.2*freq - phase*1.3)*h*0.03*amp - h*0.004;
       if(x===-.1*w) ctx.moveTo(x,y); else ctx.lineTo(x,y);
     }
     ctx.strokeStyle=color2;
@@ -1476,29 +1538,32 @@
 
     drawStars(ctx,w,h,t,Math.round(95*o.density),o.col('light','#dff6ff'),.55,.78,o.seedOff);
 
+    const ocx=o.pick(w*.53,w*.4,w*.66), ocy=o.pick(h*.46,h*.36,h*.56);
+    const orx=o.pick(w*.42,w*.3,w*.52), ory=o.pick(h*.16,h*.1,h*.24);
     ctx.save();
     ctx.strokeStyle=rgba(o.col('bg2','#a6d4ff'),.12);
     ctx.lineWidth=w/260;
     ctx.beginPath();
-    ctx.ellipse(w*.53,h*.46,w*.42,h*.16,0,0,Math.PI*2);
+    ctx.ellipse(ocx,ocy,orx,ory,o.angle,0,Math.PI*2);
     ctx.stroke();
     ctx.strokeStyle=rgba(o.col('accent','#5fa9ff'),.16);
     ctx.lineWidth=w/520;
     ctx.beginPath();
-    ctx.ellipse(w*.53,h*.46,w*.52,h*.22,0,0,Math.PI*2);
+    ctx.ellipse(ocx,ocy,orx*1.24,ory*1.38,o.angle,0,Math.PI*2);
     ctx.stroke();
     ctx.restore();
 
-    ribbonPath(ctx,w,h,t*0.9,-0.02,1.15,rgba(o.col('bg1','#0c1d2c'),.9),rgba(o.col('light','#dbf7ff'),.42));
-    ribbonPath(ctx,w,h,t*0.9+1.6,0.06,1.0,rgba(o.col('bg1','#081824'),.88),rgba(o.col('bg2','#84e0ff'),.36));
-    ribbonPath(ctx,w,h,t*0.9+3.4,0.15,.9,rgba(o.col('dark','#05121d'),.86),rgba(o.col('accent','#6ba5ff'),.34));
+    const amp=o.pick(1,0.65,1.6), rphase=t*0.9*o.speed;
+    ribbonPath(ctx,w,h,rphase,o.pick(-0.02,-0.14,0.08),1.15,rgba(o.col('bg1','#0c1d2c'),.9),rgba(o.col('light','#dbf7ff'),.42),amp);
+    ribbonPath(ctx,w,h,rphase+1.6,o.pick(0.06,-0.04,0.18),1.0,rgba(o.col('bg1','#081824'),.88),rgba(o.col('bg2','#84e0ff'),.36),amp);
+    ribbonPath(ctx,w,h,rphase+3.4,o.pick(0.15,0.04,0.26),.9,rgba(o.col('dark','#05121d'),.86),rgba(o.col('accent','#6ba5ff'),.34),amp);
 
-    const count=Math.round(14*o.density);
+    const count=Math.round(o.pick(14,8,26)*o.density);
     for(let i=0;i<count;i++){
       const x=(((i*77.7)+o.seedOff*0.137)%1)*w;
       const y=h*(.38 + (((i*17.3)+o.seedOff*0.311)%1)*.36);
       const r=(2 + (i%3))*w/960;
-      const alpha=(.15 + .12*Math.sin(t*1.6 + i))*o.glow;
+      const alpha=(.15 + .12*Math.sin(t*1.6*o.speed + i))*o.glow;
       const g=ctx.createRadialGradient(x-r*.3,y-r*.3,0,x,y,r*5);
       g.addColorStop(0,rgba(o.col('light','#ffffff'),.6+alpha));
       g.addColorStop(.3,rgba(o.col('accent','#7dd3ff'),.26+alpha*.4));
@@ -1522,8 +1587,9 @@
     ctx.fillStyle=amber; ctx.fillRect(0,0,w,h);
 
     // pipe field
-    for(let i=0;i<6;i++){
-      const y=h*(.16+i*.12);
+    const pipes=Math.round(o.pick(6,4,9)), pipeGap=(1-.16)/Math.max(1,pipes);
+    for(let i=0;i<pipes;i++){
+      const y=h*(.16+i*pipeGap);
       const r=h*(.024 + (i%2)*.006);
       const grad=ctx.createLinearGradient(0,y-r,w,y+r);
       grad.addColorStop(0,rgba(o.col('dark','#040405'),.95));
@@ -1548,7 +1614,7 @@
     ctx.restore();
 
     // reactor core
-    const cx=w*.54, cy=h*.55, R=w*.09;
+    const cx=o.pick(w*.54,w*.34,w*.7), cy=o.pick(h*.55,h*.4,h*.66), R=o.pick(w*.09,w*.055,w*.14);
     const core=ctx.createRadialGradient(cx,cy,0,cx,cy,R*1.9);
     core.addColorStop(0,rgba(o.col('light','#fff4de'),.55*o.glow));
     core.addColorStop(.18,rgba(o.col('accent','#ffb16d'),.42*o.glow));
@@ -1563,7 +1629,7 @@
     ctx.beginPath(); ctx.arc(cx,cy,R*.64,0,Math.PI*2); ctx.stroke();
 
     for(let i=0;i<5;i++){
-      const pulseX=((t*.19 + i*.18 + o.seedOff*0.017)%1)*w*1.2 - w*.1;
+      const pulseX=((t*.19*o.speed + i*.18 + o.seedOff*0.017)%1)*w*1.2 - w*.1;
       const py=h*(.16 + (i%5)*.12);
       const glow=ctx.createRadialGradient(pulseX,py,0,pulseX,py,w*.05);
       glow.addColorStop(0,rgba(o.col('accent','#ffcf92'),.55*o.glow));
@@ -1578,7 +1644,7 @@
     ctx.strokeStyle=rgba(o.col('accent','#ff9956'),.23);
     ctx.lineWidth=w/480;
     for(let i=0;i<3;i++){
-      const off=(t*.09 + i*.27 + o.seedOff*0.013)%1;
+      const off=(t*.09*o.speed + i*.27 + o.seedOff*0.013)%1;
       ctx.beginPath();
       ctx.moveTo(w*(off-.1),h*.72+i*h*.04);
       ctx.bezierCurveTo(w*(off+.08),h*.64,w*(off+.18),h*.58,w*(off+.32),h*.62);
@@ -1593,31 +1659,35 @@
     ctx.fillStyle=bg; ctx.fillRect(0,0,w,h);
 
     // camera drift
-    const driftX=Math.sin(t*0.18)*w*0.018;
-    const driftY=Math.cos(t*0.15)*h*0.015;
+    const driftAmt=o.pick(1,0.5,2.2);
+    const driftX=Math.sin(t*0.18*o.speed)*w*0.018*driftAmt;
+    const driftY=Math.cos(t*0.15*o.speed)*h*0.015*driftAmt;
 
     // far layer
     ctx.save();
     ctx.translate(driftX*.25, driftY*.25);
-    drawStars(ctx,w,h,t,Math.round(120*o.density),o.col('light','#e8f7ff'),.25,.74,o.seedOff);
-    const nx = o.lightA!=null ? w*(.5+Math.cos(o.lightA)*.26) : w*.68;
-    const ny = o.lightA!=null ? h*(.3+Math.sin(o.lightA)*.14) : h*.26;
-    const neb=ctx.createRadialGradient(nx,ny,0,nx,ny,w*.46);
-    neb.addColorStop(0,rgba(o.col('bg2','#7091ff'),.16*o.glow));
+    drawStars(ctx,w,h,t,Math.round(o.pick(120,70,190)*o.density),o.col('light','#e8f7ff'),.25,.74,o.seedOff);
+    const nx = o.lightA!=null ? w*(.5+Math.cos(o.lightA)*.3) : o.pick(w*.68,w*.3,w*.8);
+    const ny = o.lightA!=null ? h*(.3+Math.sin(o.lightA)*.18) : o.pick(h*.26,h*.14,h*.44);
+    const nr = o.pick(w*.46,w*.3,w*.66);
+    const neb=ctx.createRadialGradient(nx,ny,0,nx,ny,nr);
+    neb.addColorStop(0,rgba(o.col('bg2','#7091ff'),o.pick(.16,.12,.28)*o.glow));
     neb.addColorStop(.34,rgba(o.col('mid','#5257d6'),.10*o.glow));
     neb.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=neb; ctx.fillRect(0,0,w,h);
     ctx.restore();
 
     // middle layer rings
+    const rcx=o.pick(w*.57,w*.42,w*.7), rcy=o.pick(h*.45,h*.36,h*.56);
+    const rrx=o.pick(w*.40,w*.3,w*.5), rry=o.pick(h*.17,h*.11,h*.24);
     ctx.save();
     ctx.translate(driftX*.55, driftY*.55);
     ctx.strokeStyle=rgba(o.col('bg2','#b9e1ff'),.10);
     ctx.lineWidth=w/240;
-    ctx.beginPath(); ctx.ellipse(w*.57,h*.45,w*.40,h*.17,0,0,Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(rcx,rcy,rrx,rry,o.angle,0,Math.PI*2); ctx.stroke();
     ctx.strokeStyle=rgba(o.col('accent','#6fb7ff'),.14);
     ctx.lineWidth=w/500;
-    ctx.beginPath(); ctx.ellipse(w*.57,h*.45,w*.52,h*.22,0,0,Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(rcx,rcy,rrx*1.3,rry*1.29,o.angle,0,Math.PI*2); ctx.stroke();
     ctx.restore();
 
     // foreground soft panels
@@ -1630,7 +1700,7 @@
     ctx.fillStyle=p1;
     ctx.fillRect(0,h*.50,w,h*.5);
 
-    ribbonPath(ctx,w,h,t*.35,0.07,.84,rgba(o.col('bg1','#07121e'),.70),rgba(o.col('light','#c6f5ff'),.20));
+    ribbonPath(ctx,w,h,t*.35*o.speed,o.pick(0.07,-0.02,0.16),.84,rgba(o.col('bg1','#07121e'),.70),rgba(o.col('light','#c6f5ff'),.20),o.pick(1,0.7,1.5));
     ctx.restore();
 
     // interface glow accents
@@ -1661,7 +1731,7 @@
     ctx.fillStyle=floor; ctx.fillRect(0,h*.54,w,h*.46);
 
     // pedestal
-    const cx=w*.52, cy=h*.70;
+    const cx=o.pick(w*.52,w*.34,w*.66), cy=o.pick(h*.70,h*.62,h*.76);
     const glow=ctx.createRadialGradient(cx,cy,0,cx,cy,w*.24);
     glow.addColorStop(0,rgba(o.col('bg2','#bee1ff'),.13*o.glow));
     glow.addColorStop(.25,rgba(o.col('accent','#7daff5'),.08*o.glow));
@@ -1675,7 +1745,7 @@
     ctx.fillStyle=ped; ctx.beginPath(); ctx.ellipse(cx,cy,w*.15,h*.05,0,0,Math.PI*2); ctx.fill();
 
     // softbox sweeps
-    const sweepX = (Math.sin(t*0.35)*0.5 + 0.5) * w;
+    const sweepX = (Math.sin(t*0.35*o.speed)*0.5 + 0.5) * w;
     const soft = ctx.createLinearGradient(sweepX-w*.28,0,sweepX+w*.28,0);
     soft.addColorStop(0,'rgba(255,255,255,0)');
     soft.addColorStop(.48,rgba(o.col('bg2','#def1ff'),.11*o.glow));
@@ -1684,13 +1754,14 @@
     ctx.fillStyle=soft; ctx.fillRect(0,0,w,h);
 
     // floating glass arcs
+    const arcX=o.pick(w*.52,w*.4,w*.64), arcY=o.pick(h*.48,h*.4,h*.56), arcR=o.pick(w*.19,w*.13,w*.26);
     ctx.save();
     ctx.strokeStyle=rgba(o.col('bg2','#d7edff'),.10);
     ctx.lineWidth=w/360;
-    ctx.beginPath(); ctx.arc(w*.54,h*.48,w*.19,Math.PI*1.12,Math.PI*1.88); ctx.stroke();
+    ctx.beginPath(); ctx.arc(arcX,arcY,arcR,Math.PI*1.12,Math.PI*1.88); ctx.stroke();
     ctx.strokeStyle=rgba(o.col('accent','#abd6ff'),.08);
     ctx.lineWidth=w/600;
-    ctx.beginPath(); ctx.arc(w*.50,h*.48,w*.28,Math.PI*1.16,Math.PI*1.84); ctx.stroke();
+    ctx.beginPath(); ctx.arc(arcX-w*.04,arcY,arcR*1.47,Math.PI*1.16,Math.PI*1.84); ctx.stroke();
     ctx.restore();
 
     // tiny atmosphere dust

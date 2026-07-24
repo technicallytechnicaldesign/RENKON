@@ -1,5 +1,25 @@
 # Changelog — KeyShot Mockup Studio
 
+## 2026-07-24 — Scene Randomize + wider animated variation; panel overflow fix
+
+- **Top Randomize button.** Added the shared quick-start bar (generator-ui.css)
+  with a one-click **Randomize** that shuffles background, palette, fluid style,
+  motif, atmosphere and seed — leaving the user's product placement, finish and
+  title untouched. The per-field seed **Roll** stays as the in-panel shuffle.
+- **Much wider animated variation.** The animated loops now derive a seeded
+  motion **speed** (~0.5–2.4x), a structural **tilt**, and per-seed structural
+  picks (orbit ring position/size + ribbon amplitude/offset + particle count;
+  reactor core position/size + pipe count + pulse/flow speed; parallax nebula
+  position/size + ring geometry + star count + drift; sweep light-sweep speed +
+  arc radii + pedestal position). A Randomize now reads genuinely different, not
+  a few-pixel shift. All variation is seed-driven and defaults to identity, so
+  the Presets tab still renders each concept's original signature look.
+- **Layout fix.** On viewports wider than ~1400px the Palette control and the
+  Seed+Roll row were overflowing the fixed 300px side column and rendering
+  under the preview canvas (invisible / unclickable). field-grid-3 now stacks
+  and all grid cells/inputs are min-width:0, so nothing overflows.
+
+
 ## 2026-07-24 — Animated backplates + title + WebM export
 
 The Compositor can now use the four animated loops (previously preview-only in
