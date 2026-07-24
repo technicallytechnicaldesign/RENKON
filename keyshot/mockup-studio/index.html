@@ -1139,7 +1139,9 @@
         detail: s.detail,
         intensity: s.themeIntensity,
         seed: hashString(s.seed),
-        light: s.lightAngle
+        light: s.lightAngle,
+        style: s.style,
+        theme: s.theme
       });
     } else {
       renderBackground(c,w,h,s);
@@ -1458,10 +1460,32 @@
   // Normalize the optional parametric opts passed by the Compositor. Every
   // factor defaults to identity when opts is absent, so the Presets tab (which
   // calls the loops with no opts) renders exactly as it always has.
+  // Fluid style shapes the MOTION character; theme shapes the ENVIRONMENT mix
+  // (starfield vs structural detail). Both default to neutral (all 1s) so the
+  // Presets tab, which passes no style/theme, is unaffected.
+  const STYLE_MOD = {
+    viscous:  { speed:0.7, amp:1.4,  freq:0.8, particles:0.9 },
+    stream:   { speed:1.5, amp:0.6,  freq:1.35, particles:0.7 },
+    droplets: { speed:1.0, amp:0.9,  freq:1.0, particles:1.8 },
+    ripple:   { speed:1.15, amp:1.15, freq:1.7, particles:1.0 },
+    ink:      { speed:0.6, amp:1.55, freq:0.65, particles:1.3 },
+    splash:   { speed:1.7, amp:1.45, freq:1.1, particles:1.6 }
+  };
+  const THEME_MOD = {
+    none:     { stars:0.35, structure:0.45, env:0.6 },
+    industry: { stars:0.6,  structure:1.6,  env:0.85 },
+    space:    { stars:1.9,  structure:0.7,  env:1.6 },
+    hybrid:   { stars:1.25, structure:1.1,  env:1.15 }
+  };
+  const NEUTRAL_S = { speed:1, amp:1, freq:1, particles:1 };
+  const NEUTRAL_T = { stars:1, structure:1, env:1 };
+
   function animOpts(opts){
     const has = !!opts;
     const P = (opts && opts.colors) || null;
     const seed = (opts && opts.seed!=null) ? (opts.seed>>>0) : 0;
+    const sMod = (has && STYLE_MOD[opts.style]) || NEUTRAL_S;
+    const tMod = (has && THEME_MOD[opts.theme]) || NEUTRAL_T;
     // Seeded RNG for structural variation. A fresh instance is built each frame
     // from the same seed, so structure stays steady while t drives motion, and
     // a new seed re-rolls the whole composition. Only used when opts is present.
@@ -1469,10 +1493,12 @@
     const rng = () => { a = (a + 0x6D2B79F5) >>> 0; let x = Math.imul(a ^ (a>>>15), a|1); x ^= x + Math.imul(x ^ (x>>>7), x|61); return ((x ^ (x>>>14)) >>> 0) / 4294967296; };
     // Consume two draws up front for speed + tilt so downstream pick() order is
     // stable regardless of them.
-    const speed = has ? (0.5 + rng()*1.9) : 1;      // ~0.5x .. 2.4x motion
-    const angle = has ? (rng()-0.5)*0.6 : 0;         // +/-0.3 rad structural tilt
+    const speed = (has ? (0.5 + rng()*1.9) : 1) * sMod.speed;  // seed x style
+    const angle = has ? (rng()-0.5)*0.6 : 0;                    // +/-0.3 rad structural tilt
     return {
       P, has, speed, angle,
+      amp: sMod.amp, freq: sMod.freq, pK: sMod.particles,       // fluid-style motion knobs
+      sK: tMod.stars, strK: tMod.structure, envK: tMod.env,     // theme environment knobs
       col: (role, fb) => (P && P[role]) ? P[role] : fb, // palette role, else original color
       density: (opts && opts.detail!=null) ? (0.55 + opts.detail) : 1,
       glow: (opts && opts.intensity!=null) ? (0.6 + opts.intensity*0.85) : 1,
@@ -1533,32 +1559,32 @@
     const gx = o.lightA!=null ? w*(.5+Math.cos(o.lightA)*.28) : w*.55;
     const gy = o.lightA!=null ? h*(.24+Math.sin(o.lightA)*.12) : h*.22;
     const rg=ctx.createRadialGradient(gx,gy,0,gx,gy,w*.7);
-    rg.addColorStop(0,rgba(o.col('bg2','#66bdff'),.20*o.glow)); rg.addColorStop(.3,rgba(o.col('mid','#2875c4'),.12*o.glow)); rg.addColorStop(1,'rgba(0,0,0,0)');
+    rg.addColorStop(0,rgba(o.col('bg2','#66bdff'),.20*o.glow*o.envK)); rg.addColorStop(.3,rgba(o.col('mid','#2875c4'),.12*o.glow*o.envK)); rg.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=rg; ctx.fillRect(0,0,w,h);
 
-    drawStars(ctx,w,h,t,Math.round(95*o.density),o.col('light','#dff6ff'),.55,.78,o.seedOff);
+    drawStars(ctx,w,h,t,Math.round(95*o.density*o.sK),o.col('light','#dff6ff'),.55,.78,o.seedOff);
 
     const ocx=o.pick(w*.53,w*.4,w*.66), ocy=o.pick(h*.46,h*.36,h*.56);
     const orx=o.pick(w*.42,w*.3,w*.52), ory=o.pick(h*.16,h*.1,h*.24);
     ctx.save();
-    ctx.strokeStyle=rgba(o.col('bg2','#a6d4ff'),.12);
+    ctx.strokeStyle=rgba(o.col('bg2','#a6d4ff'),.12*o.strK);
     ctx.lineWidth=w/260;
     ctx.beginPath();
     ctx.ellipse(ocx,ocy,orx,ory,o.angle,0,Math.PI*2);
     ctx.stroke();
-    ctx.strokeStyle=rgba(o.col('accent','#5fa9ff'),.16);
+    ctx.strokeStyle=rgba(o.col('accent','#5fa9ff'),.16*o.strK);
     ctx.lineWidth=w/520;
     ctx.beginPath();
     ctx.ellipse(ocx,ocy,orx*1.24,ory*1.38,o.angle,0,Math.PI*2);
     ctx.stroke();
     ctx.restore();
 
-    const amp=o.pick(1,0.65,1.6), rphase=t*0.9*o.speed;
-    ribbonPath(ctx,w,h,rphase,o.pick(-0.02,-0.14,0.08),1.15,rgba(o.col('bg1','#0c1d2c'),.9),rgba(o.col('light','#dbf7ff'),.42),amp);
-    ribbonPath(ctx,w,h,rphase+1.6,o.pick(0.06,-0.04,0.18),1.0,rgba(o.col('bg1','#081824'),.88),rgba(o.col('bg2','#84e0ff'),.36),amp);
-    ribbonPath(ctx,w,h,rphase+3.4,o.pick(0.15,0.04,0.26),.9,rgba(o.col('dark','#05121d'),.86),rgba(o.col('accent','#6ba5ff'),.34),amp);
+    const amp=o.pick(1,0.65,1.6)*o.amp, rphase=t*0.9*o.speed;
+    ribbonPath(ctx,w,h,rphase,o.pick(-0.02,-0.14,0.08),1.15,rgba(o.col('bg1','#0c1d2c'),.9),rgba(o.col('light','#dbf7ff'),.42),amp,o.freq);
+    ribbonPath(ctx,w,h,rphase+1.6,o.pick(0.06,-0.04,0.18),1.0,rgba(o.col('bg1','#081824'),.88),rgba(o.col('bg2','#84e0ff'),.36),amp,o.freq);
+    ribbonPath(ctx,w,h,rphase+3.4,o.pick(0.15,0.04,0.26),.9,rgba(o.col('dark','#05121d'),.86),rgba(o.col('accent','#6ba5ff'),.34),amp,o.freq);
 
-    const count=Math.round(o.pick(14,8,26)*o.density);
+    const count=Math.round(o.pick(14,8,26)*o.density*o.pK);
     for(let i=0;i<count;i++){
       const x=(((i*77.7)+o.seedOff*0.137)%1)*w;
       const y=h*(.38 + (((i*17.3)+o.seedOff*0.311)%1)*.36);
@@ -1581,13 +1607,13 @@
     const ax = o.lightA!=null ? w*(.5+Math.cos(o.lightA)*.22) : w*.5;
     const ay = o.lightA!=null ? h*(.46+Math.sin(o.lightA)*.12) : h*.44;
     const amber=ctx.createRadialGradient(ax,ay,0,ax,ay,w*.4);
-    amber.addColorStop(0,rgba(o.col('accent','#ff9251'),.16*o.glow));
-    amber.addColorStop(.25,rgba(o.col('accent','#ff6f24'),.12*o.glow));
+    amber.addColorStop(0,rgba(o.col('accent','#ff9251'),.16*o.glow*o.envK));
+    amber.addColorStop(.25,rgba(o.col('accent','#ff6f24'),.12*o.glow*o.envK));
     amber.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=amber; ctx.fillRect(0,0,w,h);
 
     // pipe field
-    const pipes=Math.round(o.pick(6,4,9)), pipeGap=(1-.16)/Math.max(1,pipes);
+    const pipes=Math.max(3,Math.round(o.pick(6,4,9)*o.strK)), pipeGap=(1-.16)/Math.max(1,pipes);
     for(let i=0;i<pipes;i++){
       const y=h*(.16+i*pipeGap);
       const r=h*(.024 + (i%2)*.006);
@@ -1602,7 +1628,7 @@
 
     // vertical conduits
     ctx.save();
-    ctx.strokeStyle=rgba(o.col('mid','#5d95bc'),.14);
+    ctx.strokeStyle=rgba(o.col('mid','#5d95bc'),.14*o.strK);
     ctx.lineWidth=w/260;
     for(let i=0;i<7;i++){
       const x=w*(.08+i*.13);
@@ -1666,12 +1692,12 @@
     // far layer
     ctx.save();
     ctx.translate(driftX*.25, driftY*.25);
-    drawStars(ctx,w,h,t,Math.round(o.pick(120,70,190)*o.density),o.col('light','#e8f7ff'),.25,.74,o.seedOff);
+    drawStars(ctx,w,h,t,Math.round(o.pick(120,70,190)*o.density*o.sK),o.col('light','#e8f7ff'),.25,.74,o.seedOff);
     const nx = o.lightA!=null ? w*(.5+Math.cos(o.lightA)*.3) : o.pick(w*.68,w*.3,w*.8);
     const ny = o.lightA!=null ? h*(.3+Math.sin(o.lightA)*.18) : o.pick(h*.26,h*.14,h*.44);
     const nr = o.pick(w*.46,w*.3,w*.66);
     const neb=ctx.createRadialGradient(nx,ny,0,nx,ny,nr);
-    neb.addColorStop(0,rgba(o.col('bg2','#7091ff'),o.pick(.16,.12,.28)*o.glow));
+    neb.addColorStop(0,rgba(o.col('bg2','#7091ff'),o.pick(.16,.12,.28)*o.glow*Math.min(1.6,o.sK)));
     neb.addColorStop(.34,rgba(o.col('mid','#5257d6'),.10*o.glow));
     neb.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=neb; ctx.fillRect(0,0,w,h);
@@ -1682,10 +1708,10 @@
     const rrx=o.pick(w*.40,w*.3,w*.5), rry=o.pick(h*.17,h*.11,h*.24);
     ctx.save();
     ctx.translate(driftX*.55, driftY*.55);
-    ctx.strokeStyle=rgba(o.col('bg2','#b9e1ff'),.10);
+    ctx.strokeStyle=rgba(o.col('bg2','#b9e1ff'),.10*o.strK);
     ctx.lineWidth=w/240;
     ctx.beginPath(); ctx.ellipse(rcx,rcy,rrx,rry,o.angle,0,Math.PI*2); ctx.stroke();
-    ctx.strokeStyle=rgba(o.col('accent','#6fb7ff'),.14);
+    ctx.strokeStyle=rgba(o.col('accent','#6fb7ff'),.14*o.strK);
     ctx.lineWidth=w/500;
     ctx.beginPath(); ctx.ellipse(rcx,rcy,rrx*1.3,rry*1.29,o.angle,0,Math.PI*2); ctx.stroke();
     ctx.restore();
@@ -1700,7 +1726,7 @@
     ctx.fillStyle=p1;
     ctx.fillRect(0,h*.50,w,h*.5);
 
-    ribbonPath(ctx,w,h,t*.35*o.speed,o.pick(0.07,-0.02,0.16),.84,rgba(o.col('bg1','#07121e'),.70),rgba(o.col('light','#c6f5ff'),.20),o.pick(1,0.7,1.5));
+    ribbonPath(ctx,w,h,t*.35*o.speed,o.pick(0.07,-0.02,0.16),.84,rgba(o.col('bg1','#07121e'),.70),rgba(o.col('light','#c6f5ff'),.20),o.pick(1,0.7,1.5)*o.amp,o.freq);
     ctx.restore();
 
     // interface glow accents
@@ -1718,8 +1744,8 @@
     const wx = o.lightA!=null ? w*(.5+Math.cos(o.lightA)*.24) : w*.62;
     const wy = o.lightA!=null ? h*(.3+Math.sin(o.lightA)*.14) : h*.28;
     const warm=ctx.createRadialGradient(wx,wy,0,wx,wy,w*.44);
-    warm.addColorStop(0,rgba(o.col('light','#f5f6ff'),.08*o.glow));
-    warm.addColorStop(.32,rgba(o.col('bg2','#7fabe9'),.05*o.glow));
+    warm.addColorStop(0,rgba(o.col('light','#f5f6ff'),.08*o.glow*o.envK));
+    warm.addColorStop(.32,rgba(o.col('bg2','#7fabe9'),.05*o.glow*o.envK));
     warm.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=warm; ctx.fillRect(0,0,w,h);
 
@@ -1756,16 +1782,16 @@
     // floating glass arcs
     const arcX=o.pick(w*.52,w*.4,w*.64), arcY=o.pick(h*.48,h*.4,h*.56), arcR=o.pick(w*.19,w*.13,w*.26);
     ctx.save();
-    ctx.strokeStyle=rgba(o.col('bg2','#d7edff'),.10);
+    ctx.strokeStyle=rgba(o.col('bg2','#d7edff'),.10*o.strK);
     ctx.lineWidth=w/360;
     ctx.beginPath(); ctx.arc(arcX,arcY,arcR,Math.PI*1.12,Math.PI*1.88); ctx.stroke();
-    ctx.strokeStyle=rgba(o.col('accent','#abd6ff'),.08);
+    ctx.strokeStyle=rgba(o.col('accent','#abd6ff'),.08*o.strK);
     ctx.lineWidth=w/600;
     ctx.beginPath(); ctx.arc(arcX-w*.04,arcY,arcR*1.47,Math.PI*1.16,Math.PI*1.84); ctx.stroke();
     ctx.restore();
 
     // tiny atmosphere dust
-    drawStars(ctx,w,h,t,Math.round(56*o.density),o.col('light','#f2fbff'),.15,.95,o.seedOff);
+    drawStars(ctx,w,h,t,Math.round(56*o.density*o.sK),o.col('light','#f2fbff'),.15,.95,o.seedOff);
   }
   function roundRect(ctx,x,y,w,h,r){
     ctx.beginPath();

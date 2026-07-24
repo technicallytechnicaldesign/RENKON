@@ -14,6 +14,14 @@
   arc radii + pedestal position). A Randomize now reads genuinely different, not
   a few-pixel shift. All variation is seed-driven and defaults to identity, so
   the Presets tab still renders each concept's original signature look.
+- **Fluid style + theme now drive the animation too.** The animated backplates
+  receive the scene's fluid style and theme: style shapes the motion character
+  (viscous = slow, high-amplitude waves; stream = fast, tight; ink = big lazy
+  swells; splash = energetic; etc. — mapped to speed, ribbon amplitude/frequency
+  and particle count), and theme shapes the environment (space = dense starfield
+  + more atmosphere; industry = more structural detail; pure fluid = minimal).
+  Both are shuffled by Randomize, so a roll re-composes the motion, not just the
+  palette. Neutral defaults keep the Presets tab unchanged.
 - **Layout fix.** On viewports wider than ~1400px the Palette control and the
   Seed+Roll row were overflowing the fixed 300px side column and rendering
   under the preview canvas (invisible / unclickable). field-grid-3 now stacks
