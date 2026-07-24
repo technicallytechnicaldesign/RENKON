@@ -143,6 +143,22 @@
   .out-row .note b { color: var(--text); font-weight: 700; }
   .out-row .note.tip b { color: var(--c-accent); }
 
+  /* frame-rate table highlights */
+  .out-row.src .k { color: var(--c-accent); }
+  .out-row.src .k::after { content: " · source"; color: var(--c-accent); opacity: 0.85; }
+  .out-row.tgt { background: var(--panel-bg-raised); box-shadow: inset 2px 0 0 var(--c-fluid); }
+  .out-row.tgt .v { color: var(--c-fluid); }
+  .out-row.tgt .k::after { content: " · target"; color: var(--c-fluid); opacity: 0.85; }
+
+  .mini-btn {
+    -webkit-appearance: none; appearance: none; cursor: pointer;
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em;
+    background: transparent; color: var(--c-accent); border: 1px solid var(--c-accent);
+    padding: 9px 13px; margin-bottom: 20px; width: 100%; text-align: left;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .mini-btn:hover { background: var(--c-accent); color: var(--bg); }
+
   .verdict-line { font-size: 12px; color: var(--text); line-height: 1.6; margin: 0 0 18px; }
   .verdict-line.warn { color: var(--c-warn); }
   .verdict-line.caution { color: var(--c-caution); }
@@ -194,19 +210,24 @@
 
     <div class="page-head">
       <h1>Render Calculators</h1>
-      <p>Two directions on the same render-budget math, plus the power bill.
-         <b>Time from quality</b>: you know the frame count and the look you want &mdash; how
-         long, and how much electricity? <b>Quality from time</b>: you know the frame count and
-         the deadline &mdash; what quality fits, and how fucked are you? Both get honest by
-         anchoring on one real <code>test-frame</code> time you actually measured.</p>
+      <p>Three takes on the same render-budget math, plus the power bill.
+         <b>Time from quality</b>: frame count + the look you want &mdash; how long, and how
+         much electricity? <b>Quality from time</b>: frame count + the deadline &mdash; what
+         quality fits, and how fucked are you? <b>Frames &amp; frame rate</b>: how many frames a
+         clip is when you swap between 24, 25, 30, 60&hellip; then feed that count straight into
+         the first tab. The render tabs get honest by anchoring on one real
+         <code>test-frame</code> time you actually measured.</p>
     </div>
 
     <div class="calc-tabs" role="tablist">
       <button class="calc-tab on" id="tab-fwd" role="tab" aria-selected="true">
-        01 / Direction<span class="n">Time from quality</span>
+        01 / How long<span class="n">Time from quality</span>
       </button>
       <button class="calc-tab" id="tab-inv" role="tab" aria-selected="false">
-        02 / Direction<span class="n">Quality from time</span>
+        02 / How fucked<span class="n">Quality from time</span>
+      </button>
+      <button class="calc-tab" id="tab-frm" role="tab" aria-selected="false">
+        03 / How many<span class="n">Frames &amp; frame rate</span>
       </button>
     </div>
     <div class="calc-why" id="why"></div>
@@ -282,7 +303,62 @@
           </div>
         </div>
 
-        <!-- SHARED: render basis -->
+        <!-- FRAMES job inputs -->
+        <div id="job-frm" hidden>
+          <h3>The clip</h3>
+          <div class="seg-toggle" id="frm-mode-toggle">
+            <button data-fmode="frames">By frame count</button>
+            <button data-fmode="time">By duration</button>
+          </div>
+
+          <div id="frm-by-frames">
+            <div class="field">
+              <label for="frm-frames">Frames <span class="unit">count</span></label>
+              <input type="number" id="frm-frames" min="0" step="1">
+            </div>
+            <div class="field">
+              <label for="frm-srcfps">Source frame rate <span class="unit">fps</span></label>
+              <select id="frm-srcfps"></select>
+            </div>
+            <div class="field" id="frm-srcfps-custom" hidden>
+              <label for="frm-srcfps-val">Custom source <span class="unit">fps</span></label>
+              <input type="number" id="frm-srcfps-val" min="0.001" step="0.001">
+            </div>
+          </div>
+
+          <div id="frm-by-time" hidden>
+            <div class="field-row thirds">
+              <div class="field" style="margin:0">
+                <label for="frm-h">Hours</label>
+                <input type="number" id="frm-h" min="0" step="1">
+              </div>
+              <div class="field" style="margin:0">
+                <label for="frm-m">Mins</label>
+                <input type="number" id="frm-m" min="0" step="1">
+              </div>
+              <div class="field" style="margin:0">
+                <label for="frm-s">Secs</label>
+                <input type="number" id="frm-s" min="0" step="0.001">
+              </div>
+            </div>
+          </div>
+
+          <h3 class="sec"><span class="tag">&#9654;</span> Convert to</h3>
+          <div class="field">
+            <label for="frm-tgtfps">Target frame rate <span class="unit">fps</span></label>
+            <select id="frm-tgtfps"></select>
+          </div>
+          <div class="field" id="frm-tgtfps-custom" hidden>
+            <label for="frm-tgtfps-val">Custom target <span class="unit">fps</span></label>
+            <input type="number" id="frm-tgtfps-val" min="0.001" step="0.001">
+          </div>
+          <div class="field-note">Same real-world duration, re-counted at the new rate:
+            <code>frames = duration &times; fps</code>. A non-whole result means the clip
+            doesn't land cleanly &mdash; you'd round, and drop or repeat a frame.</div>
+        </div>
+
+        <!-- SHARED (render tabs only): basis + electricity -->
+        <div id="shared-render">
         <h3 class="sec"><span class="tag">&#9636;</span> Render basis</h3>
         <div class="seg-toggle" id="basis-toggle">
           <button data-mode="calibrate">Calibrate</button>
@@ -352,6 +428,7 @@
         </div>
         <div class="field-note" style="margin-top:6px">Whole-machine draw at the wall while
           rendering. Energy counts active render time only.</div>
+        </div><!-- /#shared-render -->
       </div>
 
       <div class="panel" id="outputs">
@@ -370,6 +447,15 @@
           <div class="diagram">
             <div class="diagram-cap">Time each tier needs vs. the time you have</div>
             <div class="barset" id="inv-bars"></div>
+          </div>
+        </div>
+        <div id="out-frm" hidden>
+          <h3>Frame count</h3>
+          <div class="out-list" id="frm-rows"></div>
+          <button type="button" class="mini-btn" id="frm-use" hidden></button>
+          <div class="diagram">
+            <div class="diagram-cap">Frames at each common rate &mdash; same duration</div>
+            <div class="out-list" id="frm-table"></div>
           </div>
         </div>
       </div>
@@ -420,6 +506,24 @@
       NZD: { sym: "NZ$",     rate: 0.30, post: false },
       DKK: { sym: " kr",     rate: 2.50, post: true  }
     };
+    // Frame rates. NTSC rates carry their exact 1000/1001 value; the key is the
+    // rounded label used for select matching.
+    var RATES = [
+      { key: "23.976", fps: 24000 / 1001, label: "23.976 · NTSC film" },
+      { key: "24",     fps: 24,           label: "24 · film" },
+      { key: "25",     fps: 25,           label: "25 · PAL" },
+      { key: "29.97",  fps: 30000 / 1001, label: "29.97 · NTSC" },
+      { key: "30",     fps: 30,           label: "30" },
+      { key: "48",     fps: 48,           label: "48" },
+      { key: "50",     fps: 50,           label: "50 · PAL HFR" },
+      { key: "59.94",  fps: 60000 / 1001, label: "59.94 · NTSC HFR" },
+      { key: "60",     fps: 60,           label: "60" },
+      { key: "120",    fps: 120,          label: "120" }
+    ];
+    function rateForFps(v) {
+      for (var i = 0; i < RATES.length; i++) if (Math.abs(RATES[i].fps - v) < 1e-3) return RATES[i];
+      return null;
+    }
 
     // ---- state (persisted) --------------------------------------------
     var DEFAULTS = {
@@ -428,6 +532,9 @@
       fFrames: 250, fW: 1920, fH: 1080, fTier: "product", fSamples: 64,
       // inverse job
       iFrames: 250, iW: 1920, iH: 1080, iDays: 0, iHours: 8, iMins: 0,
+      // frames job
+      frmMode: "frames", frmFrames: 100, frmSrcFps: 24,
+      frmH: 0, frmM: 0, frmS: 0, frmTgtFps: 30,
       // shared basis
       basisMode: "calibrate",
       cW: 1920, cH: 1080, cSamples: 64, cTime: 90,
@@ -475,6 +582,25 @@
       var c = CURR[state.currency] || CURR.USD;
       var n = (Math.round(v * 100) / 100).toFixed(2);
       return c.post ? (n + c.sym) : (c.sym + n);
+    }
+    function pad2(n) { n = Math.floor(n); return (n < 10 ? "0" : "") + n; }
+    // clock duration: MM:SS.mmm (or H:MM:SS.mmm past an hour), trailing ms dropped when whole
+    function fmtClock(sec) {
+      if (!isFinite(sec) || sec < 0) sec = 0;
+      var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec - h * 3600 - m * 60;
+      var si = Math.floor(s + 1e-9), frac = s - si;
+      var ms = Math.round(frac * 1000);
+      if (ms === 1000) { ms = 0; si += 1; } // rounding carry
+      var sStr = pad2(si) + (ms > 0 ? "." + ("00" + ms).slice(-3) : "");
+      return h > 0 ? (h + ":" + pad2(m) + ":" + sStr) : (pad2(m) + ":" + sStr);
+    }
+    // non-drop timecode HH:MM:SS:FF at the nominal integer rate
+    function fmtTC(frames, fps) {
+      var f = Math.max(0, Math.round(frames));
+      var nf = Math.max(1, Math.round(fps));
+      var ff = f % nf, tot = Math.floor(f / nf);
+      var h = Math.floor(tot / 3600), m = Math.floor((tot % 3600) / 60), s = tot % 60;
+      return pad2(h) + ":" + pad2(m) + ":" + pad2(s) + ":" + pad2(ff);
     }
 
     // seconds per (pixel*sample), or null if not derivable
@@ -524,6 +650,33 @@
       for (var k in CURR) html += '<option value="' + k + '">' + k + "</option>";
       sel.innerHTML = html;
     }
+    function fillFpsSelect(sel) {
+      var html = "";
+      RATES.forEach(function (r) { html += '<option value="' + r.key + '">' + r.label + "</option>"; });
+      html += '<option value="custom">Custom…</option>';
+      sel.innerHTML = html;
+    }
+
+    // ---- wire an fps control (select of common rates + custom) --------
+    function bindFps(selId, customWrapId, valId, key) {
+      var sel = $(selId), wrap = $(customWrapId), vi = $(valId);
+      function syncSelect() {
+        var r = rateForFps(state[key]);
+        sel.value = r ? r.key : "custom";
+        wrap.hidden = sel.value !== "custom";
+        vi.value = Math.round(state[key] * 1000) / 1000;
+      }
+      sel.addEventListener("change", function () {
+        if (sel.value === "custom") { wrap.hidden = false; vi.value = Math.round(state[key] * 1000) / 1000; }
+        else {
+          for (var i = 0; i < RATES.length; i++) if (RATES[i].key === sel.value) state[key] = RATES[i].fps;
+          wrap.hidden = true;
+        }
+        commit();
+      });
+      vi.addEventListener("input", function () { state[key] = Math.max(0.001, num(vi.value, 0.001)); commit(); });
+      return syncSelect;
+    }
 
     // ---- wire a resolution control (select + custom w/h) --------------
     function bindRes(selId, customId, wId, hId, wKey, hKey) {
@@ -571,20 +724,38 @@
       $("basis-calibrate").hidden = state.basisMode !== "calibrate";
       $("basis-preset").hidden = state.basisMode !== "preset";
 
-      // tab visuals
-      var fwd = state.tab === "fwd";
-      $("tab-fwd").classList.toggle("on", fwd);
-      $("tab-inv").classList.toggle("on", !fwd);
-      $("tab-fwd").setAttribute("aria-selected", fwd ? "true" : "false");
-      $("tab-inv").setAttribute("aria-selected", !fwd ? "true" : "false");
-      $("job-fwd").hidden = !fwd; $("job-inv").hidden = fwd;
-      $("out-fwd").hidden = !fwd; $("out-inv").hidden = fwd;
-      $("why").innerHTML = fwd
-        ? "You've got the <b>frame count</b> and the <b>quality</b> you want. This gives you the total render time and the power it burns. Anchor it on a real test-frame time and the estimate is one you can plan around."
-        : "You've got a <b>frame count</b> and a <b>hard deadline</b>. This finds the highest quality that actually fits, tells you how fucked you are if that's 'barely', and shows the levers &mdash; cut frames, drop resolution, or buy time.";
+      // frames-mode toggle visuals
+      Array.prototype.forEach.call($("frm-mode-toggle").children, function (b) {
+        b.classList.toggle("on", b.getAttribute("data-fmode") === state.frmMode);
+      });
+      $("frm-by-frames").hidden = state.frmMode !== "frames";
+      $("frm-by-time").hidden = state.frmMode !== "time";
 
+      // tab visuals (three tabs)
+      var tab = state.tab;
+      var tabs = { fwd: "tab-fwd", inv: "tab-inv", frm: "tab-frm" };
+      var jobs = { fwd: "job-fwd", inv: "job-inv", frm: "job-frm" };
+      var outs = { fwd: "out-fwd", inv: "out-inv", frm: "out-frm" };
+      for (var key in tabs) {
+        var on = key === tab;
+        $(tabs[key]).classList.toggle("on", on);
+        $(tabs[key]).setAttribute("aria-selected", on ? "true" : "false");
+        $(jobs[key]).hidden = !on;
+        $(outs[key]).hidden = !on;
+      }
+      // the shared render basis + electricity only apply to the render tabs
+      $("shared-render").hidden = tab === "frm";
+
+      var WHY = {
+        fwd: "You've got the <b>frame count</b> and the <b>quality</b> you want. This gives you the total render time and the power it burns. Anchor it on a real test-frame time and the estimate is one you can plan around.",
+        inv: "You've got a <b>frame count</b> and a <b>hard deadline</b>. This finds the highest quality that actually fits, tells you how fucked you are if that's 'barely', and shows the levers &mdash; cut frames, drop resolution, or buy time.",
+        frm: "You've got a clip at one <b>frame rate</b> and want it at another. Same real-world duration, re-counted at the new rate &mdash; so you know how many frames you're actually on the hook to render."
+      };
+      $("why").innerHTML = WHY[tab];
+
+      if (tab === "frm") { renderFrames(); return; }
       var k = kValue();
-      if (fwd) renderForward(k); else renderInverse(k);
+      if (tab === "fwd") renderForward(k); else renderInverse(k);
     }
 
     function noBasisRows(container) {
@@ -728,17 +899,73 @@
       container.innerHTML = html;
     }
 
+    // frame-rate conversion: same duration, re-counted at each rate
+    function renderFrames() {
+      var rows = $("frm-rows"), table = $("frm-table"), useBtn = $("frm-use");
+      var mode = state.frmMode;
+      var dur = mode === "frames"
+        ? (state.frmSrcFps > 0 ? state.frmFrames / state.frmSrcFps : 0)
+        : (state.frmH * 3600 + state.frmM * 60 + state.frmS);
+
+      var tgt = state.frmTgtFps;
+      var tgtExact = dur * tgt;
+      var tgtFrames = Math.round(tgtExact);
+      var fractional = Math.abs(tgtExact - tgtFrames) > 1e-3;
+      var tgtRate = rateForFps(tgt);
+      var tgtLabel = tgtRate ? tgtRate.key : String(Math.round(tgt * 1000) / 1000);
+
+      var html =
+        row("Frames at target", tgtFrames + " frames", "headline") +
+        row("At", tgtLabel + " fps · " + fmtTC(tgtFrames, tgt) + " tc") +
+        row("Duration", fmtClock(dur));
+
+      if (mode === "frames") {
+        var srcRate = rateForFps(state.frmSrcFps);
+        var srcLabel = srcRate ? srcRate.key : String(Math.round(state.frmSrcFps * 1000) / 1000);
+        var factor = state.frmSrcFps > 0 ? tgt / state.frmSrcFps : 0;
+        html += row("Conversion",
+          state.frmFrames + " @ " + srcLabel + " → " + tgtFrames + " @ " + tgtLabel, "",
+          "×" + (Math.round(factor * 1000) / 1000) + " the frame count for the same " + fmtClock(dur) + " of footage.");
+      }
+      if (fractional) {
+        html += tipRow("At " + tgtLabel + " fps the clip lands on <b>" + (Math.round(tgtExact * 100) / 100) +
+          "</b> frames — not whole. Rounded to <b>" + tgtFrames + "</b>; you'd drop or repeat one to make it fit.");
+      }
+      rows.innerHTML = html;
+
+      if (tgtFrames > 0) {
+        useBtn.hidden = false;
+        useBtn.textContent = "Use " + tgtFrames + " frames in “Time from quality” →";
+      } else { useBtn.hidden = true; }
+
+      // table: frame count at every common rate, source & target flagged
+      var t = "";
+      RATES.forEach(function (r) {
+        var cls = "";
+        if (mode === "frames" && Math.abs(r.fps - state.frmSrcFps) < 1e-3) cls += " src";
+        if (Math.abs(r.fps - tgt) < 1e-3) cls += " tgt";
+        t += '<div class="out-row' + cls + '"><span class="k">' + r.label +
+          '</span><span class="v">' + Math.round(dur * r.fps) + '</span></div>';
+      });
+      table.innerHTML = t;
+    }
+
     // ---- init ----------------------------------------------------------
     fillResSelect($("f-res")); fillResSelect($("i-res")); fillResSelect($("c-res"));
     fillTierSelect($("f-tier"));
     fillPresetSelect($("p-preset"));
     fillCurrency($("currency"));
+    fillFpsSelect($("frm-srcfps")); fillFpsSelect($("frm-tgtfps"));
 
     // resolution controls
     var syncFRes = bindRes("f-res", "f-res-custom", "f-w", "f-h", "fW", "fH");
     var syncIRes = bindRes("i-res", "i-res-custom", "i-w", "i-h", "iW", "iH");
     var syncCRes = bindRes("c-res", "c-res-custom", "c-w", "c-h", "cW", "cH");
     syncers.push(syncFRes, syncIRes, syncCRes);
+
+    // fps controls
+    syncers.push(bindFps("frm-srcfps", "frm-srcfps-custom", "frm-srcfps-val", "frmSrcFps"));
+    syncers.push(bindFps("frm-tgtfps", "frm-tgtfps-custom", "frm-tgtfps-val", "frmTgtFps"));
 
     // plain number fields
     syncers.push(bindNum("f-frames", "fFrames", { min: 1, int: true, fb: 1 }));
@@ -752,6 +979,10 @@
     syncers.push(bindNum("overhead", "overhead", { min: 0 }));
     syncers.push(bindNum("watts", "watts", { min: 0 }));
     syncers.push(bindNum("rate", "rate", { min: 0 }));
+    syncers.push(bindNum("frm-frames", "frmFrames", { min: 0, int: true }));
+    syncers.push(bindNum("frm-h", "frmH", { min: 0, int: true }));
+    syncers.push(bindNum("frm-m", "frmM", { min: 0, int: true }));
+    syncers.push(bindNum("frm-s", "frmS", { min: 0 }));
 
     // quality tier <-> samples
     var fTier = $("f-tier"), fSamples = $("f-samples");
@@ -800,9 +1031,24 @@
     });
     syncers.push(function () { curSel.value = state.currency; $("rate").value = state.rate; });
 
+    // frames mode toggle
+    Array.prototype.forEach.call($("frm-mode-toggle").children, function (b) {
+      b.addEventListener("click", function () { state.frmMode = b.getAttribute("data-fmode"); commit(); });
+    });
+
+    // "use in Time from quality" — pipe the target frame count into tab 01
+    $("frm-use").addEventListener("click", function () {
+      var dur = state.frmMode === "frames"
+        ? (state.frmSrcFps > 0 ? state.frmFrames / state.frmSrcFps : 0)
+        : (state.frmH * 3600 + state.frmM * 60 + state.frmS);
+      var tgtFrames = Math.round(dur * state.frmTgtFps);
+      if (tgtFrames > 0) { state.fFrames = tgtFrames; $("f-frames").value = tgtFrames; state.tab = "fwd"; commit(); }
+    });
+
     // tabs
     $("tab-fwd").addEventListener("click", function () { state.tab = "fwd"; commit(); });
     $("tab-inv").addEventListener("click", function () { state.tab = "inv"; commit(); });
+    $("tab-frm").addEventListener("click", function () { state.tab = "frm"; commit(); });
 
     // first paint
     syncInputs();

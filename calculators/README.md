@@ -5,7 +5,7 @@ single self-contained page (`index.html`) — no build step, no dependencies,
 opens straight in a browser. Lives under RENKON because it's render-specific;
 the general shop-math calculators moved to the sibling **TOOLBOX** hub.
 
-## The two directions
+## The three tools
 
 - **Time from quality** — you know the *frame count* and the *quality* you
   want. Out: total render time, per-frame time, energy (kWh) and cost.
@@ -13,6 +13,12 @@ the general shop-math calculators moved to the sibling **TOOLBOX** hub.
   Out: the highest quality tier that fits, an honest verdict ("you're fine" →
   "fucked"), the samples/frame you can afford, and a lever if it doesn't fit
   (how many frames Product *would* fit in).
+- **Frames & frame rate** — you have a clip at one fps and want it at another.
+  Enter it by frame count (+ source fps) or by duration; get the frame count at
+  the target rate, a full table across 23.976 → 120 fps (source/target flagged),
+  non-drop timecode, and a warning when it doesn't land on a whole frame. One
+  click pipes the resulting count straight into *Time from quality*. Frame-rate
+  math is independent of the render basis, so it needs no calibration.
 
 ## How the numbers stay honest
 
