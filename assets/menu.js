@@ -27,6 +27,7 @@
     home:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9h12v-9"/><path d="M10 19v-5h4v5"/></svg>',
     paramgen:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="7" x2="21" y2="7"/><circle cx="8" cy="7" r="2.4" fill="var(--panel-bg,#0d1520)"/><line x1="3" y1="12" x2="21" y2="12"/><circle cx="15" cy="12" r="2.4" fill="var(--panel-bg,#0d1520)"/><line x1="3" y1="17" x2="21" y2="17"/><circle cx="11" cy="17" r="2.4" fill="var(--panel-bg,#0d1520)"/></svg>',
     keyshot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 3 L20 7.5 V16 L12 21 L4 16 V7.5 Z"/><path d="M12 3 V12 M12 12 L20 7.5 M12 12 L4 7.5" opacity="0.5"/></svg>',
+    mockup:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="1.5"/><line x1="3" y1="15" x2="21" y2="15"/><path d="M9 15 v-3 a3 3 0 0 1 6 0 v3"/></svg>',
     github:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.85 9.73.5.1.68-.22.68-.49l-.01-1.7c-2.79.62-3.38-1.222-3.38-1.222-.45-1.18-1.11-1.494-1.11-1.494-.91-.635.07-.622.07-.622 1 .072 1.53 1.05 1.53 1.05.9 1.573 2.36 1.118 2.93.855.09-.665.35-1.119.63-1.376-2.22-.259-4.56-1.138-4.56-5.065 0-1.119.39-2.034 1.03-2.75-.1-.26-.45-1.303.1-2.716 0 0 .84-.275 2.75 1.05a9.34 9.34 0 0 1 2.5-.343c.85.004 1.71.117 2.5.343 1.91-1.325 2.75-1.05 2.75-1.05.55 1.413.2 2.456.1 2.716.64.716 1.03 1.631 1.03 2.75 0 3.937-2.34 4.803-4.57 5.057.36.32.68.947.68 1.909l-.01 2.831c0 .27.18.6.69.49A10.02 10.02 0 0 0 22 12.25C22 6.58 17.52 2 12 2Z"/></svg>',
     grid:    '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="7" cy="7" r="1.8"/><circle cx="17" cy="7" r="1.8"/><circle cx="7" cy="17" r="1.8"/><circle cx="17" cy="17" r="1.8"/></svg>',
     ext:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5h5v5"/><path d="M19 5l-8 8"/><path d="M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/></svg>'
@@ -37,6 +38,7 @@
     { key: "home",     label: "Homebase",              href: u("index.html"),                                icon: I.home },
     { key: "paramgen", label: "Parametric Generators", href: u("proc-gen/parametric-generators/index.html"), icon: I.paramgen },
     { key: "keyshot",  label: "KeyShot",               href: u("keyshot/index.html"),                        icon: I.keyshot },
+    { key: "mockup",   label: "Mockup Studio",         href: u("mockup-studio/index.html"),                  icon: I.mockup },
     { key: "github",   label: "GitHub",                href: "https://github.com/technicallytechnicaldesign/RENKON", icon: I.github, external: true }
   ];
   var homeHref = LINKS[0].href;
