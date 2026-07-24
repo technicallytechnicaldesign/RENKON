@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Render Calculators — RENKON</title>
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap"></noscript>
+<style>
+  :root {
+    --bg: #0C141D;
+    --panel-bg: #14202C;
+    --panel-bg-raised: #182635;
+    --line: #22303E;
+    --text: #ECF2F6;
+    --muted: #6E7E8C;
+
+    --c-structural: #002F67;
+    --c-fluid: #4FD1D9;
+    --c-accent: #F08A3C;   /* RENKON safety orange */
+    --c-caution: #E0662B;
+    --c-warn: #E0342B;
+    --c-good: #3FBF6F;
+
+    --font-display: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "Space Mono", ui-monospace, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }  /* beat .field-row's display:grid */
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh; display: flex; flex-direction: column;
+  }
+  a { color: inherit; text-decoration: none; }
+  code { font-family: var(--font-mono); color: var(--c-fluid); font-size: 0.94em; }
+  :focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
+
+  header {
+    display: flex; align-items: center; flex-wrap: wrap; row-gap: 6px;
+    padding: 14px 28px; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; background: var(--bg); z-index: 10;
+  }
+  header .brand { display: flex; align-items: center; gap: 11px; margin-right: auto; color: var(--text); }
+  header .brand .mark { width: 26px; height: 26px; flex: none; color: var(--c-accent); }
+  header .brand .mark svg { display: block; width: 100%; height: 100%; }
+  header .wordmark { font-family: var(--font-display); font-size: 14px; letter-spacing: 0.28em; font-weight: 700; flex: none; }
+  header .wordmark b { color: var(--c-accent); font-weight: 700; }
+  header .wordmark:hover { color: var(--text); }
+  header .meta { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+  @media (max-width: 600px) { header { padding: 12px 16px; } }
+
+  main { flex: 1; padding: 40px 28px 56px; max-width: 1120px; margin: 0 auto; width: 100%; }
+
+  .up-link {
+    font-family: var(--font-mono);
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--c-accent); font-size: 10px; letter-spacing: 0.06em;
+    text-transform: uppercase; margin-bottom: 18px;
+  }
+  .up-link:hover { text-decoration: underline; }
+
+  .page-head { margin-bottom: 26px; }
+  .page-head h1 {
+    font-family: var(--font-display);
+    font-size: 17px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text); margin: 0 0 8px 0; font-weight: 700;
+  }
+  .page-head p { color: var(--muted); font-size: 12px; margin: 0; max-width: 68ch; line-height: 1.7; }
+
+  /* ---- tabs ---- */
+  .calc-tabs {
+    display: flex; flex-wrap: wrap; gap: 1px; background: var(--line);
+    border: 1px solid var(--line); margin-bottom: 1px;
+  }
+  .calc-tab {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+    background: var(--panel-bg); color: var(--muted); border: none; padding: 12px 18px;
+    cursor: pointer; flex: 1 1 auto; text-align: left; border-top: 2px solid transparent; min-width: 0;
+  }
+  .calc-tab .n { color: var(--text); font-family: var(--font-display); font-size: 12px; text-transform: none; letter-spacing: 0.02em; display: block; margin-top: 3px; }
+  .calc-tab:hover { background: var(--panel-bg-raised); color: var(--text); }
+  .calc-tab.on { border-top-color: var(--c-accent); color: var(--c-accent); background: var(--panel-bg-raised); }
+  .calc-tab.on .n { color: var(--text); }
+
+  .calc-why { font-size: 11.5px; color: var(--muted); padding: 12px 2px 22px; max-width: 78ch; line-height: 1.65; }
+  .calc-why b { color: var(--text); font-weight: 700; }
+
+  .calc-layout {
+    display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 1px;
+    background: var(--line); border: 1px solid var(--line);
+  }
+  @media (max-width: 820px) { .calc-layout { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--panel-bg); padding: 22px; min-width: 0; }
+  .panel h3 {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 15px;
+  }
+  .panel h3.sec { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 8px; }
+  .panel h3.sec .tag { color: var(--c-accent); }
+
+  .field { margin-bottom: 13px; min-width: 0; }
+  .field label {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.04em;
+    color: var(--muted); text-transform: uppercase; margin-bottom: 5px;
+  }
+  .field label .unit { color: var(--c-fluid); text-transform: none; letter-spacing: 0; }
+  .field input, .field select {
+    width: 100%; background: var(--bg); border: 1px solid var(--line); color: var(--text);
+    font-family: var(--font-mono); font-size: 13px; padding: 8px 10px; border-radius: 0; min-width: 0;
+  }
+  .field input:focus, .field select:focus { border-color: var(--c-accent); }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field-row.thirds { grid-template-columns: 1fr 1fr 1fr; }
+  .field-note { font-size: 10.5px; color: var(--muted); margin-top: 12px; line-height: 1.6; }
+
+  .seg-toggle { display: flex; gap: 1px; background: var(--line); border: 1px solid var(--line); margin-bottom: 14px; }
+  .seg-toggle button {
+    flex: 1 1 0; min-width: 0; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.05em;
+    text-transform: uppercase; background: var(--panel-bg); color: var(--muted); border: none;
+    padding: 9px 6px; cursor: pointer; border-top: 2px solid transparent;
+  }
+  .seg-toggle button:hover { background: var(--panel-bg-raised); color: var(--text); }
+  .seg-toggle button.on { color: var(--c-accent); border-top-color: var(--c-accent); background: var(--panel-bg-raised); }
+
+  .out-list { display: flex; flex-direction: column; gap: 1px; background: var(--line); border: 1px solid var(--line); margin-bottom: 20px; }
+  .out-row { background: var(--panel-bg-raised); display: flex; justify-content: space-between; align-items: baseline; padding: 11px 14px; gap: 12px; flex-wrap: wrap; }
+  .out-row .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+  .out-row .v { font-family: var(--font-mono); font-size: 15px; font-weight: 700; color: var(--text); white-space: nowrap; }
+  .out-row.headline { padding: 15px 14px; }
+  .out-row.headline .v { color: var(--c-accent); font-size: 19px; }
+  .out-row.headline.warn .v { color: var(--c-warn); }
+  .out-row.headline.caution .v { color: var(--c-caution); }
+  .out-row.headline.good .v { color: var(--c-good); }
+  .out-row .note { font-size: 10.5px; color: var(--muted); flex-basis: 100%; margin-top: 2px; line-height: 1.55; }
+  .out-row .note b { color: var(--text); font-weight: 700; }
+  .out-row .note.tip b { color: var(--c-accent); }
+
+  .verdict-line { font-size: 12px; color: var(--text); line-height: 1.6; margin: 0 0 18px; }
+  .verdict-line.warn { color: var(--c-warn); }
+  .verdict-line.caution { color: var(--c-caution); }
+  .verdict-line.good { color: var(--c-good); }
+
+  .diagram { margin-top: 4px; }
+  .diagram-cap { font-family: var(--font-mono); font-size: 9.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 2px 0 10px; }
+  .barset { display: flex; flex-direction: column; gap: 7px; }
+  .bar { display: grid; grid-template-columns: 70px 1fr; align-items: center; gap: 10px; }
+  .bar .bl { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); text-align: right; white-space: nowrap; }
+  .bar .btrack { position: relative; height: 22px; background: var(--bg); border: 1px solid var(--line); overflow: hidden; }
+  .bar .bfill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--c-structural); transition: width 0.18s ease; }
+  .bar.cur .bfill { background: var(--c-accent); }
+  .bar.afford .bfill { background: var(--c-good); }
+  .bar.over .bfill { background: var(--panel-bg-raised); }
+  .bar .bval { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-family: var(--font-mono); font-size: 9.5px; color: var(--text); white-space: nowrap; text-shadow: 0 0 4px var(--bg); }
+  .budget-mark { position: relative; height: 0; }
+  .budget-line { position: absolute; top: -6px; bottom: 0; width: 0; border-left: 2px dashed var(--c-fluid); }
+  .budget-tag { position: absolute; transform: translateX(-50%); top: -20px; font-family: var(--font-mono); font-size: 9px; color: var(--c-fluid); text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+
+  footer { padding: 20px 28px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; letter-spacing: 0.04em; }
+  footer a { color: var(--c-accent); }
+  footer a:hover { text-decoration: underline; }
+</style>
+<script src="../assets/theme.js"></script>
+<script src="../assets/reveal.js"></script>
+</head>
+<body>
+  <header>
+    <a class="brand" href="../index.html" aria-label="RENKON home">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round">
+          <circle cx="50" cy="50" r="44"/>
+          <g transform="rotate(0 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(72 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(144 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(216 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(288 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <circle cx="50" cy="50" r="8.5"/>
+        </svg>
+      </span>
+      <span class="wordmark">RENK<b>O</b>N</span>
+    </a>
+    <div class="meta">Render Calculators</div>
+  </header>
+
+  <main>
+    <a class="up-link" href="../index.html"><span aria-hidden="true">&larr;</span> Back to RENKON</a>
+
+    <div class="page-head">
+      <h1>Render Calculators</h1>
+      <p>Two directions on the same render-budget math, plus the power bill.
+         <b>Time from quality</b>: you know the frame count and the look you want &mdash; how
+         long, and how much electricity? <b>Quality from time</b>: you know the frame count and
+         the deadline &mdash; what quality fits, and how fucked are you? Both get honest by
+         anchoring on one real <code>test-frame</code> time you actually measured.</p>
+    </div>
+
+    <div class="calc-tabs" role="tablist">
+      <button class="calc-tab on" id="tab-fwd" role="tab" aria-selected="true">
+        01 / Direction<span class="n">Time from quality</span>
+      </button>
+      <button class="calc-tab" id="tab-inv" role="tab" aria-selected="false">
+        02 / Direction<span class="n">Quality from time</span>
+      </button>
+    </div>
+    <div class="calc-why" id="why"></div>
+
+    <div class="calc-layout">
+      <div class="panel" id="inputs">
+        <!-- FORWARD job inputs -->
+        <div id="job-fwd">
+          <h3>The job</h3>
+          <div class="field">
+            <label for="f-frames">Frames <span class="unit">count</span></label>
+            <input type="number" id="f-frames" min="1" step="1">
+          </div>
+          <div class="field">
+            <label for="f-res">Output resolution</label>
+            <select id="f-res"></select>
+          </div>
+          <div class="field-row" id="f-res-custom" hidden>
+            <div class="field" style="margin:0">
+              <label for="f-w">Width <span class="unit">px</span></label>
+              <input type="number" id="f-w" min="1" step="1">
+            </div>
+            <div class="field" style="margin:0">
+              <label for="f-h">Height <span class="unit">px</span></label>
+              <input type="number" id="f-h" min="1" step="1">
+            </div>
+          </div>
+          <div class="field">
+            <label for="f-tier">Quality tier</label>
+            <select id="f-tier"></select>
+          </div>
+          <div class="field">
+            <label for="f-samples">Samples / pixel <span class="unit">spp</span></label>
+            <input type="number" id="f-samples" min="1" step="1">
+          </div>
+        </div>
+
+        <!-- INVERSE job inputs -->
+        <div id="job-inv" hidden>
+          <h3>The job</h3>
+          <div class="field">
+            <label for="i-frames">Frames <span class="unit">count</span></label>
+            <input type="number" id="i-frames" min="1" step="1">
+          </div>
+          <div class="field">
+            <label for="i-res">Output resolution</label>
+            <select id="i-res"></select>
+          </div>
+          <div class="field-row" id="i-res-custom" hidden>
+            <div class="field" style="margin:0">
+              <label for="i-w">Width <span class="unit">px</span></label>
+              <input type="number" id="i-w" min="1" step="1">
+            </div>
+            <div class="field" style="margin:0">
+              <label for="i-h">Height <span class="unit">px</span></label>
+              <input type="number" id="i-h" min="1" step="1">
+            </div>
+          </div>
+          <h3 class="sec"><span class="tag">&#9200;</span> Time you have</h3>
+          <div class="field-row thirds">
+            <div class="field" style="margin:0">
+              <label for="i-d">Days</label>
+              <input type="number" id="i-d" min="0" step="1">
+            </div>
+            <div class="field" style="margin:0">
+              <label for="i-h2">Hours</label>
+              <input type="number" id="i-h2" min="0" step="1">
+            </div>
+            <div class="field" style="margin:0">
+              <label for="i-m">Mins</label>
+              <input type="number" id="i-m" min="0" step="1">
+            </div>
+          </div>
+        </div>
+
+        <!-- SHARED: render basis -->
+        <h3 class="sec"><span class="tag">&#9636;</span> Render basis</h3>
+        <div class="seg-toggle" id="basis-toggle">
+          <button data-mode="calibrate">Calibrate</button>
+          <button data-mode="preset">Preset</button>
+        </div>
+
+        <div id="basis-calibrate">
+          <div class="field">
+            <label for="c-res">Test-frame resolution</label>
+            <select id="c-res"></select>
+          </div>
+          <div class="field-row" id="c-res-custom" hidden>
+            <div class="field" style="margin:0">
+              <label for="c-w">Width <span class="unit">px</span></label>
+              <input type="number" id="c-w" min="1" step="1">
+            </div>
+            <div class="field" style="margin:0">
+              <label for="c-h">Height <span class="unit">px</span></label>
+              <input type="number" id="c-h" min="1" step="1">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field" style="margin:0">
+              <label for="c-samples">Test samples <span class="unit">spp</span></label>
+              <input type="number" id="c-samples" min="1" step="1">
+            </div>
+            <div class="field" style="margin:0">
+              <label for="c-time">Time <span class="unit">sec</span></label>
+              <input type="number" id="c-time" min="0.1" step="0.1">
+            </div>
+          </div>
+          <div class="field-note">Render one frame for real, type in what it took. Everything
+            scales from that anchor &mdash; <code>time &prop; pixels &times; samples</code>.</div>
+        </div>
+
+        <div id="basis-preset" hidden>
+          <div class="field">
+            <label for="p-preset">Hardware guess</label>
+            <select id="p-preset"></select>
+          </div>
+          <div class="field-note">Ballpark only &mdash; real scenes vary wildly. Calibrate from a
+            test frame the moment you can for numbers you'd actually bet a deadline on.</div>
+        </div>
+
+        <div class="field" style="margin-top:14px">
+          <label for="overhead">Per-frame overhead <span class="unit">sec</span></label>
+          <input type="number" id="overhead" min="0" step="0.5">
+        </div>
+        <div class="field-note" style="margin-top:6px">Fixed cost per frame that doesn't scale with
+          samples &mdash; scene load, denoise pass, saving out.</div>
+
+        <!-- SHARED: electricity -->
+        <h3 class="sec"><span class="tag">&#9889;</span> Electricity</h3>
+        <div class="field">
+          <label for="watts">System power draw <span class="unit">watts</span></label>
+          <input type="number" id="watts" min="0" step="10">
+        </div>
+        <div class="field-row">
+          <div class="field" style="margin:0">
+            <label for="currency">Currency</label>
+            <select id="currency"></select>
+          </div>
+          <div class="field" style="margin:0">
+            <label for="rate">Price <span class="unit">/kWh</span></label>
+            <input type="number" id="rate" min="0" step="0.01">
+          </div>
+        </div>
+        <div class="field-note" style="margin-top:6px">Whole-machine draw at the wall while
+          rendering. Energy counts active render time only.</div>
+      </div>
+
+      <div class="panel" id="outputs">
+        <div id="out-fwd">
+          <h3>Estimate</h3>
+          <div class="out-list" id="fwd-rows"></div>
+          <div class="diagram">
+            <div class="diagram-cap">Total render time by quality tier</div>
+            <div class="barset" id="fwd-bars"></div>
+          </div>
+        </div>
+        <div id="out-inv" hidden>
+          <h3>Verdict</h3>
+          <p class="verdict-line" id="inv-verdict"></p>
+          <div class="out-list" id="inv-rows"></div>
+          <div class="diagram">
+            <div class="diagram-cap">Time each tier needs vs. the time you have</div>
+            <div class="barset" id="inv-bars"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    RENKON &middot; <a href="https://github.com/technicallytechnicaldesign/RENKON">github.com/technicallytechnicaldesign/RENKON</a>
+  </footer>
+
+  <script src="../assets/menu.js"></script>
+  <script>
+  (function () {
+    "use strict";
+
+    // ---- reference data ------------------------------------------------
+    var TIERS = [
+      { key: "draft",   label: "Draft",   samples: 8 },
+      { key: "preview", label: "Preview", samples: 16 },
+      { key: "product", label: "Product", samples: 64 },
+      { key: "hero",    label: "Hero",    samples: 200 },
+      { key: "max",     label: "Max",     samples: 512 }
+    ];
+    // k = seconds per (pixel * sample). Tuned so a 1080p / 64spp "product"
+    // frame lands at a plausible per-preset time. Rough by design.
+    var PRESETS = {
+      "gpu-hi":  { label: "GPU · 4090-class",     k: 1.13e-7, watts: 500 },
+      "gpu-mid": { label: "GPU · 3070 / laptop",  k: 3.40e-7, watts: 350 },
+      "cpu-16":  { label: "CPU · 16-core",        k: 9.00e-7, watts: 250 },
+      "cpu-8":   { label: "CPU · 8-core laptop",  k: 2.26e-6, watts: 150 }
+    };
+    var RES = {
+      "1280x720":   [1280, 720],
+      "1920x1080":  [1920, 1080],
+      "2560x1440":  [2560, 1440],
+      "3840x2160":  [3840, 2160]
+    };
+    var RES_LABEL = {
+      "1280x720": "720p · 1280×720",
+      "1920x1080": "1080p · 1920×1080",
+      "2560x1440": "1440p · 2560×1440",
+      "3840x2160": "4K UHD · 3840×2160"
+    };
+    var CURR = {
+      EUR: { sym: "€",  rate: 0.30, post: false },
+      GBP: { sym: "£",  rate: 0.28, post: false },
+      USD: { sym: "$",       rate: 0.30, post: false },
+      NZD: { sym: "NZ$",     rate: 0.30, post: false },
+      DKK: { sym: " kr",     rate: 2.50, post: true  }
+    };
+
+    // ---- state (persisted) --------------------------------------------
+    var DEFAULTS = {
+      tab: "fwd",
+      // forward job
+      fFrames: 250, fW: 1920, fH: 1080, fTier: "product", fSamples: 64,
+      // inverse job
+      iFrames: 250, iW: 1920, iH: 1080, iDays: 0, iHours: 8, iMins: 0,
+      // shared basis
+      basisMode: "calibrate",
+      cW: 1920, cH: 1080, cSamples: 64, cTime: 90,
+      preset: "gpu-mid",
+      overhead: 4,
+      // electricity
+      watts: 400, currency: "EUR", rate: 0.30
+    };
+    var state = load();
+
+    function load() {
+      var s = {};
+      for (var k in DEFAULTS) s[k] = DEFAULTS[k];
+      try {
+        var raw = localStorage.getItem("renkon-render-calc");
+        if (raw) { var o = JSON.parse(raw); for (var j in o) if (j in s) s[j] = o[j]; }
+      } catch (e) {}
+      return s;
+    }
+    function save() {
+      try { localStorage.setItem("renkon-render-calc", JSON.stringify(state)); } catch (e) {}
+    }
+
+    // ---- helpers -------------------------------------------------------
+    function $(id) { return document.getElementById(id); }
+    function num(v, fb) { var n = parseFloat(v); return isFinite(n) ? n : (fb || 0); }
+    function resKey(w, h) { return w + "x" + h; }
+
+    function fmtDur(sec) {
+      sec = Math.max(0, sec);
+      if (sec < 10) return (Math.round(sec * 10) / 10) + "s";
+      sec = Math.round(sec);
+      if (sec < 60) return sec + "s";
+      var d = Math.floor(sec / 86400); sec -= d * 86400;
+      var h = Math.floor(sec / 3600); sec -= h * 3600;
+      var m = Math.floor(sec / 60); var s = sec - m * 60;
+      var out = [];
+      if (d) out.push(d + "d");
+      if (h) out.push(h + "h");
+      if (m) out.push(m + "m");
+      if (!d && !h && s) out.push(s + "s");
+      return out.join(" ") || "0s";
+    }
+    function money(v) {
+      var c = CURR[state.currency] || CURR.USD;
+      var n = (Math.round(v * 100) / 100).toFixed(2);
+      return c.post ? (n + c.sym) : (c.sym + n);
+    }
+
+    // seconds per (pixel*sample), or null if not derivable
+    function kValue() {
+      if (state.basisMode === "preset") {
+        var p = PRESETS[state.preset];
+        return p ? p.k : null;
+      }
+      var px = state.cW * state.cH;
+      var denom = px * state.cSamples;
+      if (denom <= 0 || state.cTime <= 0) return null;
+      return state.cTime / denom;
+    }
+
+    // total render seconds for a job at given samples
+    function totalSeconds(k, px, samples, frames, overhead) {
+      var perFrame = k * px * samples + overhead;
+      return { perFrame: perFrame, total: perFrame * frames };
+    }
+    function energyCost(totalSec) {
+      var kWh = (state.watts / 1000) * (totalSec / 3600);
+      return { kWh: kWh, cost: kWh * state.rate };
+    }
+
+    // ---- populate selects ---------------------------------------------
+    function fillResSelect(sel) {
+      var html = "";
+      for (var k in RES) html += '<option value="' + k + '">' + RES_LABEL[k] + "</option>";
+      html += '<option value="custom">Custom…</option>';
+      sel.innerHTML = html;
+    }
+    function fillTierSelect(sel) {
+      var html = "";
+      TIERS.forEach(function (t) {
+        html += '<option value="' + t.key + '">' + t.label + " · " + t.samples + " spp</option>";
+      });
+      html += '<option value="custom">Custom samples…</option>';
+      sel.innerHTML = html;
+    }
+    function fillPresetSelect(sel) {
+      var html = "";
+      for (var k in PRESETS) html += '<option value="' + k + '">' + PRESETS[k].label + "</option>";
+      sel.innerHTML = html;
+    }
+    function fillCurrency(sel) {
+      var html = "";
+      for (var k in CURR) html += '<option value="' + k + '">' + k + "</option>";
+      sel.innerHTML = html;
+    }
+
+    // ---- wire a resolution control (select + custom w/h) --------------
+    function bindRes(selId, customId, wId, hId, wKey, hKey) {
+      var sel = $(selId), custom = $(customId), wi = $(wId), hi = $(hId);
+      function syncSelect() {
+        var key = resKey(state[wKey], state[hKey]);
+        sel.value = RES[key] ? key : "custom";
+        custom.hidden = sel.value !== "custom";
+        wi.value = state[wKey]; hi.value = state[hKey];
+      }
+      sel.addEventListener("change", function () {
+        if (sel.value === "custom") { custom.hidden = false; }
+        else { var r = RES[sel.value]; state[wKey] = r[0]; state[hKey] = r[1]; custom.hidden = true; }
+        commit();
+      });
+      wi.addEventListener("input", function () { state[wKey] = Math.max(1, Math.round(num(wi.value, 1))); commit(); });
+      hi.addEventListener("input", function () { state[hKey] = Math.max(1, Math.round(num(hi.value, 1))); commit(); });
+      return syncSelect;
+    }
+
+    // ---- bind a plain number field ------------------------------------
+    function bindNum(id, key, opts) {
+      opts = opts || {};
+      var el = $(id);
+      el.addEventListener("input", function () {
+        var v = num(el.value, opts.fb);
+        if (opts.min != null) v = Math.max(opts.min, v);
+        if (opts.int) v = Math.round(v);
+        state[key] = v; commit();
+      });
+      return function () { el.value = state[key]; };
+    }
+
+    // ---- render everything from state ---------------------------------
+    var syncers = [];
+    function syncInputs() { syncers.forEach(function (f) { f(); }); }
+
+    function commit() { save(); render(); }
+
+    function render() {
+      // basis mode toggle visuals
+      Array.prototype.forEach.call($("basis-toggle").children, function (b) {
+        b.classList.toggle("on", b.getAttribute("data-mode") === state.basisMode);
+      });
+      $("basis-calibrate").hidden = state.basisMode !== "calibrate";
+      $("basis-preset").hidden = state.basisMode !== "preset";
+
+      // tab visuals
+      var fwd = state.tab === "fwd";
+      $("tab-fwd").classList.toggle("on", fwd);
+      $("tab-inv").classList.toggle("on", !fwd);
+      $("tab-fwd").setAttribute("aria-selected", fwd ? "true" : "false");
+      $("tab-inv").setAttribute("aria-selected", !fwd ? "true" : "false");
+      $("job-fwd").hidden = !fwd; $("job-inv").hidden = fwd;
+      $("out-fwd").hidden = !fwd; $("out-inv").hidden = fwd;
+      $("why").innerHTML = fwd
+        ? "You've got the <b>frame count</b> and the <b>quality</b> you want. This gives you the total render time and the power it burns. Anchor it on a real test-frame time and the estimate is one you can plan around."
+        : "You've got a <b>frame count</b> and a <b>hard deadline</b>. This finds the highest quality that actually fits, tells you how fucked you are if that's 'barely', and shows the levers &mdash; cut frames, drop resolution, or buy time.";
+
+      var k = kValue();
+      if (fwd) renderForward(k); else renderInverse(k);
+    }
+
+    function noBasisRows(container) {
+      container.innerHTML =
+        '<div class="out-row"><span class="k">No basis yet</span></div>' +
+        '<div class="out-row"><span class="note">Enter a valid <b>test-frame</b> time &amp; samples ' +
+        '(or switch to a hardware Preset) to get an estimate.</span></div>';
+    }
+
+    function renderForward(k) {
+      var rows = $("fwd-rows"), bars = $("fwd-bars");
+      var px = state.fW * state.fH;
+      var frames = Math.max(1, state.fFrames);
+      if (k == null) { noBasisRows(rows); bars.innerHTML = ""; return; }
+
+      var t = totalSeconds(k, px, state.fSamples, frames, state.overhead);
+      var e = energyCost(t.total);
+      var perFrameSampleCost = k * px * state.fSamples;
+      var ovShare = state.overhead / (perFrameSampleCost + state.overhead);
+
+      rows.innerHTML =
+        row("Total render time", fmtDur(t.total), "headline") +
+        row("Per frame", fmtDur(t.perFrame)) +
+        row("Frames", frames + " × " + state.fW + "×" + state.fH + " @ " + state.fSamples + " spp") +
+        row("Energy", (Math.round(e.kWh * 100) / 100) + " kWh") +
+        row("Electricity", money(e.cost), "", "At " + money(state.rate) + "/kWh, " + state.watts + " W. Overhead is " +
+            Math.round(ovShare * 100) + "% of each frame.");
+
+      renderTierBars(bars, k, px, frames, null, state.fSamples);
+    }
+
+    function renderInverse(k) {
+      var rows = $("inv-rows"), bars = $("inv-bars"), vEl = $("inv-verdict");
+      var px = state.iW * state.iH;
+      var frames = Math.max(1, state.iFrames);
+      var budget = (state.iDays * 86400) + (state.iHours * 3600) + (state.iMins * 60);
+
+      if (k == null) { noBasisRows(rows); bars.innerHTML = ""; vEl.textContent = ""; vEl.className = "verdict-line"; return; }
+
+      var overheadTotal = state.overhead * frames;
+      var usable = budget - overheadTotal;
+      var perFrameBudget = usable / frames;
+      var maxSamples = perFrameBudget / (k * px);
+
+      var verdict, cls, headTxt;
+      if (budget <= 0) {
+        verdict = "No time entered — give yourself at least a few minutes."; cls = "warn"; headTxt = "—";
+      } else if (maxSamples < TIERS[0].samples) {
+        cls = "warn"; headTxt = maxSamples <= 0 ? "Overhead alone busts it" : "&lt; Draft";
+        verdict = "Fucked. Even Draft (" + TIERS[0].samples + " spp) doesn't fit. " +
+          (maxSamples <= 0 ? "Per-frame overhead alone eats the whole budget — " : "") +
+          "cut frames, drop resolution, or find more time / faster hardware.";
+      } else {
+        // highest tier that fits
+        var fit = TIERS[0];
+        for (var i = 0; i < TIERS.length; i++) if (TIERS[i].samples <= maxSamples) fit = TIERS[i];
+        if (fit.key === "draft" || fit.key === "preview") {
+          cls = "caution";
+          verdict = "Tight. You can hit <b>" + fit.label + "</b> (" + fit.samples + " spp) and not much more. " +
+            "Fine for previews / clients-eyes-only; push resolution or samples and it slips.";
+        } else {
+          cls = "good";
+          verdict = "You're fine. <b>" + fit.label + "</b> (" + fit.samples + " spp) fits" +
+            (maxSamples >= (fit.samples * 1.5) ? " with room to spare." : ", no headroom to burn.");
+        }
+        headTxt = fit.label;
+      }
+
+      vEl.className = "verdict-line " + cls;
+      vEl.innerHTML = verdict;
+
+      // afforded settings (cap display at the budget's real max)
+      var affSamples = Math.max(0, Math.floor(maxSamples));
+      var atCost = affSamples > 0 ? totalSeconds(k, px, affSamples, frames, state.overhead) : { total: 0 };
+      var e = energyCost(Math.min(atCost.total, budget > 0 ? budget : atCost.total));
+
+      // what Product needs (the useful reference)
+      var prodTier = TIERS[2];
+      var prodNeed = totalSeconds(k, px, prodTier.samples, frames, state.overhead).total;
+      var prodTip;
+      if (budget > 0 && prodNeed > budget) {
+        var framesForProduct = Math.floor(usable / (k * px * prodTier.samples + state.overhead));
+        prodTip = "Product needs <b>" + fmtDur(prodNeed) + "</b> — " + fmtDur(prodNeed - budget) +
+          " over. It'd fit at <b>" + Math.max(0, framesForProduct) + " frames</b> instead of " + frames + ".";
+      } else if (budget > 0) {
+        prodTip = "Product (" + prodTier.samples + " spp) fits with " + fmtDur(budget - prodNeed) + " to spare.";
+      } else { prodTip = ""; }
+
+      rows.innerHTML =
+        row("Quality that fits", headTxt, "headline " + cls) +
+        row("Affordable samples", (budget > 0 ? affSamples + " spp" : "—")) +
+        row("Time per frame", budget > 0 ? fmtDur(Math.max(0, perFrameBudget) + state.overhead) : "—") +
+        row("Budget", fmtDur(budget) + " · " + frames + " frames") +
+        row("Electricity", budget > 0 ? money(e.cost) : "—", "",
+            "≈ " + (Math.round(e.kWh * 100) / 100) + " kWh at " + money(state.rate) + "/kWh, " + state.watts + " W.") +
+        (prodTip ? tipRow(prodTip) : "");
+
+      renderTierBars(bars, k, px, frames, budget, null);
+    }
+
+    function row(k, v, cls, note) {
+      return '<div class="out-row ' + (cls || "") + '">' +
+        '<span class="k">' + k + '</span><span class="v">' + v + '</span>' +
+        (note ? '<span class="note">' + note + '</span>' : "") + '</div>';
+    }
+    function tipRow(html) {
+      return '<div class="out-row"><span class="note tip">→ ' + html + '</span></div>';
+    }
+
+    // tier bars: total time per quality tier. In forward, `curSamples`
+    // highlights the current setting. In inverse, `budget` marks the line
+    // and affordable tiers go green.
+    function renderTierBars(container, k, px, frames, budget, curSamples) {
+      var vals = TIERS.map(function (t) {
+        return { t: t, sec: totalSeconds(k, px, t.samples, frames, state.overhead).total };
+      });
+      var maxSec = vals[vals.length - 1].sec;
+      // if a budget is drawn and it exceeds the biggest bar, scale to it so the line shows
+      var scaleMax = maxSec;
+      if (budget != null && budget > scaleMax) scaleMax = budget * 1.05;
+      if (scaleMax <= 0) scaleMax = 1;
+
+      var html = "";
+      vals.forEach(function (v) {
+        var pct = Math.max(1.5, Math.min(100, (v.sec / scaleMax) * 100));
+        var cls = "";
+        if (budget != null) cls = v.sec <= budget ? "afford" : "over";
+        else if (curSamples != null && v.t.samples === curSamples) cls = "cur";
+        html += '<div class="bar ' + cls + '">' +
+          '<span class="bl">' + v.t.label + '</span>' +
+          '<span class="btrack"><span class="bfill" style="width:' + pct + '%"></span>' +
+          '<span class="bval">' + fmtDur(v.sec) + '</span></span></div>';
+      });
+      // budget marker line, aligned to the track's left edge (70px label + 10px gap)
+      if (budget != null && budget > 0) {
+        var bpct = Math.max(0, Math.min(100, (budget / scaleMax) * 100));
+        html += '<div class="budget-mark"><div class="budget-line" style="left:calc(80px + (100% - 80px) * ' +
+          (bpct / 100) + ')"></div>' +
+          '<div class="budget-tag" style="left:calc(80px + (100% - 80px) * ' + (bpct / 100) + ')">deadline</div></div>';
+      }
+      container.innerHTML = html;
+    }
+
+    // ---- init ----------------------------------------------------------
+    fillResSelect($("f-res")); fillResSelect($("i-res")); fillResSelect($("c-res"));
+    fillTierSelect($("f-tier"));
+    fillPresetSelect($("p-preset"));
+    fillCurrency($("currency"));
+
+    // resolution controls
+    var syncFRes = bindRes("f-res", "f-res-custom", "f-w", "f-h", "fW", "fH");
+    var syncIRes = bindRes("i-res", "i-res-custom", "i-w", "i-h", "iW", "iH");
+    var syncCRes = bindRes("c-res", "c-res-custom", "c-w", "c-h", "cW", "cH");
+    syncers.push(syncFRes, syncIRes, syncCRes);
+
+    // plain number fields
+    syncers.push(bindNum("f-frames", "fFrames", { min: 1, int: true, fb: 1 }));
+    syncers.push(bindNum("f-samples", "fSamples", { min: 1, int: true, fb: 1 }));
+    syncers.push(bindNum("i-frames", "iFrames", { min: 1, int: true, fb: 1 }));
+    syncers.push(bindNum("i-d", "iDays", { min: 0, int: true }));
+    syncers.push(bindNum("i-h2", "iHours", { min: 0, int: true }));
+    syncers.push(bindNum("i-m", "iMins", { min: 0, int: true }));
+    syncers.push(bindNum("c-samples", "cSamples", { min: 1, int: true, fb: 1 }));
+    syncers.push(bindNum("c-time", "cTime", { min: 0.1, fb: 0.1 }));
+    syncers.push(bindNum("overhead", "overhead", { min: 0 }));
+    syncers.push(bindNum("watts", "watts", { min: 0 }));
+    syncers.push(bindNum("rate", "rate", { min: 0 }));
+
+    // quality tier <-> samples
+    var fTier = $("f-tier"), fSamples = $("f-samples");
+    // reflect the tier dropdown from the current sample count (no field write)
+    function reflectTier() {
+      var match = TIERS.filter(function (x) { return x.samples === state.fSamples; })[0];
+      state.fTier = match ? match.key : "custom";
+      fTier.value = state.fTier;
+    }
+    fTier.addEventListener("change", function () {
+      state.fTier = fTier.value;
+      if (fTier.value !== "custom") {
+        var t = TIERS.filter(function (x) { return x.key === fTier.value; })[0];
+        if (t) { state.fSamples = t.samples; fSamples.value = t.samples; } // picking a tier fills the field
+      }
+      commit();
+    });
+    // full sync used at init/reload: dropdown + field both follow state
+    function syncTier() { reflectTier(); fSamples.value = state.fSamples; }
+    // while typing samples, only nudge the dropdown (don't rewrite the field)
+    fSamples.addEventListener("input", reflectTier);
+    syncers.push(syncTier);
+
+    // basis mode toggle
+    Array.prototype.forEach.call($("basis-toggle").children, function (b) {
+      b.addEventListener("click", function () { state.basisMode = b.getAttribute("data-mode"); commit(); });
+    });
+
+    // preset select
+    var pPreset = $("p-preset");
+    pPreset.addEventListener("change", function () {
+      state.preset = pPreset.value;
+      var p = PRESETS[pPreset.value];
+      if (p && p.watts) { state.watts = p.watts; $("watts").value = p.watts; } // sensible power default with the rig
+      commit();
+    });
+    syncers.push(function () { pPreset.value = state.preset; });
+
+    // currency select — snap rate to the currency default on change
+    var curSel = $("currency");
+    curSel.addEventListener("change", function () {
+      state.currency = curSel.value;
+      var c = CURR[curSel.value];
+      if (c) { state.rate = c.rate; $("rate").value = c.rate; } // snap the rate field to the new currency
+      commit();
+    });
+    syncers.push(function () { curSel.value = state.currency; $("rate").value = state.rate; });
+
+    // tabs
+    $("tab-fwd").addEventListener("click", function () { state.tab = "fwd"; commit(); });
+    $("tab-inv").addEventListener("click", function () { state.tab = "inv"; commit(); });
+
+    // first paint
+    syncInputs();
+    render();
+  })();
+  </script>
+</body>
+</html>
