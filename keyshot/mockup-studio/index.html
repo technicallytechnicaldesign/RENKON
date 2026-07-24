@@ -550,7 +550,9 @@
           <button class="btn primary full" id="exportComposite">Export composite</button>
 
           <div id="motionExport" style="display:none; margin-top:12px; padding-top:12px; border-top:1px solid var(--line);">
-            <span class="section-label" style="margin-bottom:8px;">Motion export (WebM)</span>
+            <span class="section-label" style="margin-bottom:8px;">Motion</span>
+            <div class="param-row"><label>Speed</label><input id="motionSpeed" type="range" min="0" max="300" value="100"><span class="param-value" id="motionSpeedOut">1.0&times;</span></div>
+            <span class="section-label" style="margin:12px 0 8px;">Export (WebM)</span>
             <div class="field-grid-2">
               <div class="field">
                 <label for="clipDuration">Clip length</label>
@@ -738,7 +740,7 @@
       posX:+$('#posX').value/100, posY:+$('#posY').value/100, scale:+$('#scale').value/100, rotation:+$('#rotation').value*Math.PI/180,
       shadow:+$('#shadow').value/100, reflection:+$('#reflection').value/100, pedestalSize:+$('#pedestalSize').value/100, pedestalGlow:+$('#pedestalGlow').value/100,
       showPedestal:$('#showPedestal').checked, showShadow:$('#showShadow').checked, showReflection:$('#showReflection').checked,
-      bg:$('#bg').value,
+      bg:$('#bg').value, motionSpeed:+$('#motionSpeed').value/100,
       showTitle:$('#showTitle').checked, titleText:$('#titleText').value, subText:$('#subText').value, titlePos:$('#titlePos').value, titleAlign:$('#titleAlign').value
     };
   }
@@ -1172,15 +1174,16 @@
     if(target.height!==h) target.height=h;
     const c=target.getContext('2d',{alpha:false});
     const anims = window.__mockupAnims;
+    const at = (t||0) * (s.motionSpeed!=null ? s.motionSpeed : 1); // global motion-speed scale
     if(s.bg==='procedural-anim'){
       // The full procedural scene, brought to life — every fluid style / theme
       // / motif control drives it, and it animates over time.
-      renderBackground(c,w,h,s,t||0);
+      renderBackground(c,w,h,s,at);
     } else if(s.bg && s.bg!=='static' && anims && anims[s.bg]){
       // Named presets stay preset: palette + seed keep them parametric (they
       // recolour / re-roll), but the fluid-style/theme controls do NOT morph
       // them — those belong to the procedural-animated mode above.
-      anims[s.bg](c,w,h,t||0,{
+      anims[s.bg](c,w,h,at,{
         colors: palettes[s.palette],
         detail: s.detail,
         intensity: s.themeIntensity,
@@ -1239,6 +1242,7 @@
     $('#rotationOut').textContent = $('#rotation').value + '°';
     $('#lightAngleOut').textContent = $('#lightAngle').value + '°';
     $('#horizonOut').textContent = $('#horizon').value + '%';
+    $('#motionSpeedOut').textContent = (+$('#motionSpeed').value/100).toFixed(1) + '×';
     safeGuide.style.setProperty('--horizon',$('#horizon').value+'%');
   }
 
