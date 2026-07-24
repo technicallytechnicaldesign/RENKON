@@ -2273,6 +2273,11 @@ ${orbit(120, 4.4, 1.5, 2.7)}
 
   function mountHome(main) {
     main.innerHTML = "";
+    const up = document.createElement("a");
+    up.className = "up-link";
+    up.href = "../../index.html";
+    up.innerHTML = `<span class="up-icon" aria-hidden="true">&#8592;</span> Back to RENKON`;
+    main.appendChild(up);
     const head = document.createElement("div");
     head.className = "page-head";
     head.innerHTML = `<h1>Parametric Assets</h1><p>Procedural generators for the rendering and overlay pipeline. Each tile is a standalone tool.</p>`;

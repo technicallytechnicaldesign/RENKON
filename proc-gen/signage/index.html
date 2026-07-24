@@ -60,6 +60,13 @@
   #app-header .mark { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.08em; flex: none; }
 
   #app-main { padding: 22px 28px 40px; max-width: 1600px; margin: 0 auto; }
+  .up-link {
+    font-family: var(--font-mono);
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--c-accent); font-size: 10px; letter-spacing: 0.06em;
+    text-transform: uppercase; margin-bottom: 14px;
+  }
+  .up-link:hover { text-decoration: underline; }
   .page-head { margin-bottom: 20px; }
   .page-head h1 { font-family: var(--font-display); font-size: 16px; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 6px; font-weight: 700; }
   .page-head p { color: var(--muted); font-size: 12px; margin: 0; max-width: 74ch; line-height: 1.6; }
@@ -200,6 +207,7 @@
     <div class="mark">DECAL CHANNELS</div>
   </header>
   <main id="app-main">
+    <a class="up-link" href="../parametric-generators/index.html"><span aria-hidden="true">&larr;</span> Back to Parametric Assets</a>
     <div class="page-head">
       <h1>Signage &amp; Stickers</h1>
       <p>Placeable industrial signage decals for KeyShot &mdash; warning stickers, data plates,
