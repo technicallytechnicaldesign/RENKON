@@ -41,9 +41,13 @@
     if (!main) return;
     if (reduce) { main.classList.add("rk-ready"); return; }
 
-    // Headings get a connector line; cards/tiles just fade in.
+    // Headings get a connector line; cards/tiles just fade in. Only the page
+    // title reveals — headings that live inside a tool's control panel/columns
+    // (e.g. hydroform's in-panel "Water Generator" h2) are skipped so every
+    // generator gets the same single title-connector intro instead of an
+    // inconsistent extra line where a panel happens to use an <h2>.
     var heads = [].slice.call(main.querySelectorAll("h1,h2,h3"))
-      .filter(function (el) { return !el.closest(".tile,.card"); });
+      .filter(function (el) { return !el.closest(".tile,.card,.panel,.controls,.col,.param-panel"); });
     var cards = [].slice.call(main.querySelectorAll(".tile,.card"));
 
     heads.forEach(function (h) {
