@@ -365,10 +365,11 @@
             <label for="bg">Background</label>
             <select id="bg">
               <option value="static">Procedural scene (static)</option>
-              <option value="orbitLoop">Fluid Orbit Loop (animated)</option>
-              <option value="reactorLoop">Reactor Flow Loop (animated)</option>
-              <option value="parallaxHero">Orbital Parallax Hero (animated)</option>
-              <option value="studioSweep">Studio Sweep Cinematic (animated)</option>
+              <option value="procedural-anim">Procedural scene (animated)</option>
+              <option value="orbitLoop">Preset — Fluid Orbit Loop</option>
+              <option value="reactorLoop">Preset — Reactor Flow Loop</option>
+              <option value="parallaxHero">Preset — Orbital Parallax Hero</option>
+              <option value="studioSweep">Preset — Studio Sweep Cinematic</option>
             </select>
           </div>
           <div class="field-grid-3">
@@ -742,12 +743,15 @@
   }
   function isAnimatedBg(){ const v = $('#bg').value; return !!v && v !== 'static'; }
 
-  function setupBase(c,w,h,p,s){
+  function setupBase(c,w,h,p,s,t=0){
     const g=c.createLinearGradient(0,0,w,h);
     g.addColorStop(0,p.bg0); g.addColorStop(.44,p.bg1); g.addColorStop(1,p.dark);
     c.fillStyle=g; c.fillRect(0,0,w,h);
 
-    const hx=w*(.5+Math.cos(s.lightAngle)*.23), hy=h*(.17+Math.sin(s.lightAngle)*.05);
+    // Animated mode drifts the key light slowly for a living feel; static (t=0)
+    // keeps the exact authored angle.
+    const la = s.lightAngle + (t ? Math.sin(t*0.13)*0.32 : 0);
+    const hx=w*(.5+Math.cos(la)*.23), hy=h*(.17+Math.sin(la)*.05);
     const rg=c.createRadialGradient(hx,hy,0,hx,hy,w*.78);
     rg.addColorStop(0,rgba(p.bg2,.42)); rg.addColorStop(.25,rgba(p.mid,.22)); rg.addColorStop(1,rgba(p.dark,0));
     c.fillStyle=rg; c.fillRect(0,0,w,h);
@@ -801,12 +805,13 @@
     c.beginPath(); c.moveTo(w-sw,h*.08); c.lineTo(w-sw,h*.92); c.stroke();
     c.restore();
   }
-  function drawOrbitalRing(c,w,h,p,s){
+  function drawOrbitalRing(c,w,h,p,s,t=0){
     c.save();
+    const rot=t?t*0.05:0; // slow orbital drift when animated
     c.strokeStyle=rgba(p.light,.1+s.themeIntensity*.16); c.lineWidth=w/250;
-    c.beginPath(); c.ellipse(w*.5,h*(s.horizon-.06),w*.46,h*.17,0,0,Math.PI*2); c.stroke();
+    c.beginPath(); c.ellipse(w*.5,h*(s.horizon-.06),w*.46,h*.17,rot,0,Math.PI*2); c.stroke();
     c.strokeStyle=rgba(p.accent,.12+s.themeIntensity*.18); c.lineWidth=w/500;
-    c.beginPath(); c.ellipse(w*.5,h*(s.horizon-.06),w*.54,h*.21,0,0,Math.PI*2); c.stroke();
+    c.beginPath(); c.ellipse(w*.5,h*(s.horizon-.06),w*.54,h*.21,rot*0.7,0,Math.PI*2); c.stroke();
     c.restore();
   }
   function drawPlanetHorizon(c,w,h,p,s){
@@ -863,12 +868,13 @@
     }
     c.restore();
   }
-  function drawReactor(c,w,h,p,s){
+  function drawReactor(c,w,h,p,s,t=0){
     c.save();
     const cx=w*.5, cy=h*(s.horizon-.03), R=w*.12;
+    const pulse=t?(1+0.28*Math.sin(t*1.3)):1; // core breathes when animated
     const g=c.createRadialGradient(cx,cy,0,cx,cy,R*1.6);
-    g.addColorStop(0,rgba(p.light,.45+s.themeIntensity*.2));
-    g.addColorStop(.25,rgba(p.accent,.28+s.themeIntensity*.18));
+    g.addColorStop(0,rgba(p.light,(.45+s.themeIntensity*.2)*pulse));
+    g.addColorStop(.25,rgba(p.accent,(.28+s.themeIntensity*.18)*pulse));
     g.addColorStop(1,rgba(p.dark,0));
     c.fillStyle=g; c.beginPath(); c.arc(cx,cy,R*1.6,0,Math.PI*2); c.fill();
     c.strokeStyle=rgba(p.light,.2+s.themeIntensity*.18); c.lineWidth=w/350;
@@ -882,27 +888,33 @@
     for(let i=0;i<ribs;i++){ const x=w*(.06+i*.11); c.beginPath(); c.moveTo(x,h*.03); c.lineTo(x+w*.06,h*.95); c.stroke(); }
     c.restore();
   }
-  function drawDockLights(c,w,h,p,s,rng){
+  function drawDockLights(c,w,h,p,s,rng,t=0){
     c.save();
     const n=14;
     for(let i=0;i<n;i++){
       const x=w*(.06+i*(.88/(n-1))), y=h*(.15+(i%2)*.03), r=w*.008;
+      const tw=t?(0.55+0.45*Math.sin(t*2.4 + i*0.7)):1; // running-light twinkle
       const g=c.createRadialGradient(x,y,0,x,y,r*6);
-      g.addColorStop(0,rgba(p.light,.95)); g.addColorStop(.2,rgba(p.accent,.6)); g.addColorStop(1,rgba(p.dark,0));
+      g.addColorStop(0,rgba(p.light,.95*tw)); g.addColorStop(.2,rgba(p.accent,.6*tw)); g.addColorStop(1,rgba(p.dark,0));
       c.fillStyle=g; c.beginPath(); c.arc(x,y,r*6,0,Math.PI*2); c.fill();
     }
     c.restore();
   }
 
-  function bezierRibbon(c,w,h,rng,p,s,index,total,mode='viscous'){
-    const t=index/Math.max(1,total-1);
-    const baseY=h*(s.horizon + (t-.5)*.28);
+  function bezierRibbon(c,w,h,rng,p,s,index,total,mode='viscous',t=0){
+    const u=index/Math.max(1,total-1);
+    const baseY=h*(s.horizon + (u-.5)*.28);
     const amp=h*(.05+.13*s.detail)*(mode==='stream'?.65:1);
     const x0=-w*.15, x3=w*1.15;
-    const y0=baseY+(rng()-.5)*amp, y3=baseY+(rng()-.5)*amp;
-    const x1=w*(.18+rng()*.22), x2=w*(.58+rng()*.23);
-    const y1=baseY+(rng()-.5)*amp*2, y2=baseY+(rng()-.5)*amp*2;
-    const width=h*(.015+.028*s.detail)*(1.15-t*.25)*(mode==='stream'?1.7:1);
+    // Flowing motion (animated only): each ribbon undulates + drifts sideways.
+    const sp=mode==='stream'?0.95:0.5;
+    const f1=t?Math.sin(t*sp + index*0.9)*amp*0.6:0;
+    const f2=t?Math.cos(t*sp*0.8 + index*1.3)*amp*0.55:0;
+    const dx=t?Math.sin(t*sp*0.5 + index)*w*0.022:0;
+    const y0=baseY+(rng()-.5)*amp + f1*0.4, y3=baseY+(rng()-.5)*amp + f2*0.4;
+    const x1=w*(.18+rng()*.22)+dx, x2=w*(.58+rng()*.23)-dx;
+    const y1=baseY+(rng()-.5)*amp*2 + f1, y2=baseY+(rng()-.5)*amp*2 + f2;
+    const width=h*(.015+.028*s.detail)*(1.15-u*.25)*(mode==='stream'?1.7:1);
     c.save();
     c.lineCap='round'; c.lineJoin='round';
     c.shadowColor=rgba(p.light,.22); c.shadowBlur=width*.65;
@@ -915,13 +927,13 @@
     c.strokeStyle=lg; c.lineWidth=width; c.stroke();
     c.restore();
   }
-  function drawViscous(c,w,h,rng,p,s){
+  function drawViscous(c,w,h,rng,p,s,t=0){
     const count=Math.floor(16+26*s.detail);
-    for(let i=0;i<count;i++)bezierRibbon(c,w,h,rng,p,s,i,count,'viscous');
+    for(let i=0;i<count;i++)bezierRibbon(c,w,h,rng,p,s,i,count,'viscous',t);
   }
-  function drawStream(c,w,h,rng,p,s){
+  function drawStream(c,w,h,rng,p,s,t=0){
     const count=Math.floor(5+8*s.detail);
-    for(let i=0;i<count;i++)bezierRibbon(c,w,h,rng,p,s,i,count,'stream');
+    for(let i=0;i<count;i++)bezierRibbon(c,w,h,rng,p,s,i,count,'stream',t);
   }
   function drawDroplet(c,x,y,r,p,s,rng){
     c.save();
@@ -934,7 +946,7 @@
     c.fillStyle=g; c.beginPath(); c.ellipse(x,y,r,r*(.78+rng()*.18),rng()*.4-.2,0,Math.PI*2); c.fill();
     c.restore();
   }
-  function drawDroplets(c,w,h,rng,p,s){
+  function drawDroplets(c,w,h,rng,p,s,t=0){
     const count=Math.floor(14+40*s.detail), arr=[];
     for(let i=0;i<count;i++){
       const focus=i<5;
@@ -942,64 +954,81 @@
       arr.push({x:mix(.06,.94,rng())*w,y:mix(s.horizon-.18,.91,rng())*h,r});
     }
     arr.sort((a,b)=>a.r-b.r);
-    for(const d of arr) drawDroplet(c,d.x,d.y,d.r,p,s,rng);
+    // Animated: droplets jiggle, drift and shimmer (bigger ones move less).
+    arr.forEach((d,i)=>{
+      const k=t?1/(1+d.r/(Math.min(w,h)*0.11)):0;
+      const bx=t?Math.cos(t*0.7 + i*1.7)*w*0.016*k:0;
+      const by=t?Math.sin(t*0.95 + i*1.1)*h*0.03*k:0;
+      const rr=t?d.r*(1+0.08*Math.sin(t*1.3 + i*0.6)):d.r;
+      drawDroplet(c,d.x+bx,d.y+by,rr,p,s,rng);
+    });
   }
-  function drawRipple(c,w,h,rng,p,s){
+  function drawRipple(c,w,h,rng,p,s,t=0){
     const cx=w*(.5+(rng()-.5)*.08), cy=h*(s.horizon+.08), max=Math.min(w,h)*.6;
-    for(let i=0;i<24+20*s.detail;i++){
-      const t=i/(23+20*s.detail), rx=max*t, ry=rx*.20;
+    const n=24+20*s.detail, denom=23+20*s.detail;
+    // Animated: rings expand outward and loop; static keeps the authored rings.
+    const phase = t ? (t*0.22)%1 : 0;
+    for(let i=0;i<n;i++){
+      const frac = t ? ((i/denom + phase)%1) : (i/denom);
+      const rx=max*frac, ry=rx*.20;
       c.beginPath(); c.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
-      c.strokeStyle=rgba(i%3===0?p.light:p.mid,(1-t)*(.34+.24));
-      c.lineWidth=Math.max(1,(2.2-t*1.5)*(w/1600)); c.stroke();
+      c.strokeStyle=rgba(i%3===0?p.light:p.mid,(1-frac)*(.34+.24));
+      c.lineWidth=Math.max(1,(2.2-frac*1.5)*(w/1600)); c.stroke();
     }
     const dropY=cy-h*.16;
-    for(let i=0;i<3;i++){ const r=(11-i*2)*(w/1600), y=dropY-i*h*.07; drawDroplet(c,cx,y,r,p,s,rng); }
+    for(let i=0;i<3;i++){ const bob=t?Math.sin(t*1.4+i)*h*0.012:0; const r=(11-i*2)*(w/1600), y=dropY-i*h*.07+bob; drawDroplet(c,cx,y,r,p,s,rng); }
   }
-  function drawInk(c,w,h,rng,p,s){
+  function drawInk(c,w,h,rng,p,s,t=0){
     c.save(); c.globalCompositeOperation='screen';
     const clusters=Math.floor(4+7*s.detail);
     for(let k=0;k<clusters;k++){
       const side=k%2===0?-1:1;
       let x=side<0?w*mix(.03,.32,rng()):w*mix(.68,.97,rng()), y=h*mix(.34,.82,rng());
       const steps=Math.floor(28+45*s.detail);
+      // Animated: each cluster breathes (blooms in/out) and drifts.
+      const bloom=t?(0.72+0.34*Math.sin(t*0.5 + k*1.3)):1;
+      const cdx=t?Math.sin(t*0.4 + k*2.1)*w*0.012:0, cdy=t?Math.cos(t*0.34 + k)*h*0.012:0;
       for(let i=0;i<steps;i++){
-        const t=i/steps;
-        x+=side*(rng()-.42)*w*.025 + Math.sin(t*8+k)*w*.004*s.detail;
+        const st=i/steps;
+        x+=side*(rng()-.42)*w*.025 + Math.sin(st*8+k)*w*.004*s.detail;
         y+=(rng()-.52)*h*.035;
-        const r=h*mix(.018,.075,rng())*(1-t*.45);
-        const g=c.createRadialGradient(x-r*.18,y-r*.18,0,x,y,r);
+        const r=h*mix(.018,.075,rng())*(1-st*.45)*bloom;
+        const g=c.createRadialGradient(x+cdx-r*.18,y+cdy-r*.18,0,x+cdx,y+cdy,r);
         g.addColorStop(0,rgba(k%3===0?p.light:p.bg2,.18+.22)); g.addColorStop(.52,rgba(p.mid,.14+.18)); g.addColorStop(1,rgba(p.dark,0));
-        c.fillStyle=g; c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.fill();
+        c.fillStyle=g; c.beginPath(); c.arc(x+cdx,y+cdy,r,0,Math.PI*2); c.fill();
       }
     }
     c.restore();
   }
-  function drawSplash(c,w,h,rng,p,s){
+  function drawSplash(c,w,h,rng,p,s,t=0){
     const cx=w*(.48+(rng()-.5)*.12), base=h*(s.horizon+.11), radius=Math.min(w,h)*(.18+.06*s.detail), spikes=Math.floor(12+18*s.detail);
     c.fillStyle=rgba(p.dark,.82); c.beginPath(); c.ellipse(cx,base,radius*1.25,radius*.24,0,0,Math.PI*2); c.fill();
     for(let i=0;i<spikes;i++){
       const a=Math.PI+(i/(spikes-1))*Math.PI, x=cx+Math.cos(a)*radius, y=base+Math.sin(a)*radius*.34;
-      const tipX=x+(rng()-.5)*radius*.35, tipY=y-radius*mix(.25,1.15,rng())*(.5+s.detail);
+      // Animated: each spike surges up and settles, with a little tip sway.
+      const surge=t?(0.5+0.5*Math.sin(t*1.7 + i*0.8)):1;
+      const sway=t?Math.sin(t*2.1 + i*1.3)*radius*0.14:0;
+      const tipX=x+(rng()-.5)*radius*.35+sway, tipY=y-radius*mix(.25,1.15,rng())*(.5+s.detail)*(t?(0.35+1.05*surge):1);
       c.beginPath(); c.moveTo(x-radius*.08,y); c.quadraticCurveTo(x,tipY,tipX,tipY); c.quadraticCurveTo(x+radius*.08,y,x+radius*.12,y); c.closePath();
       const g=c.createLinearGradient(x,y,tipX,tipY);
       g.addColorStop(0,rgba(p.dark,.9)); g.addColorStop(.55,rgba(p.mid,.82)); g.addColorStop(1,rgba(p.light,.8));
       c.fillStyle=g; c.fill();
     }
   }
-  function drawTheme(c,w,h,p,s,rng){
+  function drawTheme(c,w,h,p,s,rng,t=0){
     if(s.theme==='space' || s.theme==='hybrid'){ drawStars(c,w,h,p,s,rng); drawNebula(c,w,h,p,s,rng); }
     if(s.theme==='industry' || s.theme==='hybrid'){ drawPanelGrid(c,w,h,p,s,rng); }
     switch(s.motif){
       case 'bay': drawMechanicalBay(c,w,h,p,s,rng); break;
-      case 'ring': drawOrbitalRing(c,w,h,p,s); break;
+      case 'ring': drawOrbitalRing(c,w,h,p,s,t); break;
       case 'planet': drawPlanetHorizon(c,w,h,p,s); break;
       case 'hangar': drawDockingHangar(c,w,h,p,s); drawMechanicalBay(c,w,h,p,s,rng); break;
       case 'pipes': drawPipes(c,w,h,p,s,rng); break;
       case 'vents': drawVentArray(c,w,h,p,s,rng); break;
       case 'conduit': drawConduit(c,w,h,p,s,rng); break;
-      case 'reactor': drawReactor(c,w,h,p,s); break;
+      case 'reactor': drawReactor(c,w,h,p,s,t); break;
       case 'bulkhead': drawBulkhead(c,w,h,p,s); break;
-      case 'docklights': drawDockLights(c,w,h,p,s,rng); break;
+      case 'docklights': drawDockLights(c,w,h,p,s,rng,t); break;
       case 'panel': drawPanelGrid(c,w,h,p,s,rng); break;
     }
   }
@@ -1014,12 +1043,12 @@
     const g=c.createRadialGradient(w*.5,h*.46,Math.min(w,h)*.16,w*.5,h*.46,Math.max(w,h)*.72);
     g.addColorStop(.35,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.68)'); c.fillStyle=g; c.fillRect(0,0,w,h);
   }
-  function renderBackground(c,w,h,s){
+  function renderBackground(c,w,h,s,t=0){
     const p=palettes[s.palette];
     const rng=mulberry32(hashString([s.seed,s.style,s.theme,s.palette,s.motif,s.themeIntensity,s.detail,s.lightAngle,s.horizon].join('|')));
-    setupBase(c,w,h,p,s);
-    drawTheme(c,w,h,p,s,rng);
-    ({viscous:drawViscous,stream:drawStream,droplets:drawDroplets,ripple:drawRipple,ink:drawInk,splash:drawSplash}[s.style])(c,w,h,rng,p,s);
+    setupBase(c,w,h,p,s,t);
+    drawTheme(c,w,h,p,s,rng,t);
+    ({viscous:drawViscous,stream:drawStream,droplets:drawDroplets,ripple:drawRipple,ink:drawInk,splash:drawSplash}[s.style])(c,w,h,rng,p,s,t);
     addGrain(c,w,h,rng);
     addVignette(c,w,h);
   }
@@ -1131,17 +1160,20 @@
     if(target.height!==h) target.height=h;
     const c=target.getContext('2d',{alpha:false});
     const anims = window.__mockupAnims;
-    if(s.bg && s.bg!=='static' && anims && anims[s.bg]){
-      // Feed the scene parameters through so the animated backplate is
-      // parametric too — palette, seed, atmosphere all drive it live.
+    if(s.bg==='procedural-anim'){
+      // The full procedural scene, brought to life — every fluid style / theme
+      // / motif control drives it, and it animates over time.
+      renderBackground(c,w,h,s,t||0);
+    } else if(s.bg && s.bg!=='static' && anims && anims[s.bg]){
+      // Named presets stay preset: palette + seed keep them parametric (they
+      // recolour / re-roll), but the fluid-style/theme controls do NOT morph
+      // them — those belong to the procedural-animated mode above.
       anims[s.bg](c,w,h,t||0,{
         colors: palettes[s.palette],
         detail: s.detail,
         intensity: s.themeIntensity,
         seed: hashString(s.seed),
-        light: s.lightAngle,
-        style: s.style,
-        theme: s.theme
+        light: s.lightAngle
       });
     } else {
       renderBackground(c,w,h,s);
@@ -1438,6 +1470,9 @@
 
   updateOutputs();
   renderAll();
+
+  // Test/automation hook: render the procedural background at an explicit time.
+  window.__renderProc = (ctx,w,h,t) => renderBackground(ctx,w,h,state(),t||0);
 })();
 </script>
 <script>

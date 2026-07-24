@@ -1,5 +1,23 @@
 # Changelog — KeyShot Mockup Studio
 
+## 2026-07-24 — Procedural animated background; presets stay preset
+
+- **New "Procedural scene (animated)" background.** The full procedural scene —
+  every fluid style, theme and motif — now renders as a live, exportable
+  animation, not just the four canned presets. Each fluid style has its own
+  motion: viscous/laminar ribbons flow and undulate, liquid-metal droplets
+  jiggle/drift/shimmer, ripples expand outward and loop, ink blooms breathe and
+  drift, splash crowns surge. Plus a slow key-light drift, reactor-core pulse,
+  running dock-light twinkle and orbital-ring rotation. All motion is threaded
+  through an optional time arg that defaults to 0, so the static scene, the
+  quick-scene thumbnails and the preview modal are byte-for-byte unchanged.
+- **Presets stay preset.** The four named loops (Orbit/Reactor/Parallax/Sweep)
+  no longer receive the fluid-style/theme controls — those now belong to the
+  procedural-animated mode. The presets keep their palette recolour + seeded
+  variation, but Ink Bloom / Droplets etc. no longer bleed into them. The
+  Background dropdown is relabelled: "Procedural (static/animated)" then
+  "Preset — …" for the four loops.
+
 ## 2026-07-24 — Scene Randomize + wider animated variation; panel overflow fix
 
 - **Top Randomize button.** Added the shared quick-start bar (generator-ui.css)
