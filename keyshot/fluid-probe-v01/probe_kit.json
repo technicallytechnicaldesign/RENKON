@@ -1,0 +1,139 @@
+{
+  "generated_by": "probekit.py",
+  "purpose": "answer the KeyShot import questions on a file small enough to throw away",
+  "pair_note": "probe_a and probe_b share part names on purpose -- swap one for the other in KeyShot to find out whether material bindings survive a cache update. That single answer decides whether the whole pipeline is a file swap or a rebuild each time.",
+  "parts_contract": [
+    "fluid_surface",
+    "fluid_spray"
+  ],
+  "probes": [
+    {
+      "reimport": {
+        "parts_found": [
+          "fluid_spray",
+          "fluid_surface",
+          "probe_scalebar",
+          "probe_ticker",
+          "probe_triad"
+        ],
+        "surface_faces_min": 1208,
+        "surface_faces_max": 2100,
+        "surface_distinct_counts": 18,
+        "topology_survived": true,
+        "missing_parts": [],
+        "ok": true
+      },
+      "probe": "a",
+      "file": "probe_a.abc",
+      "bytes": 2271713,
+      "mb": 2.27,
+      "frames": {
+        "start": 1,
+        "end": 20,
+        "count": 20,
+        "fps": 24
+      },
+      "blobs": 2,
+      "parts": [
+        "fluid_surface",
+        "fluid_spray",
+        "probe_scalebar",
+        "probe_triad",
+        "probe_ticker"
+      ],
+      "topology": {
+        "faces_min": 604,
+        "faces_max": 1050,
+        "verts_min": 606,
+        "verts_max": 1054,
+        "distinct_face_counts": 18,
+        "changes_topology": true
+      },
+      "ticker": {
+        "x0": 0.0,
+        "step_m": 0.1,
+        "reads": "x = x0 + step * (frame - 1), CONSTANT interpolation"
+      },
+      "scalebar": {
+        "length_m": 1.0,
+        "tick_m": 0.1,
+        "cube_m": 0.1
+      },
+      "triad": {
+        "x_m": 0.6,
+        "y_m": 0.4,
+        "z_m": 0.8,
+        "note": "asymmetric on purpose; ball marks +Z"
+      },
+      "units": {
+        "scene": "metres",
+        "up_axis": "Z"
+      },
+      "seconds": 2.1
+    },
+    {
+      "reimport": {
+        "parts_found": [
+          "fluid_spray",
+          "fluid_surface",
+          "probe_scalebar",
+          "probe_ticker",
+          "probe_triad"
+        ],
+        "surface_faces_min": 1288,
+        "surface_faces_max": 3076,
+        "surface_distinct_counts": 20,
+        "topology_survived": true,
+        "missing_parts": [],
+        "ok": true
+      },
+      "probe": "b",
+      "file": "probe_b.abc",
+      "bytes": 3172977,
+      "mb": 3.17,
+      "frames": {
+        "start": 1,
+        "end": 20,
+        "count": 20,
+        "fps": 24
+      },
+      "blobs": 3,
+      "parts": [
+        "fluid_surface",
+        "fluid_spray",
+        "probe_scalebar",
+        "probe_triad",
+        "probe_ticker"
+      ],
+      "topology": {
+        "faces_min": 644,
+        "faces_max": 1538,
+        "verts_min": 646,
+        "verts_max": 1544,
+        "distinct_face_counts": 20,
+        "changes_topology": true
+      },
+      "ticker": {
+        "x0": -0.5,
+        "step_m": 0.1,
+        "reads": "x = x0 + step * (frame - 1), CONSTANT interpolation"
+      },
+      "scalebar": {
+        "length_m": 1.0,
+        "tick_m": 0.1,
+        "cube_m": 0.1
+      },
+      "triad": {
+        "x_m": 0.6,
+        "y_m": 0.4,
+        "z_m": 0.8,
+        "note": "asymmetric on purpose; ball marks +Z"
+      },
+      "units": {
+        "scene": "metres",
+        "up_axis": "Z"
+      },
+      "seconds": 1.5
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+# Python bytecode from local syntax checks / KeyShot script runs
+__pycache__/
+*.pyc
+
+# Baked fluid caches / Alembic exports (blender/fluid-cache-gen) -- large,
+# regeneratable, not source. Preview-tier full run was ~1.4GB.
+blender/fluid-cache-gen/fluid_out/
+
+# Diagnostic renders, bench captures, and any raster output stay OUT of this
+# public repo -- they live in the private workspace, never here. The only
+# sanctioned raster assets are the backplate-creator set, whitelisted below.
+*.png
+*.jpg
+*.jpeg
+*.tif
+*.tiff
+*.bmp
+*.exr
+*.webp
+*.gif
+!keyshot/backplate-creator/assets/*.jpg

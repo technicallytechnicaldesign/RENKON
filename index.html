@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RENKON</title>
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap"></noscript>
+<style>
+  :root {
+    --bg: #0C141D;
+    --panel-bg: #14202C;
+    --panel-bg-raised: #182635;
+    --line: #22303E;
+    --text: #ECF2F6;
+    --muted: #6E7E8C;
+
+    --c-structural: #002F67;
+    --c-fluid: #4FD1D9;
+    --c-accent: #F08A3C;
+
+    --font-display: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "Space Mono", ui-monospace, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh; display: flex; flex-direction: column;
+  }
+  a { color: inherit; text-decoration: none; }
+  :focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  header {
+    display: flex; align-items: center; flex-wrap: wrap; row-gap: 6px;
+    padding: 14px 28px; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; background: var(--bg); z-index: 10;
+  }
+  header .brand { display: flex; align-items: center; gap: 11px; margin-right: auto; color: var(--text); }
+  header .brand .mark { width: 26px; height: 26px; flex: none; color: var(--c-accent); }
+  header .brand .mark svg { display: block; width: 100%; height: 100%; }
+  header .wordmark { font-family: var(--font-display); font-size: 14px; letter-spacing: 0.28em; font-weight: 700; flex: none; }
+  header .wordmark b { color: var(--c-accent); font-weight: 700; }
+  header .meta { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+  @media (max-width: 600px) {
+    header { padding: 12px 16px; }
+  }
+
+  main { flex: 1; padding: 40px 28px 56px; max-width: 1120px; margin: 0 auto; width: 100%; }
+
+  .page-head { margin-bottom: 32px; }
+  .page-head h1 {
+    font-family: var(--font-display);
+    font-size: 17px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text); margin: 0 0 8px 0; font-weight: 700;
+  }
+  .page-head p { color: var(--muted); font-size: 12px; margin: 0; max-width: 64ch; line-height: 1.7; }
+
+  .grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 1px; background: var(--line); border: 1px solid var(--line);
+  }
+  @media (max-width: 760px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+
+  .tile {
+    background: var(--panel-bg); padding: 26px 22px; min-height: 190px;
+    display: flex; flex-direction: column; gap: 14px;
+    border: none; color: var(--text); position: relative;
+    border-top: 2px solid transparent;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .tile .icon { width: 44px; height: 44px; color: var(--muted); transition: color 0.15s ease; }
+  .tile .icon svg { width: 100%; height: 100%; display: block; }
+  .tile h2 { font-family: var(--font-display); font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; margin: 0; font-weight: 700; }
+  .tile p { font-size: 12px; line-height: 1.6; color: var(--muted); margin: 0; }
+  .tile .spacer { flex: 1; }
+  .tile .chip {
+    font-family: var(--font-mono);
+    align-self: flex-start; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    padding: 3px 8px; border: 1px solid var(--line); color: var(--muted);
+  }
+
+  /* live / interactive tile */
+  .tile.live { cursor: pointer; }
+  .tile.live .icon { color: var(--c-accent); }
+  .tile.live .chip { color: var(--c-accent); border-color: var(--c-accent); }
+  .tile.live:hover, .tile.live:focus-visible {
+    background: var(--panel-bg-raised); border-top-color: var(--c-accent);
+  }
+  .tile.live::after {
+    content: "\2192"; position: absolute; top: 20px; right: 20px;
+    color: var(--muted); font-size: 14px; transition: transform 0.15s ease, color 0.15s ease;
+  }
+  .tile.live:hover::after { color: var(--c-accent); transform: translateX(3px); }
+
+  /* placeholder tile */
+  .tile.placeholder { }
+  .tile.placeholder h2 { color: var(--muted); }
+  .tile.placeholder .icon { opacity: 0.6; }
+
+  footer { padding: 20px 28px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; letter-spacing: 0.04em; }
+  footer a { color: var(--c-accent); }
+  footer a:hover { text-decoration: underline; }
+
+  /* Landing splash — RENKON, then a portal zoom through the O */
+  #splash { position: fixed; inset: 0; z-index: 10000; background: var(--bg); }
+  #splash svg { width: 100%; height: 100%; display: block; }
+  #rk-word {
+    font-family: var(--font-display); font-weight: 700;
+    font-size: clamp(40px, 12vw, 132px); letter-spacing: 0.1em; fill: var(--text);
+  }
+  #rk-word .o { fill: var(--c-accent); }
+  @media (prefers-reduced-motion: reduce) { #splash { display: none; } }
+</style>
+<script src="assets/theme.js"></script>
+<script src="assets/reveal.js"></script>
+</head>
+<body>
+  <div id="splash" aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+      <defs>
+        <mask id="rk-portal">
+          <rect x="0" y="0" width="100%" height="100%" fill="#fff"/>
+          <circle id="rk-hole" cx="50%" cy="50%" r="0" fill="#000"/>
+        </mask>
+      </defs>
+      <rect x="0" y="0" width="100%" height="100%" fill="#0C141D" mask="url(#rk-portal)"/>
+      <text id="rk-word" x="50%" y="50%" text-anchor="middle" dominant-baseline="central"><tspan>REN</tspan><tspan>K</tspan><tspan class="o">O</tspan><tspan>N</tspan></text>
+    </svg>
+  </div>
+
+  <header>
+    <a class="brand" href="index.html" aria-label="RENKON home">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round">
+          <circle cx="50" cy="50" r="44"/>
+          <g transform="rotate(0 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(72 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(144 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(216 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(288 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <circle cx="50" cy="50" r="8.5"/>
+        </svg>
+      </span>
+      <span class="wordmark">RENK<b>O</b>N</span>
+    </a>
+    <div class="meta">Design &middot; Rendering Hub</div>
+  </header>
+
+  <main>
+    <div class="page-head">
+      <h1>Workspace</h1>
+      <p>Procedural, rendering, and overlay tools. Live tiles open a tool;
+         empty ones are placeholders.</p>
+    </div>
+
+    <div class="grid">
+
+      <!-- 1: Parametric Assets — LIVE -->
+      <a class="tile live" href="proc-gen/parametric-generators/index.html"
+         aria-label="Open Parametric Assets">
+        <span class="icon" aria-hidden="true">
+          <svg viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="6" y1="13" x2="38" y2="13"/><circle cx="16" cy="13" r="4" fill="var(--bg)"/>
+            <line x1="6" y1="22" x2="38" y2="22"/><circle cx="28" cy="22" r="4" fill="var(--bg)"/>
+            <line x1="6" y1="31" x2="38" y2="31"/><circle cx="21" cy="31" r="4" fill="var(--bg)"/>
+          </svg>
+        </span>
+        <h2>Parametric Assets</h2>
+        <p>Fully parametric overlay SVG customizer (size, rotation, speed, colour, keyable bg, WebM), procedural texture / bump-map generator, and label decals.</p>
+        <span class="spacer"></span>
+        <span class="chip">Live</span>
+      </a>
+
+      <!-- 2: KeyShot — hub live, Scripts is the first live area -->
+      <a class="tile live" href="keyshot/index.html" aria-label="Open KeyShot">
+        <span class="icon" aria-hidden="true">
+          <svg viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+            <path d="M22 6 L37 14.5 V29.5 L22 38 L7 29.5 V14.5 Z"/>
+            <path d="M22 6 V22 M22 22 L37 14.5 M22 22 L7 14.5" opacity="0.5"/>
+          </svg>
+        </span>
+        <h2>KeyShot</h2>
+        <p>Render scenes, materials, and batch-render automation scripts.</p>
+        <span class="spacer"></span>
+        <span class="chip">Live</span>
+      </a>
+
+      <!-- 3: Mockup Studio — LIVE (render post-processing / marketing) -->
+      <a class="tile live" href="mockup-studio/index.html" aria-label="Open Mockup Studio">
+        <span class="icon" aria-hidden="true">
+          <svg viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="8" width="34" height="28" rx="2"/>
+            <line x1="5" y1="28" x2="39" y2="28"/>
+            <ellipse cx="21" cy="28" rx="7" ry="1.8"/>
+            <path d="M17 28 V20 a4 4 0 0 1 8 0 V28"/>
+            <path d="M32 12 l0.9 2.1 2.1 0.9 -2.1 0.9 -0.9 2.1 -0.9 -2.1 -2.1 -0.9 2.1 -0.9 z" fill="currentColor" stroke="none"/>
+          </svg>
+        </span>
+        <h2>Mockup Studio</h2>
+        <p>Turn renders into marketing mockups: composite a product on a procedural scene, drop in a motion overlay, add animated backplates and titles, export stills or WebM.</p>
+        <span class="spacer"></span>
+        <span class="chip">Live</span>
+      </a>
+
+      <!-- 4: Render Calculators — LIVE (shop-math tools live in the sibling TOOLBOX hub) -->
+      <a class="tile live" href="calculators/index.html" aria-label="Open Render Calculators">
+        <span class="icon" aria-hidden="true">
+          <svg viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="8" y="5" width="28" height="34" rx="2"/>
+            <line x1="13" y1="12" x2="31" y2="12"/>
+            <path d="M13 20 l4 4 M17 20 l-4 4" opacity="0.9"/>
+            <circle cx="24" cy="22" r="1.6" fill="currentColor" stroke="none"/><circle cx="31" cy="22" r="1.6" fill="currentColor" stroke="none"/>
+            <line x1="13" y1="30" x2="19" y2="30"/><line x1="23" y1="30" x2="31" y2="30"/>
+            <line x1="13" y1="35" x2="19" y2="35"/><line x1="23" y1="35" x2="31" y2="35"/>
+          </svg>
+        </span>
+        <h2>Render Calculators</h2>
+        <p>Render-time from quality, or quality from a deadline — both with the electricity bill. The shop-math tools moved to their own hub, TOOLBOX.</p>
+        <span class="spacer"></span>
+        <span class="chip">Live</span>
+      </a>
+
+      <!-- 4-6: empty placeholder slots -->
+      <div class="tile placeholder">
+        <span class="icon" aria-hidden="true">
+          <svg viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <rect x="6" y="6" width="32" height="32" rx="2" stroke-dasharray="4 5"/>
+            <line x1="22" y1="15" x2="22" y2="29"/><line x1="15" y1="22" x2="29" y2="22"/>
+          </svg>
+        </span>
+        <h2>Slot 04</h2>
+        <p>Reserved for a future tool.</p>
+        <span class="spacer"></span>
+        <span class="chip">Empty</span>
+      </div>
+
+      <div class="tile placeholder">
+        <span class="icon" aria-hidden="true">
+          <svg viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <rect x="6" y="6" width="32" height="32" rx="2" stroke-dasharray="4 5"/>
+            <line x1="22" y1="15" x2="22" y2="29"/><line x1="15" y1="22" x2="29" y2="22"/>
+          </svg>
+        </span>
+        <h2>Slot 05</h2>
+        <p>Reserved for a future tool.</p>
+        <span class="spacer"></span>
+        <span class="chip">Empty</span>
+      </div>
+
+    </div>
+  </main>
+
+  <footer>
+    RENKON &middot; <a href="https://github.com/technicallytechnicaldesign/RENKON">github.com/technicallytechnicaldesign/RENKON</a>
+  </footer>
+  <script>
+  /* Portal splash: intro the wordmark, then zoom the hole in the O open to
+     reveal the page, then hand off to the reveal animation. Fail-safe at every
+     step so the page always ends up visible. */
+  (function () {
+    window.__rkDeferReveal = true; // hold the doc reveal until the portal finishes
+    var splash = document.getElementById("splash");
+    function finish() {
+      if (splash && splash.parentNode) splash.parentNode.removeChild(splash);
+      if (window.__rkRunReveal) window.__rkRunReveal();
+    }
+    var reduce = false;
+    try { reduce = matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
+    if (!splash || reduce || !window.requestAnimationFrame) { finish(); return; }
+
+    var word = document.getElementById("rk-word");
+    var hole = document.getElementById("rk-hole");
+    var oTsp = splash.querySelector("#rk-word .o");
+
+    function begin() {
+      var cx, cy, r0;
+      try {
+        var b = oTsp.getBBox();
+        cx = b.x + b.width / 2; cy = b.y + b.height / 2; r0 = Math.max(6, b.height * 0.30);
+      } catch (e) { finish(); return; }
+      hole.setAttribute("cx", cx); hole.setAttribute("cy", cy); hole.setAttribute("r", r0);
+      var W = window.innerWidth || 1200, H = window.innerHeight || 800;
+      var scaleBig = (Math.sqrt(W * W + H * H) / (2 * r0)) * 1.25;
+      hole.style.transformBox = "fill-box";
+      hole.style.transformOrigin = "center";
+
+      if (word.animate) {
+        word.animate([{ opacity: 0, transform: "scale(.94)" }, { opacity: 1, transform: "scale(1)" }],
+          { duration: 420, easing: "ease-out", fill: "both" });
+      }
+      setTimeout(function () {
+        var done = false;
+        function once() { if (done) return; done = true; finish(); }
+        if (hole.animate) {
+          var a = hole.animate([{ transform: "scale(1)" }, { transform: "scale(" + scaleBig + ")" }],
+            { duration: 1000, easing: "cubic-bezier(.55,0,.3,1)", fill: "forwards" });
+          if (word.animate) word.animate([{ opacity: 1 }, { opacity: 0 }],
+            { duration: 650, delay: 250, easing: "ease", fill: "forwards" });
+          a.onfinish = once;
+          setTimeout(once, 1300); // safety net
+        } else { once(); }
+      }, 640);
+    }
+    requestAnimationFrame(function () { requestAnimationFrame(begin); });
+  })();
+  </script>
+  <script src="assets/menu.js"></script>
+</body>
+</html>

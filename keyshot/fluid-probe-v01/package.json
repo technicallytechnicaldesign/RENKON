@@ -1,0 +1,50 @@
+{
+  "asset": "probe",
+  "version": 1,
+  "kind": "probe",
+  "built": "2026-07-26",
+  "files": [
+    {
+      "name": "probe_a.abc",
+      "bytes": 2271713,
+      "sha256": "99419e01b1b6db51a7c3c3f6a0bfa596d7042faf62892da90b016a5ddde67a10"
+    },
+    {
+      "name": "probe_b.abc",
+      "bytes": 3172977,
+      "sha256": "677c6bd88d0bd5e44917efec42a34a6160e5b4f645a0caa4cad3263e9d5cc5d7"
+    },
+    {
+      "name": "probe_kit.json",
+      "bytes": 3703,
+      "sha256": "7a301d4559d4c902f48e07719bc85906c17bd310f93b2c21cc83c7b814a8e81d"
+    }
+  ],
+  "stills": [],
+  "facts": {
+    "parts": [
+      "fluid_surface",
+      "fluid_spray",
+      "probe_scalebar",
+      "probe_triad",
+      "probe_ticker"
+    ],
+    "units": "metres",
+    "up": "Z",
+    "frames": "1-20 (20 frames) @ 24 fps",
+    "bbox": "roughly 1.5 x 1.2 x 1.0 m -- the scale bar is exactly 1.000 m",
+    "tris": "probe_a: 604-1,050 faces/frame; probe_b: 644-1,538 faces/frame",
+    "fluid": "n/a -- this is a test object, not liquid"
+  },
+  "note": "",
+  "tests": [
+    "import",
+    "topology",
+    "units",
+    "up",
+    "ticker",
+    "spray",
+    "binding",
+    "ceiling"
+  ]
+}

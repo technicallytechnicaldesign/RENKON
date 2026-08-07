@@ -1,0 +1,44 @@
+# KeyShot Mockup Studio
+
+A single-file browser tool for compositing a transparent product cutout onto a
+procedurally generated fluid-industrial scene, then art-directing the result live.
+Two tabs: **Compositor** (below) and **Presets** &mdash; a side-by-side comparison
+of four looping/parallax motion-backplate concepts, absorbed from the former
+Motion Lab tool (`keyshot/motion-lab/` now redirects to `#presets` here). The
+Presets tab is a direction-finding viewer only &mdash; no export pipeline.
+
+- **Scene generator** — the same deterministic Canvas engine as the Backplate
+  Creator: 6 fluid styles (Viscous Current, Laminar Stream, Liquid Metal
+  Droplets, Ripple Impact, Ink Bloom, Splash Crown) × 4 themes (Pure Fluid,
+  Industrial, Space, Industry + Space) × 9 palettes × 11 architecture motifs
+  (Mechanical Bay, Orbital Ring, Planet Horizon, Docking Hangar, Pipe Trench,
+  Vent Array, Conduit Wall, Reactor Core, Ribbed Bulkhead, Docking Lights,
+  Panel Grid), a deterministic seed, and sliders for theme intensity, fluid
+  detail, light angle and horizon.
+- **Product compositing** — drop or browse a transparent PNG/WebP/JPEG cutout;
+  drag it directly on the preview to reposition, or dial in position, scale
+  and rotation with sliders. Shadow, reflection and a lit pedestal are each
+  independently toggleable and strength-adjustable.
+- **Motion overlay** — drop a motion layer straight onto the mockup: any of the
+  69 SVG overlays from the shared overlay kit (`assets/overlay-engine.js` — flow
+  indicators, callouts, arrows, pings, frames, etc.), **or a fluid particle
+  effect** (`assets/fluid-engine.js` — jet, fountain, spray, splash) rendered on
+  a transparent canvas as a perfectly looping clip. Monochrome colour, size, X/Y
+  position, rotation, speed, opacity and weight/density. The overlay loops in
+  sync with the scene and records into the WebM — and an overlay counts as
+  motion on its own, so you can WebM a static scene with just an animated
+  overlay.
+- **Quick scene variations** — a 4-up gallery of alternate theme/palette/motif
+  combinations derived from the current seed; preview full-screen or apply one
+  to the main stage in a click.
+- **Export** — PNG or JPG 95% composite up to 5120×2880, named
+  `fluid_mockup_<theme>_<motif>_<style>_<seed>_<w>x<h>.<fmt>`; or a looping
+  **WebM** of the animated composite (backplate + product + overlay + title).
+
+## Files
+
+- `index.html` — the tool (self-contained; loads the shared `assets/theme.js`,
+  `reveal.js`, `menu.js` and `overlay-engine.js`, plus the two brand fonts).
+
+No build step. Open `index.html` in a browser, or serve it under the RENKON
+Pages base — relative links only.
