@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KeyShot handoff — probe v01</title>
+<style>
+
+:root{--page:#edf1f6;--surface:#f8fafd;--ink:#0e1a26;--ink-2:#44566b;--muted:#5f6d7f;
+--grid:#d5dee8;--ring:rgba(14,26,38,0.13);--accent:#23456b;--accent-2:#767c85;
+--good:#1e7d32;--warn:#9a6700;--crit:#c62828;
+--font-body:system-ui,-apple-system,"Segoe UI",sans-serif;
+--font-head:ui-monospace,Consolas,"Cascadia Mono",monospace;
+--font-mono:ui-monospace,Consolas,"Cascadia Mono",monospace;--radius:6px}
+@media (prefers-color-scheme:dark){:root{--page:#0a1017;--surface:#111b26;--ink:#e8f0f8;
+--ink-2:#a9bccf;--muted:#6d7f92;--grid:#22303f;--ring:rgba(232,240,248,0.12);--accent:#5b85b8;
+--accent-2:#c7cbd0;--good:#4caf50;--warn:#e0a828;--crit:#ef6a5a}}
+:root[data-theme="dark"]{--page:#0a1017;--surface:#111b26;--ink:#e8f0f8;--ink-2:#a9bccf;
+--muted:#6d7f92;--grid:#22303f;--ring:rgba(232,240,248,0.12);--accent:#5b85b8;--accent-2:#c7cbd0;
+--good:#4caf50;--warn:#e0a828;--crit:#ef6a5a}
+:root[data-theme="light"]{--page:#edf1f6;--surface:#f8fafd;--ink:#0e1a26;--ink-2:#44566b;
+--muted:#5f6d7f;--grid:#d5dee8;--ring:rgba(14,26,38,0.13);--accent:#23456b;--accent-2:#767c85;
+--good:#1e7d32;--warn:#9a6700;--crit:#c62828}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:15px/1.55 var(--font-body);
+padding:0 0 80px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+header.top{border-bottom:1px solid var(--grid);background:var(--surface);padding:20px 0;
+margin-bottom:24px}
+h1{font:600 20px/1.3 var(--font-head);margin:0 0 4px;letter-spacing:-0.01em}
+h2{font:600 14px/1.3 var(--font-head);margin:32px 0 10px;color:var(--ink);
+text-transform:uppercase;letter-spacing:0.06em}
+h2 .n{color:var(--accent);margin-right:8px}
+h3{font:600 14px/1.35 var(--font-head);margin:0}
+.sub{color:var(--muted);font:12px/1.5 var(--font-mono)}
+section{background:var(--surface);border:1px solid var(--grid);border-radius:var(--radius);
+padding:16px 18px;margin-bottom:16px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--grid);vertical-align:top}
+th{color:var(--ink-2);font-weight:600;white-space:nowrap;width:34%}
+tr:last-child th,tr:last-child td{border-bottom:0}
+code{font:13px var(--font-mono);background:var(--page);border:1px solid var(--grid);
+border-radius:4px;padding:1px 5px}
+.big code{font-size:15px}
+.cp{margin-left:8px;font:11px var(--font-mono);background:transparent;color:var(--accent);
+border:1px solid var(--grid);border-radius:4px;padding:1px 6px;cursor:pointer}
+.cp:hover{border-color:var(--accent)}
+.muted{color:var(--muted)}
+.warnbox{border-left:3px solid var(--warn);background:var(--page);padding:10px 12px;
+margin:12px 0 0;font-size:14px}
+.critbox{border-left:3px solid var(--crit);background:var(--page);padding:10px 12px;
+margin:0 0 16px;font-size:14px}
+.swatch{display:inline-block;width:14px;height:14px;border:1px solid var(--ring);
+border-radius:3px;vertical-align:-2px;margin-right:6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+figure{margin:0;border:1px solid var(--grid);border-radius:var(--radius);overflow:hidden;
+background:var(--page)}
+figure img{display:block;width:100%;height:auto;cursor:zoom-in}
+figcaption{padding:7px 10px;font:12px/1.4 var(--font-mono);color:var(--ink-2);
+border-top:1px solid var(--grid)}
+.test{border:1px solid var(--grid);border-radius:var(--radius);padding:14px 16px;
+margin-bottom:12px;background:var(--surface)}
+.test header{display:flex;gap:10px;align-items:baseline;margin-bottom:8px}
+.num{font:600 12px var(--font-mono);color:var(--accent);border:1px solid var(--grid);
+border-radius:4px;padding:1px 6px}
+.test dl{margin:0 0 10px;display:grid;grid-template-columns:max-content 1fr;gap:2px 12px;
+font-size:14px}
+.test dt{font:600 11px var(--font-mono);color:var(--muted);text-transform:uppercase;
+letter-spacing:0.05em;padding-top:2px}
+.test dd{margin:0;color:var(--ink-2)}
+.verdict{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px;font:12px var(--font-mono)}
+.verdict label{cursor:pointer;color:var(--ink-2)}
+textarea{width:100%;font:13px var(--font-mono);background:var(--page);color:var(--ink);
+border:1px solid var(--grid);border-radius:4px;padding:7px 9px;resize:vertical}
+textarea:focus,input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.test.done{border-color:var(--accent)}
+.bar{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--grid);
+padding:12px 0;margin-top:24px;z-index:5}
+.bar .wrap{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+button.primary{font:600 13px var(--font-head);background:var(--accent);color:var(--surface);
+border:0;border-radius:var(--radius);padding:9px 16px;cursor:pointer}
+button.ghost{font:13px var(--font-head);background:transparent;color:var(--accent);
+border:1px solid var(--grid);border-radius:var(--radius);padding:9px 14px;cursor:pointer}
+#status{font:12px var(--font-mono);color:var(--muted)}
+details{margin-top:10px}
+summary{cursor:pointer;font:12px var(--font-mono);color:var(--accent)}
+pre{overflow-x:auto;background:var(--page);border:1px solid var(--grid);border-radius:4px;
+padding:10px;font:12px var(--font-mono);max-height:420px}
+.hash{font:11px var(--font-mono);color:var(--muted)}
+#lb{position:fixed;inset:0;background:rgba(0,0,0,.86);display:none;align-items:center;
+justify-content:center;z-index:50;cursor:zoom-out;padding:24px}
+#lb img{max-width:100%;max-height:100%;object-fit:contain}
+@media(max-width:640px){.test dl{grid-template-columns:1fr}th{width:auto}}
+</style></head><body>
+
+<header class="top"><div class="wrap">
+<h1>KeyShot handoff — probe <span class="muted">v01</span></h1>
+<div class="sub">built 2026-07-26 on the Blender machine · probe package · read this on the
+KeyShot machine · nothing here needs Blender, Python or a network</div>
+</div></header>
+
+<div class="wrap">
+
+<p class="critbox">This package was made on a machine with <strong>no KeyShot</strong>, so nothing
+below has been tested in KeyShot by anyone. Every number is measured from the actual file; every
+question is genuinely open. Answers go back via the button at the bottom — that is the only way
+they reach the other side.</p>
+
+
+
+<h2><span class="n">01</span>Import</h2>
+<section><table class="big">
+<tr><th>Import as</th><td><code>Alembic, animated / deforming geometry</code></td></tr>
+<tr><th>Scene units</th><td><code>metres</code> — set the scene to metres, or it lands 1000× out</td></tr>
+<tr><th>Up axis</th><td><code>Z-up</code></td></tr>
+<tr><th>Frames</th><td><code>1-20 (20 frames) @ 24 fps</code></td></tr>
+<tr><th>Bounding box</th><td><code>roughly 1.5 x 1.2 x 1.0 m -- the scale bar is exactly 1.000 m</code></td></tr>
+<tr><th>Triangles / frame</th><td><code>probe_a: 604-1,050 faces/frame; probe_b: 644-1,538 faces/frame</code></td></tr>
+<tr><th>Part names</th><td><code>fluid_surface</code> <code>fluid_spray</code> <code>probe_scalebar</code> <code>probe_triad</code> <code>probe_ticker</code></td></tr>
+<tr><th>UVs</th><td>none, on purpose — a per-frame-changing surface has no stable
+parameterisation, so use <strong>box / triplanar</strong> projection for anything textured</td></tr>
+<tr><th>Motion blur</th><td>this cache carries <strong>no velocities</strong> — Blender 5.0's
+Alembic exporter cannot write them, and a fluid mesh changes topology between subframes so there
+is nothing to interpolate. Do not go looking for the setting; treat blur as a comp problem.</td></tr>
+</table>
+<p class="muted" style="margin:12px 0 0;font-size:13px">Part names are deliberately generic so one
+template scene can accept any asset by swapping the cache. Test 07 below is what decides whether
+that actually works.</p>
+</section>
+
+
+
+<h2><span class="n">02</span>What it should look like</h2>
+<section>
+<p class="muted" style="margin:0 0 12px;font-size:13px">Renders of <strong>this exact packed
+file</strong>, made in Blender/Eevee. Treat them as evidence of what geometry is present, not as a
+look target — Eevee's screen-space refraction misrepresents glass and droplets, which is precisely
+why the final look is built in KeyShot. Click to enlarge.</p>
+<div class="grid"><p class="muted">No reference stills were found for this asset on the build machine. Nothing to compare against — say so in the notes.</p></div>
+</section>
+
+<h2><span class="n">03</span>Questions to answer</h2>
+<p class="muted" style="margin:-4px 0 14px;font-size:13px">Answer what you can, skip what you
+can't. A "not tested" is more useful than a guess. Progress is saved in this browser as you go.</p>
+
+<article class="test" data-id="import">
+  <header><span class="num">01</span><h3>Does the file import at all?</h3></header>
+  <dl>
+    <dt>How</dt><dd>Import probe_a.abc. Alembic / animated geometry. Note any dialog options you had to pick and what the defaults were.</dd>
+    <dt>Why</dt><dd>Baseline. Everything below assumes this worked.</dd>
+    <dt>If it fails</dt><dd>If the import errors outright, nothing else matters -- send the error text back and we change transport format entirely.</dd>
+  </dl>
+  <div class="verdict">
+    <label><input type="radio" name="v_import" value="PASS"> pass</label>
+    <label><input type="radio" name="v_import" value="FAIL"> fail</label>
+    <label><input type="radio" name="v_import" value="PARTIAL"> partly</label>
+    <label><input type="radio" name="v_import" value="SKIPPED"> not tested</label>
+  </div>
+  <textarea data-note="import" rows="2"
+            placeholder="what actually happened — numbers beat adjectives"></textarea>
+</article>
+<article class="test" data-id="topology">
+  <header><span class="num">02</span><h3>Does fluid_surface deform AND change topology across the 20 frames?</h3></header>
+  <dl>
+    <dt>How</dt><dd>Scrub frames 1-20. Two lobes (three in probe_b) should slide together and MERGE into one body. Watch for: frozen on frame 1, flickering, or geometry vanishing.</dd>
+    <dt>Why</dt><dd>THE make-or-break question. Every fluid cache this project produces changes vertex and face count every frame -- that is what a liquid surface is.</dd>
+    <dt>If it fails</dt><dd>If it is frozen or broken, Alembic is the wrong transport for fluid and we switch to a per-frame mesh sequence. This single answer can redirect the whole project, which is why it is being asked on a 2 MB file.</dd>
+  </dl>
+  <div class="verdict">
+    <label><input type="radio" name="v_topology" value="PASS"> pass</label>
+    <label><input type="radio" name="v_topology" value="FAIL"> fail</label>
+    <label><input type="radio" name="v_topology" value="PARTIAL"> partly</label>
+    <label><input type="radio" name="v_topology" value="SKIPPED"> not tested</label>
+  </div>
+  <textarea data-note="topology" rows="2"
+            placeholder="what actually happened — numbers beat adjectives"></textarea>
+</article>
+<article class="test" data-id="units">
+  <header><span class="num">03</span><h3>Measure probe_scalebar end to end. How long is it?</h3></header>
+  <dl>
+    <dt>How</dt><dd>It is exactly 1.000 m, with a tick every 100 mm (taller tick every 500 mm) and a separate 100 mm cube beside it. Measure in KeyShot and write down the number you actually get, not the number you expected.</dd>
+    <dt>Why</dt><dd>Units are the failure that looks like success -- a pump at 1000x reads as &#x27;a pump&#x27;.</dd>
+    <dt>If it fails</dt><dd>1.0 -&gt; metres survived, nothing to change. 1000 -&gt; it read millimetres; 0.001 -&gt; the other way. Either way we set the exporter&#x27;s scale here and stop relying on the import dialog.</dd>
+  </dl>
+  <div class="verdict">
+    <label><input type="radio" name="v_units" value="PASS"> pass</label>
+    <label><input type="radio" name="v_units" value="FAIL"> fail</label>
+    <label><input type="radio" name="v_units" value="PARTIAL"> partly</label>
+    <label><input type="radio" name="v_units" value="SKIPPED"> not tested</label>
+  </div>
+  <textarea data-note="units" rows="2"
+            placeholder="what actually happened — numbers beat adjectives"></textarea>
+</article>
+<article class="test" data-id="up">
+  <header><span class="num">04</span><h3>Which way does probe_triad point?</h3></header>
+  <dl>
+    <dt>How</dt><dd>Three arms of different lengths: X 0.6 m ends in a CUBE, Y 0.4 m ends in a flat TAB, Z 0.8 m (the longest) ends in a BALL. The ball should point straight up.</dd>
+    <dt>Why</dt><dd>Asymmetric on purpose. A symmetric marker lets a Z-up/Y-up mix-up look correct from the wrong angle, and then every asset arrives lying on its side.</dd>
+    <dt>If it fails</dt><dd>If the ball is not up, tell us which arm IS up and we add the axis conversion at export (--yup) rather than making you rotate every import by hand.</dd>
+  </dl>
+  <div class="verdict">
+    <label><input type="radio" name="v_up" value="PASS"> pass</label>
+    <label><input type="radio" name="v_up" value="FAIL"> fail</label>
+    <label><input type="radio" name="v_up" value="PARTIAL"> partly</label>
+    <label><input type="radio" name="v_up" value="SKIPPED"> not tested</label>
+  </div>
+  <textarea data-note="up" rows="2"
+            placeholder="what actually happened — numbers beat adjectives"></textarea>
+</article>
+<article class="test" data-id="ticker">
+  <header><span class="num">05</span><h3>At timeline frame N, where is probe_ticker?</h3></header>
+  <dl>
+    <dt>How</dt><dd>A small cube that steps +0.1 m in X once per frame, stepped not smooth. At frame 1 it is at its start, at frame 11 it should be 1.0 m further along. Read off two or three frames.</dd>
+    <dt>Why</dt><dd>Two answers in one: whether frames map 1:1 (nothing retimed) and whether animated TRANSFORMS are read at all -- the surface tests deformation, this tests transform.</dd>
+    <dt>If it fails</dt><dd>If the cube never moves but the blobs do, transform animation is ignored and any future moving part (a rotating inducer, a travelling nozzle) has to be baked into the deformation instead. Good to know before we build one.</dd>
+  </dl>
+  <div class="verdict">
+    <label><input type="radio" name="v_ticker" value="PASS"> pass</label>
+    <label><input type="radio" name="v_ticker" value="FAIL"> fail</label>
+    <label><input type="radio" name="v_ticker" value="PARTIAL"> partly</label>
+    <label><input type="radio" name="v_ticker" value="SKIPPED"> not tested</label>
+  </div>
+  <textarea data-note="ticker" rows="2"
+            placeholder="what actually happened — numbers beat adjectives"></textarea>
+</article>
+<article class="test" data-id="spray">
+  <header><span class="num">06</span><h3>Does fluid_spray arrive as droplets, and what does it cost?</h3></header>
+  <dl>
+    <dt>How</dt><dd>It is a realised cloud of small spheres -- the same construction the real spray layer uses. Check they are there, and note memory / responsiveness.</dd>
+    <dt>Why</dt><dd>On cryogenic fuels the spray layer carries the shot; it is not decoration.</dd>
+    <dt>If it fails</dt><dd>If realised instances are heavy, we lower droplet counts at pack time or split spray into its own file.</dd>
+  </dl>
+  <div class="verdict">
+    <label><input type="radio" name="v_spray" value="PASS"> pass</label>
+    <label><input type="radio" name="v_spray" value="FAIL"> fail</label>
+    <label><input type="radio" name="v_spray" value="PARTIAL"> partly</label>
+    <label><input type="radio" name="v_spray" value="SKIPPED"> not tested</label>
+  </div>
+  <textarea data-note="spray" rows="2"
+            placeholder="what actually happened — numbers beat adjectives"></textarea>
+</article>
+<article class="test" data-id="binding">
+  <header><span class="num">07</span><h3>Assign materials to probe_a, then bring in probe_b. Do they stick?</h3></header>
+  <dl>
+    <dt>How</dt><dd>Give fluid_surface and fluid_spray any obvious materials in probe_a. Then import or update to probe_b -- same part names, different geometry. Do the materials stay bound, or come in blank? Note exactly which route you used (import / update / replace geometry), because the answer may differ per route.</dd>
+    <dt>Why</dt><dd>This decides the shape of the entire pipeline. Part names are already generic (fluid_surface / fluid_spray) specifically so one template scene could accept any asset.</dd>
+    <dt>If it fails</dt><dd>If bindings hold: you build the water material, lighting and camera ONCE, and every future handoff is a file swap -- minutes, not a work session. If they do not: we invest here in making the material numbers trivial to re-enter, and stop pretending a template scene is coming.</dd>
+  </dl>
+  <div class="verdict">
+    <label><input type="radio" name="v_binding" value="PASS"> pass</label>
+    <label><input type="radio" name="v_binding" value="FAIL"> fail</label>
+    <label><input type="radio" name="v_binding" value="PARTIAL"> partly</label>
+    <label><input type="radio" name="v_binding" value="SKIPPED"> not tested</label>
+  </div>
+  <textarea data-note="binding" rows="2"
+            placeholder="what actually happened — numbers beat adjectives"></textarea>
+</article>
+<article class="test" data-id="ceiling">
+  <header><span class="num">08</span><h3>Where does it start to hurt?</h3></header>
+  <dl>
+    <dt>How</dt><dd>Rough answer only: at what per-frame triangle count does the viewport or render get unpleasant on that machine? The probe is tiny (a few thousand); the real assets run 25k-200k per frame.</dd>
+    <dt>Why</dt><dd>abcpack.py budgets polycount with a --budget flag currently set from a guess.</dd>
+    <dt>If it fails</dt><dd>Whatever number you give becomes the default budget here, permanently.</dd>
+  </dl>
+  <div class="verdict">
+    <label><input type="radio" name="v_ceiling" value="PASS"> pass</label>
+    <label><input type="radio" name="v_ceiling" value="FAIL"> fail</label>
+    <label><input type="radio" name="v_ceiling" value="PARTIAL"> partly</label>
+    <label><input type="radio" name="v_ceiling" value="SKIPPED"> not tested</label>
+  </div>
+  <textarea data-note="ceiling" rows="2"
+            placeholder="what actually happened — numbers beat adjectives"></textarea>
+</article>
+
+<section>
+<h3 style="margin-bottom:8px">Anything else</h3>
+<textarea id="freeform" rows="5" placeholder="Anything the questions above didn't ask for — what
+surprised you, what you'd want different from the Blender side, what to bake next."></textarea>
+</section>
+
+<h2><span class="n">04</span>What's in the box</h2>
+<section><table><tr><th>File</th><th>Size</th><th>SHA-256</th></tr><tr><td><code>probe_a.abc</code></td><td>2.2 MB</td><td class='hash'>99419e01b1b6db51…</td></tr><tr><td><code>probe_b.abc</code></td><td>3.0 MB</td><td class='hash'>677c6bd88d0bd5e4…</td></tr><tr><td><code>probe_kit.json</code></td><td>3.6 KB</td><td class='hash'>7a301d4559d4c902…</td></tr></table>
+<p class="muted" style="font-size:13px;margin:12px 0 0"><strong>Run <code>VERIFY.cmd</code> in this
+folder before anything else.</strong> It re-checks every file against the hashes above — no Python,
+no install, no admin. A truncated USB copy and a broken exporter look identical from here, and only
+one of them is real. If it reports corruption, recopy from the drive rather than debugging
+KeyShot.</p>
+<details><summary>full manifest (JSON)</summary><pre>{
+  &quot;generated_by&quot;: &quot;probekit.py&quot;,
+  &quot;purpose&quot;: &quot;answer the KeyShot import questions on a file small enough to throw away&quot;,
+  &quot;pair_note&quot;: &quot;probe_a and probe_b share part names on purpose -- swap one for the other in KeyShot to find out whether material bindings survive a cache update. That single answer decides whether the whole pipeline is a file swap or a rebuild each time.&quot;,
+  &quot;parts_contract&quot;: [
+    &quot;fluid_surface&quot;,
+    &quot;fluid_spray&quot;
+  ],
+  &quot;probes&quot;: [
+    {
+      &quot;reimport&quot;: {
+        &quot;parts_found&quot;: [
+          &quot;fluid_spray&quot;,
+          &quot;fluid_surface&quot;,
+          &quot;probe_scalebar&quot;,
+          &quot;probe_ticker&quot;,
+          &quot;probe_triad&quot;
+        ],
+        &quot;surface_faces_min&quot;: 1208,
+        &quot;surface_faces_max&quot;: 2100,
+        &quot;surface_distinct_counts&quot;: 18,
+        &quot;topology_survived&quot;: true,
+        &quot;missing_parts&quot;: [],
+        &quot;ok&quot;: true
+      },
+      &quot;probe&quot;: &quot;a&quot;,
+      &quot;file&quot;: &quot;probe_a.abc&quot;,
+      &quot;bytes&quot;: 2271713,
+      &quot;mb&quot;: 2.27,
+      &quot;frames&quot;: {
+        &quot;start&quot;: 1,
+        &quot;end&quot;: 20,
+        &quot;count&quot;: 20,
+        &quot;fps&quot;: 24
+      },
+      &quot;blobs&quot;: 2,
+      &quot;parts&quot;: [
+        &quot;fluid_surface&quot;,
+        &quot;fluid_spray&quot;,
+        &quot;probe_scalebar&quot;,
+        &quot;probe_triad&quot;,
+        &quot;probe_ticker&quot;
+      ],
+      &quot;topology&quot;: {
+        &quot;faces_min&quot;: 604,
+        &quot;faces_max&quot;: 1050,
+        &quot;verts_min&quot;: 606,
+        &quot;verts_max&quot;: 1054,
+        &quot;distinct_face_counts&quot;: 18,
+        &quot;changes_topology&quot;: true
+      },
+      &quot;ticker&quot;: {
+        &quot;x0&quot;: 0.0,
+        &quot;step_m&quot;: 0.1,
+        &quot;reads&quot;: &quot;x = x0 + step * (frame - 1), CONSTANT interpolation&quot;
+      },
+      &quot;scalebar&quot;: {
+        &quot;length_m&quot;: 1.0,
+        &quot;tick_m&quot;: 0.1,
+        &quot;cube_m&quot;: 0.1
+      },
+      &quot;triad&quot;: {
+        &quot;x_m&quot;: 0.6,
+        &quot;y_m&quot;: 0.4,
+        &quot;z_m&quot;: 0.8,
+        &quot;note&quot;: &quot;asymmetric on purpose; ball marks +Z&quot;
+      },
+      &quot;units&quot;: {
+        &quot;scene&quot;: &quot;metres&quot;,
+        &quot;up_axis&quot;: &quot;Z&quot;
+      },
+      &quot;seconds&quot;: 2.1
+    },
+    {
+      &quot;reimport&quot;: {
+        &quot;parts_found&quot;: [
+          &quot;fluid_spray&quot;,
+          &quot;fluid_surface&quot;,
+          &quot;probe_scalebar&quot;,
+          &quot;probe_ticker&quot;,
+          &quot;probe_triad&quot;
+        ],
+        &quot;surface_faces_min&quot;: 1288,
+        &quot;surface_faces_max&quot;: 3076,
+        &quot;surface_distinct_counts&quot;: 20,
+        &quot;topology_survived&quot;: true,
+        &quot;missing_parts&quot;: [],
+        &quot;ok&quot;: true
+      },
+      &quot;probe&quot;: &quot;b&quot;,
+      &quot;file&quot;: &quot;probe_b.abc&quot;,
+      &quot;bytes&quot;: 3172977,
+      &quot;mb&quot;: 3.17,
+      &quot;frames&quot;: {
+        &quot;start&quot;: 1,
+        &quot;end&quot;: 20,
+        &quot;count&quot;: 20,
+        &quot;fps&quot;: 24
+      },
+      &quot;blobs&quot;: 3,
+      &quot;parts&quot;: [
+        &quot;fluid_surface&quot;,
+        &quot;fluid_spray&quot;,
+        &quot;probe_scalebar&quot;,
+        &quot;probe_triad&quot;,
+        &quot;probe_ticker&quot;
+      ],
+      &quot;topology&quot;: {
+        &quot;faces_min&quot;: 644,
+        &quot;faces_max&quot;: 1538,
+        &quot;verts_min&quot;: 646,
+        &quot;verts_max&quot;: 1544,
+        &quot;distinct_face_counts&quot;: 20,
+        &quot;changes_topology&quot;: true
+      },
+      &quot;ticker&quot;: {
+        &quot;x0&quot;: -0.5,
+        &quot;step_m&quot;: 0.1,
+        &quot;reads&quot;: &quot;x = x0 + step * (frame - 1), CONSTANT interpolation&quot;
+      },
+      &quot;scalebar&quot;: {
+        &quot;length_m&quot;: 1.0,
+        &quot;tick_m&quot;: 0.1,
+        &quot;cube_m&quot;: 0.1
+      },
+      &quot;triad&quot;: {
+        &quot;x_m&quot;: 0.6,
+        &quot;y_m&quot;: 0.4,
+        &quot;z_m&quot;: 0.8,
+        &quot;note&quot;: &quot;asymmetric on purpose; ball marks +Z&quot;
+      },
+      &quot;units&quot;: {
+        &quot;scene&quot;: &quot;metres&quot;,
+        &quot;up_axis&quot;: &quot;Z&quot;
+      },
+      &quot;seconds&quot;: 1.5
+    }
+  ]
+}</pre></details>
+</section>
+
+</div>
+
+<div class="bar"><div class="wrap">
+<button class="primary" id="copy">Copy findings</button>
+<button class="ghost" id="download">Download as .md</button>
+<button class="ghost" id="clear">Clear answers</button>
+<span id="status">nothing answered yet</span>
+</div></div>
+
+<div id="lb"><img alt=""></div>
+
+<script>
+const PKG="probe_v01", ASSET="probe", VER=1, KIND="probe";
+const TESTS=[{"id": "import", "title": "Does the file import at all?"}, {"id": "topology", "title": "Does fluid_surface deform AND change topology across the 20 frames?"}, {"id": "units", "title": "Measure probe_scalebar end to end. How long is it?"}, {"id": "up", "title": "Which way does probe_triad point?"}, {"id": "ticker", "title": "At timeline frame N, where is probe_ticker?"}, {"id": "spray", "title": "Does fluid_spray arrive as droplets, and what does it cost?"}, {"id": "binding", "title": "Assign materials to probe_a, then bring in probe_b. Do they stick?"}, {"id": "ceiling", "title": "Where does it start to hurt?"}];
+const KEY='handoff:'+PKG;
+
+function state(){
+  const s={v:{},n:{},free:''};
+  TESTS.forEach(t=>{
+    const r=document.querySelector(`input[name="v_${t.id}"]:checked`);
+    s.v[t.id]=r?r.value:'';
+    const ta=document.querySelector(`textarea[data-note="${t.id}"]`);
+    s.n[t.id]=ta?ta.value:'';
+  });
+  s.free=document.getElementById('freeform').value;
+  return s;
+}
+function restore(){
+  let s; try{s=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){s=null}
+  if(!s) return;
+  TESTS.forEach(t=>{
+    if(s.v&&s.v[t.id]){
+      const r=document.querySelector(`input[name="v_${t.id}"][value="${s.v[t.id]}"]`);
+      if(r) r.checked=true;
+    }
+    const ta=document.querySelector(`textarea[data-note="${t.id}"]`);
+    if(ta&&s.n&&s.n[t.id]!=null) ta.value=s.n[t.id];
+  });
+  if(s.free) document.getElementById('freeform').value=s.free;
+}
+function save(){
+  const s=state();
+  localStorage.setItem(KEY,JSON.stringify(s));
+  let done=0;
+  TESTS.forEach(t=>{
+    const card=document.querySelector(`.test[data-id="${t.id}"]`);
+    const has=!!s.v[t.id];
+    if(card) card.classList.toggle('done',has);
+    if(has) done++;
+  });
+  document.getElementById('status').textContent =
+    done+' of '+TESTS.length+' answered'+(done?' · saved in this browser':'');
+}
+function markdown(){
+  const s=state();
+  const L=[];
+  L.push('## KEYSHOT RUN NOTES — '+ASSET+' v'+String(VER).padStart(2,'0'));
+  L.push('');
+  L.push('- package: `'+PKG+'` ('+KIND+')');
+  L.push('- run on: (KeyShot machine) — fill in KeyShot version if you know it: ');
+  L.push('- date: '+new Date().toISOString().slice(0,10));
+  L.push('');
+  TESTS.forEach(t=>{
+    const v=s.v[t.id]||'SKIPPED';
+    const n=(s.n[t.id]||'').trim().replace(/\s+/g,' ');
+    L.push('- ['+v+'] '+t.id+' — '+t.title+(n?(' — '+n):''));
+  });
+  const f=(s.free||'').trim();
+  if(f){ L.push(''); L.push('### Anything else'); L.push(''); L.push(f); }
+  L.push('');
+  return L.join('\n');
+}
+document.addEventListener('input',save);
+document.addEventListener('change',save);
+document.getElementById('copy').addEventListener('click',async()=>{
+  const md=markdown();
+  try{ await navigator.clipboard.writeText(md);
+        document.getElementById('status').textContent='copied — paste it back to Claude';
+  }catch(e){
+    const ta=document.createElement('textarea');
+    ta.value=md; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); ta.remove();
+    document.getElementById('status').textContent='copied — paste it back to Claude';
+  }
+});
+document.getElementById('download').addEventListener('click',()=>{
+  const b=new Blob([markdown()],{type:'text/markdown'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(b); a.download=PKG+'_notes.md'; a.click();
+  URL.revokeObjectURL(a.href);
+});
+document.getElementById('clear').addEventListener('click',()=>{
+  if(!confirm('Clear every answer on this page?')) return;
+  localStorage.removeItem(KEY); location.reload();
+});
+const lb=document.getElementById('lb');
+document.querySelectorAll('figure img').forEach(im=>im.addEventListener('click',()=>{
+  lb.querySelector('img').src=im.src; lb.style.display='flex';
+}));
+lb.addEventListener('click',()=>lb.style.display='none');
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') lb.style.display='none'; });
+document.querySelectorAll('.cp').forEach(b=>b.addEventListener('click',()=>{
+  navigator.clipboard.writeText(b.dataset.v);
+  const o=b.textContent; b.textContent='ok'; setTimeout(()=>b.textContent=o,900);
+}));
+restore(); save();
+</script>
+<!-- identity: BLUEPRINT -->
+</body></html>

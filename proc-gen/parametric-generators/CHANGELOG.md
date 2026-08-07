@@ -1,0 +1,881 @@
+# Changelog — Parametric Generators
+
+All notable changes to this tool. Newest first.
+
+This file replaces the old `toolkit_N.html` filename-versioning scheme: the app
+file is now a stable `index.html`, and *iteration is tracked here + in git history*
+(commit messages for the detail, this file for the human-readable narrative, git
+tags for milestones). Don't create `index_8.html` etc. — commit instead.
+
+Versioning: informal `vN` milestones tagged in git as `paramgen-vN`.
+
+## [Unreleased]
+
+### Added — Overlay Asset Customizer: "Surprise me" variations grid
+A collapsible **Surprise me — variations** section renders a 4×3 grid of 12
+randomized, live-animating variants of the current overlay (size / rotation /
+speed / opacity / thickness). **Click a tile to adopt** its look; **Reroll** for
+a fresh set. Tiles render lazily (only when the section is first opened) and
+share a `randomLook()` helper with the Randomize button.
+
+- Also fixes a latent bug: `renderCustomize` didn't clear `#app-main`, so any
+  in-place re-render (Reset Adjustments, and now Adopt) appended a duplicate
+  screen. It now rebuilds in place.
+
+### Added — Overlay Asset Customizer: looks persist + shareable links
+The new parametrics were session-only — a reload wiped your tuned look. Now a
+look sticks, and it's a copy-pasteable URL.
+
+- **Persistence**: per-asset params (size / rotation / speed / opacity /
+  thickness / roundness) are saved to `localStorage` (`overlay:params`,
+  debounced) and restored on load; `getParams` backfills any keys missing from
+  an older saved look. (Export bg already persisted via `overlay:bg`.)
+- **Shareable links**: a **Copy link** button in the quick-start strip encodes
+  the current asset's params + export bg + full palette into the hash
+  (`#overlay-kit/<cat>/<id>?sz=..&rot=..&bg=..&pal=..`). Opening that link
+  applies the look before the customize screen renders, so a tuned overlay is
+  reproducible for anyone. Clipboard write falls back to a hidden-textarea copy
+  where the async Clipboard API isn't available (e.g. `file://`).
+
+### Added — Overlay Asset Customizer: fuller parametrics (Size, Rotation, Randomize, vibes)
+Turned the overlays into mini versions of the mockup/backplate studio setup —
+more knobs, a top Randomize, and one-tap starters — instead of just opacity /
+thickness / speed.
+
+- **Size** and **Rotation** params, both applied around the overlay's centre via
+  a single `<g class="pk-xform">` wrapper injected around each asset's content
+  (`ensureXformGroup`). No per-asset markup changes, and because the wrapper is
+  part of the live SVG it **bakes into every export** (PNG, frame sequence, WebM)
+  for free. Speed range widened to 0.1–5×.
+- **Randomize** button (shared `.gen-randomize` dice, studio-style) at the top of
+  the controls — rolls size / rotation / speed / opacity / thickness (and
+  roundness where it applies) within tasteful ranges so it "feels random"
+  without hitting unusable extremes. Keeps your chosen palette.
+- **Vibe starters** dropdown next to it (`.gen-quickstart` strip): Subtle · Bold ·
+  Fast · Slow drift · Oversize · Tilted — one-tap parameter sets, matching the
+  quick-start pattern in the signage/label generators.
+- Fixed a latent double-transform in `bakeSmilFreeze`: motion-target matrices
+  are now anchored to the `pk-xform` wrapper, so Size/Rotation apply exactly once
+  in exports of SMIL motion assets (e.g. Traveling Pulse, Droplet Stream).
+
+### Added — Overlay Asset Customizer: export background colorizer
+WebM can't hold an alpha channel, so overlay WebMs flattened to black. Added an
+**Export background** control (below the stage, applies to every overlay) so you
+can bake a solid, keyable colour behind the overlay instead.
+
+- Quick swatches — None (transparent) · Black · White · Key green · Key blue ·
+  Key magenta — plus a custom colour picker. Choice persists (`overlay:bg` in
+  localStorage) across assets and reloads.
+- Applies **live** to the stage preview (a theme-aware checkerboard shows when
+  transparent) and **bakes into every export**: PNG, PNG frame sequence, and
+  WebM, via a shared `paintExportBg()` painted before each frame is composited.
+- "None" preserves PNG/​frame-sequence transparency (alpha untouched); a key
+  colour gives the WebM a clean flat background to chroma out in an editor.
+
+### Added — Overlay Asset Customizer: WebM single-file export
+The overlay customizer could export a PNG frame sequence but not a single video
+clip — parity gap with the texture generator and the fluid/mockup tools, which
+already do WebM. Now every animated overlay has an **"Export WebM"** button next
+to Export Frames.
+
+- There's no live canvas to record (overlay animation is SVG, not Canvas), so
+  the loop is **pre-scrubbed to raster frames** using the exact same machinery
+  as the PNG sequence — SMIL via `setCurrentTime`, CSS via the Web Animations
+  API, both rasterised through `svgToImage` — then those frames are played onto
+  the shared `capture-canvas` in real time while `canvas.captureStream(30)` +
+  `MediaRecorder` records. Three loops so the clip is watchable; native, zero
+  dependencies.
+- New shared `renderOverlayFrames()` helper backs both the frame-scrub used here
+  and keeps it in lockstep with the sequence exporter (same `startOffset` for
+  staggered `animateMotion` particles, so nothing pops in from an unanimated
+  origin).
+- The PNG sequence remains the transparency-preserving path; WebM is documented
+  in the footer note as a flat-background preview for quick sharing.
+
+### Added — Texture & Bump Map Generator: WebM single-file export (ANIMATED_EXPORT brief priority 2)
+Direct call — the PNG frame sequence (priority 1) was the only animated export,
+and a numbered-image gallery isn't always what someone wants when they just
+want one file to save or share.
+
+- **"Export WebM (single file)" button**, next to Export Frame Sequence in the
+  Animated export group. `canvas.captureStream(30)` on the live preview
+  canvas (`textureCanvas`, the same height-map data the frame sequence
+  exports) + `MediaRecorder`, native, zero dependencies — the same approach
+  already shipped for Hydroform's clip recording. Records for one loop
+  duration (the existing Animate-panel loop-length slider); since `state.time`
+  is periodic in that duration regardless of phase, any loop-length-long
+  capture window plays back seamlessly.
+- Downloads as `texture_<pattern>_<seed>.webm`. Auto-starts Play if the
+  preview wasn't already animating, and restores the prior Play/paused state
+  afterward.
+- Explicitly framed as a shareable preview convenience, not a texture-data
+  source — video is lossy-compressed; the PNG frame sequence stays the
+  precise path for feeding a render engine. Footer notes and the page-head
+  description updated to say so.
+- Verified live in-browser: button wires up, zero console errors, and the
+  `captureStream`/`MediaRecorder`/blob-download pipeline itself confirmed
+  functional via an isolated canvas-recording test. Could not confirm a
+  full-length, full-motion capture in this session's headless preview pane —
+  it runs the tab as `document.hidden = true`, which fully pauses
+  `requestAnimationFrame` (confirmed directly: 0 rAF callbacks fired over 1s),
+  so the live preview canvas never repaints during the recording window there.
+  That's a background-tab throttling behavior of the automated preview pane,
+  not a code path exercised differently in a normal foreground tab — flagging
+  explicitly rather than claiming a full end-to-end confirmation.
+
+### Added — Overlay Asset Customizer: FN/VIBE tag filter (HANDOFF_BRIEF_v3 §3, Task B)
+Builds the two-axis function×vibe tag filter on top of the 69-asset base the
+previous entry below just landed. With 8 categories the type grid was at the
+limit the brief called out — this gives a shot-builder a second way in:
+"something dramatic that means flow" instead of only "browse Wildcards, then
+browse Fluid Flow."
+
+- **Taxonomy tagging**: every one of the 69 manifest entries now carries a
+  `tags: { fn: [...], vibe: [...] }` field — 8 `fn` values (point, label,
+  direction, flow, state, atmosphere, chrome, transition) crossed with 6
+  `vibe` values (precise, organic, ambient, dramatic, playful, retro-tech).
+  Category defaults from the brief's table cover most assets; the brief's
+  named exceptions were hand-applied (Status Chip +state; Hazard Strobe /
+  Redline Gauge `fn:state`; Cardiac Trace `fn:state, vibe:dramatic+retro-tech`;
+  Terminal Type `fn:label, vibe:retro-tech+playful`; Hatch Sweep and Divider /
+  Technical Rule +transition; Sonar Corner / Node Mesh +retro-tech; Topo
+  Contours / Particle Drift / Bubble Rise vibe:organic; Warp Tunnel
+  `fn:transition`; Spark Shower / Arc Discharge `fn:state`; Orbit Atoms
+  `fn:point, vibe:playful+retro-tech`), plus judgment calls for the two
+  Wildcards the brief left open (Glitch Slice → `fn:state,
+  vibe:dramatic+retro-tech`; Hologram Beam → `fn:atmosphere,
+  vibe:dramatic+retro-tech`) and for Bubble Rise, read as an override to
+  `vibe:organic` alone (dropping Splashes' default `playful`) rather than an
+  addition, since the brief calling it out only makes sense as a departure
+  from the category default.
+- **14 hand-authored icons** (`TAG_ICONS`, 16×16 viewBox, stroke-only,
+  `stroke="currentColor"`, no fills except the `point` tag's center dot) —
+  one per taxonomy tag, kept distinct at 16px per the brief's concepts:
+  crosshair dot, tag outline, arrow, nested waves, warning triangle,
+  scattered dots + arc, corner brackets, and offset frames for the 8 `fn`
+  icons; ruler ticks, droplet, crescent + dots, lightning bolt, four-point
+  spark, and a CRT screen with a scanline for the 6 `vibe` icons. Kept in one
+  map next to `TAG_AXES`, the taxonomy definition.
+- **Chip bar on the landing view** (`buildTagFilterBar`): two labeled rows,
+  FUNCTION and VIBE, reusing the texture tool's `.filter-chip` /
+  `.pattern-group-label` / `.pattern-filter-row` classes verbatim so the
+  grammar matches exactly — accent fill + accent border when active, outline
+  structural when not. The one behavioral difference from that existing
+  pattern: these chips are multi-select (OR within an axis, AND across axes)
+  instead of the texture tool's single-active-chip group filter.
+- **Filtered flat grid reuses the subtype-grid card renderer**, per the
+  brief. Extracted `buildAssetCard()` out of `renderSubtypeGrid` so the
+  per-category grid and the new flat filtered grid build identical cards;
+  filtered-view cards get an extra small `.subtype-cat-tag` badge naming
+  which category each result came from. Zero-result state renders
+  "Nothing matches — try dropping a chip." in place of the grid.
+- **Hash persistence, adapted to the router's real (not brief-era) shape.**
+  The brief's draft warned the router "currently splits only on `/`" and
+  would need `?query` parsing bolted on — confirmed still true in the live
+  file, and now handled: `navigate()` splits `parts[0]` on the first `?`
+  before matching a `TOOLS` id, parses the remainder with a small
+  `parseHashQuery()` (comma-joined multi-value per key, e.g.
+  `fn=flow,direction`), and threads the resulting `query` object through
+  `tool.mount(main, subpath, query)` into `mountOverlayKit` →
+  `renderTypeGrid`. Filters live at `#overlay-kit?fn=flow&vibe=dramatic`;
+  toggling a chip just sets `location.hash` to the next state and lets the
+  existing `hashchange` listener re-render, so back/forward and bookmarking
+  both work with no extra plumbing.
+- **Verified** via the repo's headless-Edge iframe-driver pattern: the chip
+  bar renders 14 chips across FUNCTION/VIBE rows on the landing view (8
+  category tiles behind it, untouched, when no chip is active); clicking
+  Dramatic filters to exactly the 8 Wildcards assets tagged `dramatic` (no
+  other category represented), with `.active` applied to that one chip and
+  no others; navigating to `#overlay-kit?fn=flow` filters to the 17
+  Fluid-Flow + Splashes assets tagged `flow`; loading
+  `index.html#overlay-kit?fn=flow` fresh in a brand-new iframe (not a
+  same-document hash change) reproduces the identical 17-result, chip-active
+  state, confirming the hash genuinely round-trips on load rather than only
+  reacting to in-page navigation; `fn=chrome&vibe=dramatic` — confirmed empty
+  first (Frame's `chrome` assets are always `vibe:precise`, never
+  `dramatic`) — renders the zero-result message instead of an empty grid.
+  Zero JS errors across every run. Script parse-checked with `new
+  Function`; all 14 `TAG_ICONS` strings XML-parsed cleanly; every one of the
+  69 manifest entries confirmed to carry non-empty `tags.fn` and
+  `tags.vibe` (max 3 tags per axis, per the brief's cap).
+
+### Added — Overlay Asset Customizer: Backgrounds + Wildcards categories, 25 new assets (44 → 69)
+Ports the 25 assets that grew on the stranded `02_WORK/overlay_toolkit/toolkit.html`
+snapshot into the live manifest, per the HANDOFF_BRIEF_v3 brief (Task A, integration
+only — the §3 function×vibe filter system is a separate, not-yet-started piece
+of work). The kit goes from 44 assets / 6 categories to **69 assets / 8
+categories**.
+
+- **Two new categories.** **Backgrounds** (10 assets, 640×360 16:9 full-frame
+  ambient layers — Blueprint Drift, Topo Contours, Particle Drift, Hex Cell
+  Glow, Laminar Streams, Sonar Corner, Instrument Tape, Oscilloscope Strip,
+  Hatch Sweep, Node Mesh) and **Wildcards** (10 assets, the loud foreground-FX
+  drawer — Glitch Slice, Hologram Beam, Warp Tunnel, Cardiac Trace, Hazard
+  Strobe, Spark Shower, Arc Discharge, Terminal Type, Redline Gauge, Orbit
+  Atoms) join the type grid, wired through the exact same `CATEGORIES` entry
+  shape (`slug`/`label`/`blurb`) every existing category already uses — no
+  special-casing needed in the router, subtype grid, or customize view.
+- **Five more folded into existing categories**: Manifold Merge (Fluid Flow),
+  Status Chip (Callouts, editable text), Press Fit (Arrows), Hex Lock (Pings),
+  Bubble Rise (Splashes) — inserted at the end of each category's existing
+  run of manifest entries, so same-category assets stay contiguous the way
+  the file already organizes them.
+- **Every manifest entry copied verbatim** — same `id`/`name`/`file`/
+  `category`/`engine`/`loop`/`durationMs`/`paramPreset`/`svg()` shape the live
+  file already uses; the palette, param sliders (`opacity`/`thickness`/
+  `speed`/`roundness`), custom-text mechanism, PNG export, and Export Frames
+  all picked the new assets up with zero extra wiring, exactly as the brief
+  predicted.
+- **One real divergence from the brief's stated assumption**: the brief
+  claimed the live file already had a `caution` palette role (from an earlier
+  task, RNK-0011) so the ported assets — which use `var(--c-caution)` for
+  alarm/status color (Status Chip's LED, Hazard Strobe, Redline Gauge) —
+  would need no palette work. That role was never actually added to this
+  file's `PALETTE_ROLES`/`:root`. Added it here: `--c-caution: #E0342B` in
+  `:root`, and a matching `{ key: "caution", cssVar: "--c-caution", label:
+  "Caution", hex: "#E0342B" }` entry in `PALETTE_ROLES` (same hex the
+  toolkit snapshot and its `--c-caution` custom property already used) — the
+  palette panel is generic over `PALETTE_ROLES.forEach`, so this one entry
+  is the whole fix; it now shows as a 7th swatch (Structural/Fluid/Accent/
+  Leader/Panel BG/Label Text/Caution) with Save/Load/Reset all working
+  unchanged.
+- **No grid CSS changes.** Backgrounds' 640×360 (16:9) assets are wider than
+  the kit's other viewBoxes, and the brief flagged this as a possible
+  accommodation. Both the subtype grid (`.mini-stage`, `max-width:100%;
+  height:auto`, no fixed aspect) and the customize view (`.large-stage svg`,
+  `max-width:min(260px,100%); max-height:180px`) already scale by intrinsic
+  aspect ratio inside a flexible container — verified headless that a
+  Backgrounds asset renders at full width with no clipping or overflow, so
+  no CSS was touched.
+- Gotchas from the brief's §4 that showed up verbatim in the ported code
+  (kept as-is, not reworked): Glitch Slice's `.fxg_band { animation: 2.2s
+  steps(1) infinite; ... }` shorthand-then-`animation-name` pattern; Sonar
+  Corner's `transform-origin: 0px 360px` without `transform-box: fill-box`;
+  Backgrounds/Wildcards' `animation-delay: calc(-Ns / var(--s-mult,1))`
+  negative-delay-scaled-by-speed convention (vs. Topo Contours' intentionally
+  bare, unscaled `-3s`/`-6s`/`-9s` delays); `--s-mult` only ever set for
+  `engine: "css"` assets, never for the SMIL ones (Blueprint Drift, Particle
+  Drift, Instrument Tape, Oscilloscope Strip, Spark Shower, Orbit Atoms),
+  which instead get speed via full re-render on slider release, same as every
+  pre-existing SMIL asset.
+- **Verified**: a hand-rolled mechanical validation loop (parse-check the
+  full app script via `new Function`, `eval` just the `ASSETS` array slice in
+  Node, call every one of the 25 new assets' `svg()` functions, tag-balance +
+  bare-attribute-check the output) passes clean — all `data-text-slot`
+  attributes in the ported code were already `="true"` (the bug class the
+  brief warned about was pre-fixed in the source). Headless Edge
+  (`--headless=new --allow-file-access-from-files --dump-dom`, driven through
+  the real `index.html` via an iframe driver page, per this doc's own
+  verification pattern): 8 category tiles render with Backgrounds/Wildcards
+  both correctly tagged "10 variants"; both new categories' subtype grids
+  render 10/10 live SVGs with zero JS errors; drilling into a sampled asset
+  from each (`bg-topo-contours`, `fx-glitch-slice`) and the folded-in
+  `splash-bubble-rise` all reach the customize screen with a populated
+  `.large-stage svg` and working param/export controls; the Splashes subtype
+  grid now lists 8 cards including Bubble Rise; the palette panel's 7th
+  swatch (Caution) is present and wired.
+
+### Changed — Title bar redesign: integrated toolbar, closed-by-default panels
+Two changes, both site-wide (`assets/menu.js` + all four pages' header CSS):
+
+- **Nav is no longer a floating overlay.** `.rk-nav` (Home + Menu) used to be
+  `position: fixed`, sitting on top of the page independent of the header —
+  which is what made it read as two disconnected chunky buttons rather than
+  part of the page. `menu.js` now finds the page's own header
+  (`#app-header`/`header`) and appends the nav cluster into it as a normal
+  flex child, set off with a hairline `border-left` divider. Every page's
+  header is now `position: sticky; top: 0`, so the toolbar (crumbs/wordmark,
+  divider, nav) stays reachable while scrolling — a consistent, predictable
+  "app toolbar" everywhere, not just on the one page that happened to be
+  sticky before.
+- **Buttons redesigned to look integrated, not bolted on.** Shrunk from
+  54px solid-fill squares to a compact 36px (32px on mobile) pair with
+  a shared neutral border — Home differentiated by an accent-colored icon
+  (plus a thin accent border when it's the current page) instead of a
+  full accent-fill block. Softer hover/press easing (no more spring-bounce)
+  reads calmer and more professional. `.rk-pop`'s anchor offset tightened
+  to match the smaller buttons.
+- Root/keyshot header CSS lost the padding-right pixel-reservation hack from
+  the last mobile-fix pass — no longer needed, since the nav is in normal
+  flex flow now instead of floating over reserved space. proc-gen's crumbs
+  keep their `flex: 1 1 auto` + ellipsis truncation, which now does double
+  duty: filling space AND pushing the nav cluster to the row's end.
+- **All texture-tool `<details>` panels (Preset, Pattern, Shape, Surface &
+  Tone, Preview & Animation, and the Animated export group) now load
+  closed by default**, per direct request — a first look at the panel is a
+  short list of section headers, not five sections of controls at once.
+  Nothing is removed; every section is one click away, same content as
+  before. (The Overlay Customizer's palette panel and the primary "Static
+  maps" export actions were already closed-by-default / always-open
+  respectively, and are unchanged.)
+- Verified headless: nav renders inside `#app-header`/`header` (not
+  `position: fixed`), zero overlap with crumbs/wordmark at 390px, header
+  stays pinned to top on scroll (`sticky`), popover opens fully within the
+  viewport, all 5 control sections + the Animated export group start closed
+  and expand correctly on click, Home's `aria-current="page"` accent border
+  shows correctly on the root page and correctly absent elsewhere.
+
+### Added — Icon-driven pattern filter + fixed pattern-row overflow
+The Pattern section's per-group button rows (`.pattern-select`) had no
+`flex-wrap`, so on narrow viewports the third button in each 3-across group
+(e.g. Cracks, Knurling) overflowed past the panel's right edge instead of
+wrapping to a new line. Fixed, and used the occasion to make the pattern
+picker itself less busy, per the "icon driven filter... more icon / nested
+structure" ask:
+- **`.pattern-select { flex-wrap: wrap }`** — the actual overflow fix.
+- **Icon-driven group filter chips** above the pattern list: All + one chip
+  per group (Organic/Geometric/Weathering/Pro Finish), each with a small
+  monoline SVG glyph. Selecting a chip narrows the list below to just that
+  group (all groups stay in the DOM, this only toggles `display` — same
+  approach already used for per-pattern custom-param rows — so nothing is
+  removed or re-wired); "All" (default) shows everything, same as before.
+- **Every pattern button now carries its own icon** (13 new small glyphs —
+  noise as scattered dots, cellular as voronoi cells, wood as tree rings,
+  cracks as a branching fracture line, etc.) alongside its label, so the grid
+  reads by shape as well as by text.
+- Verified headless at 390px: zero buttons overflow their panel; all 5
+  filter chips render with icons; filtering to a single group shows only
+  that group's patterns and marks the chip active; selecting a pattern
+  inside a filtered view still updates state/custom-rows correctly;
+  switching back to "All" restores all 4 groups. Full regression: clicked
+  through all 13 patterns across every filter (3+2+3+5=13), loaded a preset,
+  confirmed canvas output — zero JS console errors.
+
+### Fixed — Responsive nav collision + expandable menus (mobile follow-up)
+On narrow viewports the `.rk-nav` pill (`assets/menu.js`) — centered and, since
+the light/dark pass, three buttons wide (Home/Menu/Theme) — floated directly on
+top of the header content on the Texture & Bump Map Generator page, crushing
+the breadcrumb text under it. Fixed the collision and used it as the occasion
+to declutter the nav generally, per the "use expandable menus/icons to make it
+less busy" ask:
+- **`assets/menu.js`**: `.rk-nav` moved from centered-floating (`left:50% +
+  translateX`) to a fixed top-right corner (`right:16px`, `10px`/`480px`
+  breakpoint), so it no longer sits over left-aligned header content at any
+  width.
+- **`assets/theme.js`**: the theme toggle no longer renders as its own
+  persistent third square in the pill. It now folds into menu.js's existing
+  expandable `.rk-pop` popover as the first menu item (icon + "Switch to
+  light/dark mode" label), so the pill itself stays at two buttons (Home +
+  Menu) — literally the same footprint as before light/dark mode shipped.
+  Falls back to the old standalone-button behavior if `.rk-pop` isn't present
+  for some reason.
+- **Header CSS, all four pages**: `header`/`#app-header` now reserve
+  `padding-right` for the pill's footprint and allow wrapping
+  (`flex-wrap: wrap` on root/keyshot, ellipsis-truncation via `min-width: 0` +
+  `text-overflow: ellipsis` on proc-gen's `.crumbs`, since that header is
+  `position: sticky` and shouldn't grow tall). Verified headless at 360–430px:
+  no rect overlap between `.rk-nav` and any header text on any of the four
+  pages.
+- **Texture & Bump Map Generator control panel**: the remaining flat sections
+  (Preset, Pattern, Shape, Preview & Animation) are now `<details open>` with
+  the same chevron affordance Surface & Tone already had, so the whole panel
+  is uniformly collapsible — expanded by default (nothing hidden), collapsible
+  per-section on a small screen instead of one long scroll. The primary
+  "Static maps" export actions stay a plain, always-visible, non-collapsible
+  section — that's the main call to action and shouldn't cost a tap to reach.
+- Verified headless (Edge, mobile viewport 390–430px + a functional regression
+  pass at desktop width): zero nav/header overlap on all four pages; popover
+  opens with the theme item first and 6 items total; theme flips dark→light
+  through the new popover item; all 5 `details.control-section` elements
+  present and open by default on first load; 17 pattern-related buttons, the
+  6-option preset dropdown, Randomize, and all 4 export buttons (with their
+  tooltips) present and clickable with zero JS console errors after the reorg.
+
+### Changed — Site-wide design review: readability, cohesion, light/dark mode, generator usability
+Implements `DESIGN_REVIEW` (lab repo) (all four lenses) across all four live pages
+(root `index.html`, this tool, `keyshot/index.html`, `keyshot/scripts.html`).
+Reorg/labels/tooltips only — no generator or export logic changed.
+
+- **Light/dark mode (new)**: added `assets/theme.js`, a single dependency-free
+  script (same philosophy as `assets/menu.js`) loaded synchronously as the
+  *first* `<script>` in every page's `<head>` — sets `documentElement`'s
+  `data-theme` and injects the light-theme variable overrides before first
+  paint (no flash), resolves from `localStorage('renkon-theme')` else
+  `prefers-color-scheme`, and injects a sun/moon toggle button into the
+  `.rk-nav` pill `menu.js` builds (pill becomes Home + Menu + Theme). Light
+  palette keeps all three brand roles recognizable (`--c-structural` blue
+  unchanged, `--c-fluid` teal deepened slightly, `--c-accent` orange deepened)
+  while passing AA contrast on the light backgrounds. Preview/relief
+  viewports (`--stage-bg`) intentionally stay dark in both themes — a
+  texture/normal-map preview reads best on a dark stage. Fixed the
+  chrome colors that were previously theme-blind: `.mini-stage`,
+  `.canvas-panel canvas`, `.large-stage` now use `var(--stage-bg)`;
+  `.text-field-wrap input` uses `var(--panel-bg)`; `.btn.primary:hover`'s
+  hard-coded `color:#001A33` is now `var(--bg)`. New-tab export pages (PNG
+  viewer, frame gallery — separate `document`s with no RENKON chrome) stay
+  hard-coded dark by design, not wired to theme.
+- **Readability**: smallest label/chip tier 9px → 10px; body/help copy
+  (`.tile p`/`.card p`, `.param-hint`, `.status-line`, footers) 11px → 12px;
+  tracking on the two 10px uppercase section-labels (`.pattern-group-label`,
+  `.section-label`) tightened 0.1em → 0.06em; `--muted` lightened
+  `#7a7f83` → `#93999e` (≈6.4:1 on `--panel-bg`, was ≈4.0:1); `footer.note`
+  capped at `max-width:74ch`. Same token bumps applied to root and both
+  keyshot pages.
+- **Cohesion**: this tool now loads `reveal.js` (previously the only one of
+  the four pages without it) — content fades in on first paint; hash-router
+  navigations do **not** re-trigger it (`reveal.js`'s `run()` is single-shot
+  by design, guarding the root landing page's splash handoff — re-arming it
+  safely for a second run was out of scope for this pass, so proc-gen
+  intentionally only gets the first-paint reveal, never a blank page).
+  `.page-head h1` now 17px and focus-outline offset 3px, matching the other
+  three pages. Added the RENKON wordmark to `#app-header` (links to
+  `../../index.html`), kept sticky. Back-nav now reads "← Back to {label}"
+  (was "↑ Up to {label}"), matching keyshot's metaphor. `.card h2` aligned to
+  13px/weight 500 to match `.tile h2` on the other pages (layout/class
+  untouched — `.card` was deliberately *not* re-plumbed into `.tile`).
+- **Generator usability (Texture & Bump Map Generator)**: the flat
+  `.texture-controls` wall is now six ordered, labeled sections — **Preset**
+  (moved up front, split out of the old combined Seed row), **Pattern**
+  (pattern buttons + Seed/Randomize), **Shape** (Scale/Octaves/Count + a
+  "Pattern Options" sub-label over the per-pattern custom rows), **Surface &
+  Tone** (Roughness/Contrast/Levels/Invert, in a `<details open>`), **Preview
+  & Animation** (Bump Strength/Light Angle + Animate/Tile Preview, renamed
+  "Tile Preview (QA)"). Preview canvases got one-line captions ("This is the
+  exportable data." / "Lighting preview only…"). Export is now a labeled
+  section split into **Static maps** (Height/Bump, Preview Render, Normal
+  Map) and an **Animated** `<details open>` group (frame count + Export Frame
+  Sequence), each button carrying a `title` tooltip; the footer paragraph
+  stays as the long-form backup. This is DOM reorder + label/caption/
+  `<details>` nodes only — `state`, `computeTextureData`, `syncPatternUI`,
+  `regenerate()`, every export handler, and the preset engine are
+  byte-identical in behavior. Verified via headless Edge: all 13 patterns
+  still produce non-degenerate, NaN-free output after the reorg; all 5
+  built-in presets, Randomize, Tile Preview, Play/loop, and all 4 export
+  buttons + frame-count select remain present and functional; both
+  `<details open>` blocks default open.
+- **Generator usability (Overlay Asset Customizer)**: the 6-swatch palette
+  panel — which used to render fully expanded on every asset's customize
+  screen — is now a `<details>` collapsed by default ("Palette (advanced) —
+  recolor all assets"); this is the one intentionally collapsed-by-default
+  disclosure in the whole pass, everything else defaults open. Fixed the
+  dead **Save Palette** button: it called `window.storage`, an
+  environment-injected API that doesn't exist in a plain browser (same root
+  cause the texture-preset `localStorage` wrapper below already documents
+  and works around) — Save/Load Palette now use `localStorage` directly
+  under `palette:default`, and a saved palette is reloaded automatically on
+  mount. Added `title` tooltips to Opacity/Thickness/Speed/Roundness.
+- **Verified headless** (Edge, `--headless=new --allow-file-access-from-files
+  --dump-dom`, driven through the live UI, per the ADVANCED_TEXTURES brief's
+  verification pattern): theme resolves correctly pre-paint with no flash on
+  all 4 pages, toggle flips + persists across reload on all 4 pages,
+  `--muted`/`--text` contrast ≈5.9–16.5:1 in both themes on `--panel-bg`
+  (`--c-accent` on `--panel-bg` in light mode measures ≈4.3:1 — a hair under
+  strict AA for small text; this is the doc-specified, unmodified palette
+  value, used mostly for borders/interactive elements rather than body text —
+  flagged, not changed, since the palette was pre-approved in the review
+  doc); Overlay Customizer palette panel confirmed collapsed by default with
+  all 6 swatches reachable, Save Palette confirmed writing to and surviving
+  in `localStorage` across reload; no JS console errors across the full
+  interaction sweep (39 pattern-button clicks, preset load, theme toggles,
+  export clicks).
+
+### Added — Pro Finish P2: Knurling, Orange Peel, Anodize Swirl
+- Three more art-directed patterns join the **Pro Finish** group (now
+  `machining`, `paint`, `knurl`, `peel`, `anodize`), per
+  `ADVANCED_TEXTURES` (lab repo)'s "P2 — stretch goals, fleshed out" spec. All
+  three ship through the existing generic plumbing with zero changes to
+  preset/tiling/export code — `PATTERN_GROUPS`, `PATTERN_META`,
+  `TEXTURE_GENERATORS`, and the custom-param mechanism (`state.custom[kind]`)
+  already covered them; only additive entries were needed.
+- **Knurling**: two directional cosine-groove bands (same profile Machining
+  Marks established) crossed at a user-controlled `angle` and `angle + 90°` —
+  derived, not hardcoded to ±45, so any crossing (not just a symmetric
+  diamond) is reachable. Custom params: `angle` (0–90°, default 30),
+  `pitch` (2–40, preview-size-normalized like Machining's), and `mode` — a
+  2-option `select` (`cross`/`straight`) standing in for a boolean, since the
+  shipped custom-param mechanism has no checkbox type. `cross` multiplies the
+  two bands (`bandA * bandB`) for a diamond knurl; `straight` uses `bandA`
+  alone. Reuses shared `roughness` for groove-edge depth, same role as
+  Machining Marks. Animate: both bands' phase advances together (tool still
+  cutting) — seamless loop, static (animate off) matches the `time=0` frame,
+  same convention as Machining Marks/Wood Grain/Waves.
+- **Orange Peel**: fine Worley dimpling blended with low-frequency noise for
+  irregularity — `data[i] = worleyValue*(1-blend) + noiseValue*blend`. Cell
+  size is `w/(count*3)`, noticeably finer than Cellular's own `w/count`, so
+  it reads as dimpling rather than blobs even at `blend = 0`. Custom param:
+  `blend` (0–0.6, default 0.25); reuses shared `count` (cell density) and
+  `roughness` (Worley falloff softness, same role as in Cellular). Animate:
+  reuses Cellular's wiggle-the-feature-points trick verbatim rather than
+  inventing new motion — this is a finish variant of Cellular, not a new
+  animation personality, so it also inherits Cellular's existing convention
+  where the un-animated static frame (no wiggle) is not pixel-identical to
+  the animated frame at `time=0` (wiggle evaluated at each point's own
+  phase) — that's Cellular's own established, already-shipped behavior, not
+  a regression or a new quirk introduced here.
+- **Anodize Swirl**: a radial variant of Paint Strokes — same accumulation
+  loop (seed points, step-and-deposit-a-dab, `Math.min(1, existing + dab)`),
+  but the base stroke direction is recomputed every step as
+  `atan2(y - cy, x - cx) + PI/2` (tangential to the radius from canvas
+  center) instead of one fixed straight angle, still perturbed by the same
+  turbulence-scaled flow-field bend Paint Strokes uses. Seed points are
+  ring-biased (`r = maxRadius * sqrt(rng())`, uniform-area over the disc)
+  rather than uniform-random, since radial brushing reads denser away from
+  dead-center. Custom params: `strokeLength`/`turbulence`, same names and
+  preview-size normalization as Paint Strokes (safe to reuse — the mechanism
+  namespaces by pattern kind). Animate: same progressive-reveal trick and the
+  same documented one-frame loop-boundary snap as Paint Strokes; static
+  (animate off) renders fully-grown strokes, matching Paint Strokes'
+  convention.
+- **Verified headless** (Edge, driven through the live UI via a scratch
+  `window.__TEST__` hook exposing `state`/`regenerate` — not by calling
+  internal functions directly, and not present in the shipped file): no
+  `NaN` and non-degenerate min/max spread for all 3 new patterns at both
+  320px preview and 1024px export size; custom controls render with correct
+  labels/types (`select` for Knurling's Mode, `range` for Angle/Pitch/Blend/
+  Stroke Length/Turbulence) and are hidden for all other 12 patterns (10
+  pre-existing + the other 2 new ones) — confirmed by inspecting every
+  pattern's custom-wrap visibility across all 13 kinds; changing each custom
+  param changes the output hash; Knurling's `cross` vs `straight` modes
+  produce different hashes and changing `angle`/`pitch` changes structure;
+  Orange Peel's `blend` changes output and, even at `blend = 0`, differs from
+  plain Cellular in both hash and pixel-level structure (finer cell
+  frequency from the `w/(count*3)` cell size) — confirming it doesn't
+  collapse to a re-parameterized Cellular; Anodize Swirl's direction verified
+  genuinely tangential by re-deriving the exact `baseAngle` formula at two
+  canvas points 90° apart — dot product with each point's own radius vector
+  is 0 (perpendicular to radius, ruling out radial-outward) and the two
+  points' direction vectors have a nonzero cross product / zero dot product
+  with each other (not parallel, ruling out one fixed straight angle); 4
+  distinct `time` values produce 4 distinct frame hashes for all 3 new
+  patterns; static-vs-animated-`time=0` matches each pattern's documented
+  convention (Knurling: static == t=0, seamless-loop family; Orange Peel:
+  static != t=0, inherited from Cellular's own established behavior; Anodize
+  Swirl: static == fully-grown != t=0, same accepted snap as Paint Strokes).
+  **Regression**: all 10 pre-existing patterns' static output AND 4 sampled
+  animated frames each are byte-identical (same FNV-1a-style pixel hash)
+  between the pre-edit baseline and the post-edit file, at a fixed seed —
+  zero drift from adding the 3 new patterns. Round-trip: set distinctive
+  custom values on all 5 Pro Finish kinds, hopped through all 13 patterns,
+  confirmed every kind's values survived unchanged (no cross-contamination
+  via the shared `state.custom[kind]` namespacing).
+
+### Added — Overlay Asset Customizer: Export Frames (retires `gif.js`)
+- **Export Frames** on the Overlay Asset Customizer replaces the old
+  **Export GIF** button. `exportFrameSequence()` reuses the existing
+  frame-capture loop from the old `exportGIF()` almost verbatim — the
+  `asset.engine === "css"` / `"smil"` branches, `bakeCssFreeze`/
+  `bakeSmilFreeze`, `resolvedSvgMarkup`, `svgToImage`, the 20-frame /
+  speed-adjusted timing math — but instead of feeding frames to `gif.js`'s
+  encoder, each frame goes `canvas.toBlob()` → `URL.createObjectURL()` →
+  `{ url, filename }`, matching the Texture & Bump Map Generator's own
+  frame-sequence export. Filenames follow the same convention:
+  `<asset.id>_0001.png … _0020.png`. On completion it calls the existing,
+  unmodified `openFrameGalleryInNewTab(frames, asset.id)` — same numbered
+  gallery + "Download All" UX the texture tool already ships. Static-engine
+  assets are unaffected — they still get no animated-export button at all.
+- PNG export now carries the `primary` button styling (previously reserved
+  for GIF, the "recommended" export); Export Frames is a plain `btn` — PNG is
+  the simple default, Frames is the animated-export path for assets that
+  loop or play once.
+
+### Removed — `gif.js` (last external dependency in the repo)
+- Deleted the `<script src="https://cdnjs.cloudflare.com/…/gif.js">` tag,
+  `getGifWorkerBlobUrl()`/`gifWorkerBlobUrlPromise` (the same-origin Worker
+  re-hosting workaround gif.js needed), and the old `exportGIF()` function.
+  This was the last external dependency anywhere in the repo — everything is
+  now native browser APIs (Canvas, `blob:` URLs, Web Animations API, native
+  SVG time control), no CDN, no Worker, no build step. Updated the footer
+  note in `mountOverlayKit` and root `CLAUDE.md`'s dependency callout to
+  match.
+
+### Added — preset library (backlog #3)
+- **Save Preset / preset dropdown** next to Randomize on the Texture & Bump
+  Map Generator. Save Preset `prompt()`s for a name (same UX level as the
+  Overlay Customizer's palette Save/Load — this file doesn't avoid `prompt()`
+  for this kind of thing) and serializes the current look — `pattern`,
+  `scale`, `octaves`, `count`, `roughness`, `contrast`, `levelsBlack`,
+  `levelsWhite`, `levelsGamma`, `bumpStrength`, `lightAngle`, `invert`, and
+  the *full* `state.custom` object (every pattern kind's custom params, not
+  just the active one) — to storage. The dropdown lists built-ins first, then
+  user-saved presets, and applies every field to `state` on selection.
+- **Storage: `localStorage`, not `window.storage`.** The spec pointed at
+  `window.storage` (the API the Overlay Customizer's palette Save/Load already
+  uses — see `buildPalettePanel`), but that global is never defined anywhere
+  in this file; it's only ever referenced behind an `if (window.storage)`
+  guard that falls through to "Storage unavailable" otherwise. It's an
+  environment-injected API present in whatever sandboxed host supplies it —
+  not in a plain browser tab. Since this app is also opened as a plain local
+  file and served static on GitHub Pages (see root `CLAUDE.md`), building the
+  preset library on `window.storage` would ship a feature that silently does
+  nothing in this app's primary deployment targets. Presets use `localStorage`
+  directly instead, under the exact key-naming scheme the spec specifies:
+  `texturepreset:<name>` per preset, `texturepreset:index` (a JSON array of
+  user-saved names — built-ins are never added to this index) for
+  enumeration. Verified this actually persists (not just an in-memory
+  variable) via a genuine iframe reload, not just re-selecting in the same
+  session.
+- **Seed is deliberately excluded** from both save and load, per spec — a
+  preset is a *look* ("Steel — Brushed"), not a specific instance, and should
+  render that look on whatever seed is currently active. Verified: saving at
+  one seed, randomizing to a different seed, changing several other fields,
+  then reloading the preset restores every field except seed, and seed keeps
+  the randomized value rather than reverting.
+- **`time`/`animate` are also excluded** (a judgment call beyond the literal
+  spec text, which only calls out excluding seed): these are transient
+  playback state, not parameters of a look, and naively restoring `animate`
+  would desync the Play/Pause button and rAF loop from `state.animate` —
+  those two are only ever meant to change together via the existing
+  `setAnimate()` function, which a raw state write bypasses.
+- **UI resync on load**: applying a preset updates every control that could
+  otherwise go stale — shared sliders (position + numeric readout), the
+  active pattern button, `scaleRow`/`octaveRow`/`countRow` visibility, every
+  pattern's custom-param rows (both `range` and `select` types), and the
+  Invert checkbox — reusing the exact same row-visibility/custom-wrap resync
+  the pattern-button click handler already did (factored out into
+  `syncPatternUI`, called from both places) rather than duplicating it.
+- **5 built-in presets**, hardcoded in `index.html` (never touch storage),
+  spanning all 4 pattern groups: **Steel — Brushed** (Machining Marks,
+  linear, tight pitch) and **Weathered Paint** (Paint Strokes, high
+  turbulence) for Pro Finish per the backlog's own example pairing; **Rubber
+  — Pebbled** (Splotches, high count/contrast, inverted) for Weathering;
+  **Wood — Oak** (Wood Grain) for Organic; **Waves — Ripples** for Geometric.
+  Available in the dropdown with no prior save action (marked with a ★ to
+  distinguish them from user saves).
+- **Name-collision handling**: saving under a name that matches a built-in is
+  rejected outright (status line reads "Name reserved by a built-in — pick
+  another") rather than silently overwriting the built-in's stored value or
+  silently renaming the user's save — keeps the shipped reference presets
+  always exactly what's documented above.
+- Verified headless (Edge, driven through the live UI via `contentDocument`/
+  `contentWindow`, not by calling internal functions directly): fresh load
+  with empty storage lists all 5 built-ins spanning Pro Finish + the other 3
+  groups; save-then-reload at a fixed seed reproduces a byte-identical canvas
+  hash; the full round trip (save → randomize seed → change pattern/scale/
+  invert/contrast → reload preset) restores every non-seed field exactly
+  (pattern, all 10 shared sliders incl. Invert, and Machining Marks' Direction/
+  Pitch/Waviness) while seed keeps the randomized value; UI resync confirmed
+  via the actual DOM (active pattern button, Scale/Octaves/Count rows hidden
+  for Machining Marks, custom rows populated); a genuine iframe reload (not
+  just re-selecting) still lists and correctly loads the saved preset,
+  confirming real persistence; smoke-checked all 10 patterns for non-degenerate
+  canvas stats (no NaN, sensible min/max spread) and all 3 static exports
+  (Height/Bump, Preview Render, Normal Map) still fire `window.open` with no
+  thrown errors after these changes.
+
+### Added — normal map export (backlog #2)
+- **Export Normal Map PNG** button on the Texture & Bump Map Generator, next
+  to Export Height/Bump Map PNG and Export Preview Render PNG. Produces a
+  tangent-space RGB normal map — the material channel a render engine
+  typically wants over a raw height map — via a Sobel filter (`heightToNormalMap`)
+  applied to the same `data` array `computeTextureData` already produces at
+  `TEXTURE_EXPORT_SIZE` (1024). Pattern-agnostic: works unmodified across all
+  10 patterns (the 8 base patterns plus Machining Marks/Paint Strokes from
+  Advanced Textures) since it operates purely on the generic height field, not
+  any pattern-specific state.
+- **Reuses `state.bumpStrength`** as the Sobel strength input — no new
+  slider — so the normal map's apparent intensity matches what the Bump
+  Preview panel is already showing for the same setting.
+- The Sobel `at(x, y)` sampler wraps toroidally (`(x + w) % w`) independent of
+  whether the source pattern actually tiles (see `FEATURE_BACKLOG` (lab repo)
+  item #1/#2) — a deliberate one-pixel-wide inaccuracy at the border for
+  non-tiling patterns, in exchange for not needing edge-clamp special-casing.
+  Separate from, and doesn't reuse, the tiling-QA `buildValueFieldTiling`/
+  `sampleFieldWrap` helpers added for Noise/Grid generation — those wrap the
+  noise lattice at generation time; this wraps the already-rendered pixel
+  grid at export time.
+- Output is a real 4-channel `Uint8ClampedArray` (`paintNormalMap`, mirroring
+  `paintHeightMap`/`paintBumpPreview`'s `ctx.createImageData` +
+  `putImageData` pattern) and exports via the same `openPngInNewTab` blob-URL
+  pattern as the other two static exports. Filename: `normal_<pattern>_<seed>.png`.
+- Verified headless (driver clicks the real button through the live UI,
+  stubs `window.open` to capture the blob URL, and reloads that exact blob
+  as an `<img>` to read back pixels — not just the underlying function in
+  isolation): output is 1024×1024, alpha is 255 across every pixel of the
+  actual exported image, filename matches convention. Also verified directly
+  on `heightToNormalMap`'s output: no NaN on Grid/Noise/Machining Marks; B
+  channel reads 255 (straight-up) on a near-flat region (Noise at
+  `bumpStrength` 0.05) and 205–255 across Grid at `bumpStrength` 1 (edges
+  pull it down from full flat, as expected); Grid's R and G channels both
+  swing the full 41–214 range (edges run both axes on a 2D grid), Machining
+  Marks swings R 86–164 / G 67–188 (anisotropic, as expected for directional
+  grooves); raising `bumpStrength` 0.1 → 3.0 raises the max R-channel
+  deviation from 128 (flat) from 12 to 120, confirming strength drives
+  intensity. The two existing static exports and frame-sequence export are
+  untouched code (diff is additive-only — no edits inside `paintHeightMap`,
+  `paintBumpPreview`, `computeTextureData`, or the two existing export
+  handlers) and reproduce identical hashes at a fixed seed/pattern.
+
+### Added — seamless XY tiling: Tile Preview toggle; Noise + Grid tile exactly (backlog #1)
+- **Tile Preview toggle** next to Play/Pause in the animation row of the
+  Texture & Bump Map Generator: a display-only QA view that repeats the
+  already-computed map 3×3 at 1/3 scale in both preview panels (Texture /
+  Height Map and Bump Preview), making spatial seams visible on every
+  pattern — including the ones that remain non-tiling. It re-tiles each
+  fresh frame while the animation is playing, and never touches `state`,
+  `computeTextureData`, or any export path: exports always produce the
+  single un-tiled map (verified — export data hash identical with the
+  toggle on vs. off).
+- **Noise now tiles exactly in X and Y**, static and animated. Each octave's
+  value-noise lattice is snapped to a whole number of cells per tile and
+  sampled with toroidal wraparound (`buildValueFieldTiling` /
+  `sampleFieldWrap`); both independently-seeded fields the animated path
+  blends go through the same tiling build, so every animated frame tiles
+  too. Verified: seam wrap-delta (last column/row vs. first) dropped from
+  ~25–45× the interior-gradient level to below it, at preview (320) and
+  export (1024) sizes, static and mid-animation.
+- **Grid now tiles exactly when animated.** The static grid already tiled
+  (spacing divides the tile exactly; per-pixel jitter is structureless);
+  what seamed was the animated shimmer's fixed spatial frequency
+  (0.06 rad/px doesn't complete whole cycles per tile). That frequency is
+  now quantized to the nearest whole number of cycles per tile (~3 at
+  320px) — same visual character, exact wrap at any size.
+- **Expected small output change** (fixed seed) for Noise (snapped lattice
+  cell size + wraparound sampling) and animated Grid (quantized shimmer
+  frequency, ~2% at 320px). Static Grid is byte-identical. The other 8
+  patterns (Cellular, Wood Grain, Waves, Scratches, Splotches, Cracks,
+  Machining Marks, Paint Strokes) are byte-identical before vs. after
+  (per-pattern FNV hash at a fixed seed, static + animated) — the tiling
+  field builders are a parallel pair, and the non-tiling
+  `buildValueField`/`sampleField` warp/flow paths those patterns use are
+  untouched.
+- **Documented non-tiling for this pass**: Cellular, Wood Grain, Waves,
+  Scratches, Splotches, Cracks, Machining Marks, Paint Strokes. Use the
+  Tile Preview toggle to judge whether a given seed/placement seams badly
+  enough to matter; Cellular/Cracks are the natural next fix (toroidal
+  Worley neighbor search — see `FEATURE_BACKLOG` (lab repo) item #1).
+
+### Added — Pro Finish patterns + per-pattern custom params (Advanced Textures P1)
+- **New pattern group "Pro Finish"** on the Texture & Bump Map Generator, with
+  two art-directed patterns modeled on real finishing processes (10 patterns
+  total). Both are seeded/deterministic and reuse the whole existing pipeline
+  (Contrast, Levels, Invert, bump preview, static + frame-sequence export)
+  unmodified:
+  - **Machining Marks** — regular tool-mark grooves with a cosine profile
+    (rounded in the bump preview, not razor edges). *Linear* mode is a
+    mill/planing pass (parallel grooves at a fixed pitch with low-frequency
+    toolpath waviness); *Radial* is a lathe/turning pass (concentric grooves
+    around the canvas center — deliberately centered, unlike Wood Grain's
+    seeded pith, so the map stays placeable). Custom params: Direction
+    (Linear/Radial), Pitch, Waviness; the shared Roughness slider controls
+    groove-edge sharpness. Animated: the toolpath advances (phase-shift,
+    seamless loop, same trick as Wood Grain/Waves).
+  - **Paint Strokes** — hand-brushed streaks that follow a low-frequency flow
+    field (`buildValueField`), so strokes share a smoothly-varying regional
+    direction instead of one printed angle or Scratches' unrelated segments.
+    Each stroke deposits soft round brush dabs (Splotches-style accumulation)
+    with width tapering at both ends. Custom params: Stroke Length,
+    Turbulence; shared Count = number of strokes, Roughness = dab edge
+    softness. Animated: strokes *grow* progressively along their length each
+    loop — a directional reveal, deliberately accepting a one-frame snap at
+    the loop boundary instead of a seamless in-place loop (documented in-file;
+    not a bug). Static output renders the fully grown strokes.
+- **Per-pattern custom-param mechanism**: a `PATTERN_META[kind].custom` array
+  declares extra controls (`type: "range"` slider rows or `type: "select"`
+  button groups) beyond the shared slider set. Rows are built once at mount
+  into a per-pattern container (shown only while that pattern is selected),
+  and values live in `state.custom[kind][key]` so they persist across pattern
+  switches and never collide. Because every export path passes `state`
+  straight into `computeTextureData`, custom params flow into static and
+  frame-sequence exports with zero export-code changes. Custom *length*
+  params (Pitch, Stroke Length) are defined in px at preview size and
+  normalized by `w / TEXTURE_PREVIEW_SIZE` inside the generators, so the
+  320px preview and 1024px export show the same texture. The 8 existing
+  patterns declare no custom params and are unaffected — verified
+  pixel-identical (per-pattern FNV hash over the rendered canvas) before vs.
+  after at a fixed seed.
+
+### Added — four new texture patterns, grouped selector, Levels
+- **New patterns**: Cellular, Wood Grain, Waves, Cracks — alongside the
+  existing Noise, Grid, Scratches, Splotches (8 total). Cellular and Cracks
+  share a new Worley (cellular-noise) helper (`buildWorleyField` /
+  `sampleWorley`, jittered-grid nearest-point search) — Cellular fills each
+  cell from its distance to the nearest feature point, Cracks thresholds the
+  gap between nearest and second-nearest into thin boundary lines. Wood Grain
+  is warped concentric rings from a seeded pith point; Waves is a warped
+  directional sine band. All four are animated (seamless loop) using the same
+  conventions as the original four.
+- **Grouped pattern selector**: patterns are organized into Organic (Noise,
+  Cellular, Wood Grain), Geometric (Grid, Waves), and Weathering (Scratches,
+  Splotches, Cracks), each its own labeled row instead of one flat button
+  list. Which of Scale/Octaves/Count show per pattern is now a lookup table
+  (`PATTERN_META`) instead of a two-branch ternary.
+- **Levels**: Black Point / White Point / Gamma sliders, Photoshop-style —
+  remaps to the [black, white] range then applies a gamma curve. Runs after
+  Contrast, before Invert, in `computeTextureData`.
+
+### Added — animated frame-sequence export (BLOB-URL-GALL)
+- **Export Frame Sequence (PNG)** on the Texture & Bump Map Generator. Renders
+  N frames (12/24/48, selectable) across one `state.time` loop at
+  `TEXTURE_EXPORT_SIZE`, each painted to a `blob:` URL PNG, and opens one new
+  tab hosting a numbered gallery — a `<img>` + per-frame Save link for each
+  frame (`<pattern>_<seed>_0001.png … _000N.png`), plus a "Download All" that
+  sequentially triggers each frame's own download link. No zip dependency —
+  stays consistent with the Worker-free, dependency-minimal export path.
+  This is priority (1) from `ANIMATED_EXPORT` (lab repo) and the actual
+  deliverable a render engine wants for an animated bump channel (a numbered
+  image sequence, not a GIF/video).
+
+### Fixed — Droplet Stream (and other multi-particle `animateMotion`) GIF export
+- `bakeSmilFreeze()` was reading `liveEl.transform.baseVal` to capture each
+  `animateMotion`-driven particle's position when freezing a frame for GIF
+  capture. `animateMotion`'s supplemental transform is never reflected in
+  `baseVal` (the static, non-animated attribute) — verified empirically it's
+  not in `animVal` either — so the freeze silently produced no transform at
+  all, leaving the particle at its untransformed local origin. For Droplet
+  Stream's three particles (staggered `begin` at 0, dur/3, 2dur/3) this meant
+  particles popped in from the top-left corner of the viewBox instead of
+  riding the guide path; single always-on particles (e.g. Traveling Pulse)
+  were silently frozen at the wrong spot every frame instead.
+- Fix: derive the frozen matrix from `getCTM()` (element relative to the SVG
+  root) instead of `baseVal` — the only DOM read that actually reflects a live
+  `animateMotion` transform.
+- Also fixed the GIF frame-sampling window: it previously scrubbed
+  `time ∈ [0, dur)`, which for staggered-begin particles includes a stretch
+  before their own `begin` has elapsed (SMIL semantics: no motion applied
+  yet). Now sampling starts at `max(begin)` across the asset's
+  `animateMotion` elements — the system is periodic with period `dur` from
+  that point on, so this captures one clean, pop-in-free loop.
+
+### Added — animated texture/bump preview (handoff §6.1 + §6.2)
+- **Time-parametrized generators.** Each of the four generators takes an
+  `animate` flag + `time` (0–1, one loop) and has its own seamless-looping
+  motion: noise *breathes* (cyclic blend to a second field and back), grid
+  *shimmers* (phase-shifted sinusoidal coord displacement), scratches *flicker*
+  (per-streak fade in/out on staggered phase), splotches *boil* (per-blob
+  size/strength pulse). Loops are seamless (`time 0` frame == `time 1` frame)
+  and verified to have no boundary seam.
+- **Live rAF preview.** Play/Pause button + loop-duration slider (0.5–8s) drive
+  a `requestAnimationFrame` loop that cycles `time` and repaints both canvases.
+  Self-cleans when you navigate away from the tool.
+- **No regression.** With animation off, generator output is byte-identical to
+  before — all motion is gated behind the `animate` flag. Pause returns to the
+  canonical static frame.
+
+### Changed — PNG export opens in a new tab
+- Both texture exports now render to a `blob:` URL and open a small host page in
+  a new tab (image + a working "Save PNG" link), instead of triggering a direct
+  download. This sidesteps download restrictions (sandboxed iframes, etc.) and
+  the `data:`-URL top-frame-navigation block, and works on Pages/local/sandbox.
+  Falls back to a direct download if the popup is blocked.
+
+### Still to do (next)
+- Optional WebM export via `MediaRecorder` + `canvas.captureStream()` (§6.3
+  priority 2) — nice-to-have single-file preview, not needed for the
+  KeyShot-facing deliverable which the frame sequence above now covers. See
+  `ANIMATED_EXPORT` (lab repo).
+- Remove the dead `gif.js` CDN dependency and GIF-export code path from the
+  Overlay Asset Customizer per the plan's §3 recommendation ("GIF — drop it")
+  — the Droplet Stream freeze bug is fixed, but the underlying Worker/CSP
+  fragility this plan flagged is still the right reason to eventually retire
+  it in favor of a frame-sequence gallery there too.
+
+## [v7] — 2026-07-10
+
+Baseline import into the RENKON repo. This is the `toolkit_7.html` snapshot,
+brought in as-is and renamed:
+
+- Renamed `toolkit_7.html` → `index.html`; retitled "Overlay Toolkit" →
+  "Parametric Generators" (the app houses two tools, not just overlays).
+- Two tools present:
+  - **Overlay Asset Customizer** — 44 SVG overlays, type→subtype→customize
+    drill-down, global palette + per-asset param sliders, custom text, PNG export.
+  - **Texture & Bump Map Generator** — procedural grayscale height/bump maps
+    (noise, grid, scratches, splotches), simulated-relief preview, PNG export.
+    Static output only for now.
+- Known issue carried over: **GIF export is broken** (cross-origin Worker /
+  CSP problem — see handoff brief §3). PNG export works.
+
+### Pre-import history (manual `toolkit_1..7.html` saves)
+Not reconstructed commit-by-commit — the v1→v7 evolution predates version
+control. `HANDOFF_BRIEF_v2` (lab repo) covers the design-system rationale and
+architecture as of this baseline.

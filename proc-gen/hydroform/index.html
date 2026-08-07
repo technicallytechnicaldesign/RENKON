@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hydroform &mdash; RENKON</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap"></noscript>
+<link rel="stylesheet" href="../../assets/generator-ui.css">
+<style>
+  :root {
+    --bg: #0C141D;
+    --panel-bg: #14202C;
+    --panel-bg-raised: #182635;
+    --line: #22303E;
+    --text: #ECF2F6;
+    --muted: #6E7E8C;
+
+    --c-structural: #002F67;   /* base/structural, NOT a brand accent */
+    --c-fluid: #4FD1D9;        /* flow teal */
+    --c-accent: #F08A3C;       /* safety orange — interactive/points only */
+    --stage-bg: #060a10;       /* dark canvas/preview backdrop */
+    --c-hud-text: #ECF2F6;     /* fixed-light text for chips pinned to a dark backdrop in both themes */
+    --c-hud-muted: #6E7E8C;    /* fixed-light muted text, same reasoning */
+
+    --font-display: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "Space Mono", ui-monospace, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  button, input, select { font-family: inherit; }
+  button { cursor: pointer; border-radius: 0; }
+  button:focus-visible, input:focus-visible, a:focus-visible, select:focus-visible {
+    outline: 2px solid var(--c-accent); outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+  }
+
+  /* sticky app header */
+  #app-header {
+    display: flex; align-items: center; gap: 20px;
+    padding: 14px 28px; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; background: var(--bg); z-index: 20;
+  }
+  #app-header .brand { display: flex; align-items: center; gap: 11px; color: var(--text); text-decoration: none; flex: none; }
+  #app-header .brand .mark { width: 26px; height: 26px; flex: none; color: var(--c-accent); }
+  #app-header .brand .mark svg { display: block; width: 100%; height: 100%; }
+  #app-header .wordmark { font-family: var(--font-display); font-size: 14px; letter-spacing: 0.28em; font-weight: 700; text-decoration: none; flex: none; }
+  #app-header .wordmark b { color: var(--c-accent); font-weight: 700; }
+  #app-header .crumbs {
+    font-family: var(--font-mono);
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+    flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #app-header .mark { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.08em; flex: none; }
+
+  #app-main { padding: 22px 28px 40px; max-width: 1600px; margin: 0 auto; }
+  .up-link {
+    font-family: var(--font-mono);
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--c-accent); font-size: 10px; letter-spacing: 0.06em;
+    text-transform: uppercase; margin-bottom: 14px;
+  }
+  .up-link:hover { text-decoration: underline; }
+  .page-head { margin-bottom: 16px; }
+  .page-head h1 { font-family: var(--font-display); font-size: 16px; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 6px; font-weight: 700; }
+  .page-head p { color: var(--muted); font-size: 12px; margin: 0; max-width: 84ch; line-height: 1.6; }
+  .page-head p a { color: var(--c-accent); }
+  .page-head p a:hover { text-decoration: underline; }
+
+  /* ============ HYDROFORM app shell (reskinned; engine untouched) ============ */
+  .app {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 344px;
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    height: calc(100vh - 208px);
+    min-height: 560px;
+  }
+
+  .stage {
+    position: relative;
+    min-width: 0;
+    overflow: hidden;
+    background: var(--stage-bg);
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+    touch-action: none;
+  }
+
+  .topbar {
+    position: absolute;
+    z-index: 5;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 12px;
+    pointer-events: none;
+  }
+
+  .status-cluster {
+    display: flex;
+    gap: 16px;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    background: rgba(6, 10, 16, 0.72);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--c-hud-muted);
+  }
+  .status-cluster b { color: var(--c-fluid); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+
+  .hint {
+    position: absolute;
+    z-index: 5;
+    left: 16px;
+    bottom: 16px;
+    padding: 7px 11px;
+    border: 1px solid var(--line);
+    background: rgba(6, 10, 16, 0.72);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    color: var(--c-hud-muted);
+    pointer-events: none;
+    max-width: 62%;
+    line-height: 1.5;
+  }
+
+  .panel {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--panel-bg);
+  }
+
+  .panel-head {
+    padding: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .panel-head h2 {
+    margin: 0 0 5px;
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .panel-head p {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+
+  .toolbar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    padding: 1px;
+    background: var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .btn {
+    font-family: var(--font-mono);
+    min-height: 38px;
+    padding: 8px 10px;
+    border: 0;
+    background: var(--panel-bg);
+    color: var(--text);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: color .15s ease, background .15s ease;
+  }
+  .btn:hover { color: var(--c-accent); background: var(--panel-bg-raised); }
+  .btn.primary { color: var(--c-accent); }
+  .btn.primary:hover { background: var(--c-accent); color: var(--bg); }
+  .btn.recording, .dock-btn.recording { color: #ff4d4d; animation: recording-pulse 1.1s ease-in-out infinite; }
+
+  @keyframes recording-pulse {
+    0%, 100% { background: var(--panel-bg); }
+    50% { background: var(--panel-bg-raised); }
+  }
+
+  .controls {
+    min-height: 0;
+    overflow-y: auto;
+    padding: 6px 16px 18px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+  }
+
+  details {
+    border-bottom: 1px solid var(--line);
+    padding: 4px 0 10px;
+  }
+  details:last-child { border-bottom: 0; }
+  summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 2px;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; color: var(--muted); font-size: 15px; font-weight: 400; }
+  details[open] summary::after { content: "–"; }
+
+  .control {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 5px 10px;
+    align-items: center;
+    padding: 6px 2px;
+  }
+  .control label { font-size: 12px; color: var(--text); }
+  .value {
+    min-width: 54px;
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--c-fluid);
+    font-variant-numeric: tabular-nums;
+  }
+
+  input[type="range"] {
+    grid-column: 1 / -1;
+    width: 100%;
+    accent-color: var(--c-accent);
+    cursor: pointer;
+  }
+
+  select, input[type="number"], input[type="text"] {
+    width: 100%;
+    height: 38px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: 0;
+    outline: none;
+    color: var(--text);
+    background: var(--panel-bg);
+    font-size: 12px;
+  }
+  select:focus-visible, input[type="number"]:focus-visible, input[type="text"]:focus-visible {
+    border-color: var(--c-accent);
+  }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 4px 0 8px;
+  }
+  .field label {
+    display: block;
+    margin-bottom: 6px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+  }
+
+  .color-field {
+    display: grid;
+    grid-template-columns: 42px 1fr;
+    gap: 8px;
+    align-items: center;
+  }
+  input[type="color"] {
+    width: 42px;
+    height: 38px;
+    padding: 3px;
+    border: 1px solid var(--line);
+    border-radius: 0;
+    background: var(--panel-bg);
+    cursor: pointer;
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 2px;
+    font-size: 12px;
+    color: var(--text);
+  }
+  .toggle-row input[type="checkbox"] {
+    width: 16px; height: 16px;
+    accent-color: var(--c-accent);
+    cursor: pointer;
+  }
+
+  .keybg { padding: 8px 2px 2px; }
+  .keybg-label {
+    display: block; font-size: 12px; color: var(--text); margin-bottom: 8px;
+  }
+  .keybg-swatches { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+  .keybg-sw {
+    width: 24px; height: 24px; border: 1px solid var(--line); cursor: pointer;
+    padding: 0; border-radius: 0; position: relative; background: transparent;
+  }
+  .keybg-sw:hover { border-color: var(--c-accent); }
+  .keybg-sw.on { outline: 2px solid var(--c-accent); outline-offset: 1px; }
+  .keybg-sw.sw-none {
+    background:
+      linear-gradient(135deg, var(--panel-bg-raised), var(--panel-bg) 60%, #04070b);
+  }
+  .keybg-sw.sw-none::after {
+    content: ""; position: absolute; left: -1px; top: 50%; width: 32px; height: 1px;
+    background: #E0342B; transform: rotate(-45deg); transform-origin: center;
+  }
+  .keybg-custom { display: inline-flex; align-items: center; margin-left: 1px; }
+  .keybg-custom input[type="color"] {
+    width: 28px; height: 24px; border: 1px solid var(--line); padding: 0;
+    background: transparent; cursor: pointer;
+  }
+  .keybg-note {
+    font-family: var(--font-mono); font-size: 9.5px; color: var(--muted);
+    margin-top: 8px; line-height: 1.5;
+  }
+
+  /* Variations modal */
+  .var-modal {
+    position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
+    background: rgba(6,10,16,0.82); backdrop-filter: blur(2px); padding: 24px;
+  }
+  .var-modal[hidden] { display: none; }
+  .var-modal-inner {
+    background: var(--panel-bg); border: 1px solid var(--line);
+    width: 100%; max-width: 1120px; max-height: 90vh; display: flex; flex-direction: column;
+  }
+  .var-modal-head {
+    display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-bottom: 1px solid var(--line);
+  }
+  .var-modal-title {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--c-accent); font-weight: 700;
+  }
+  .var-modal-hint { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-left: auto; }
+  .var-modal-head #varClose { flex: none; }
+  .var-modal-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 18px; overflow-y: auto;
+  }
+  @media (max-width: 820px) { .var-modal-grid { grid-template-columns: repeat(2, 1fr); } }
+  .var-card {
+    padding: 0; border: 1px solid var(--line); background: #060a10; cursor: pointer; position: relative;
+    aspect-ratio: 16 / 9; overflow: hidden; transition: border-color 0.12s ease, transform 0.12s ease;
+  }
+  .var-card:hover, .var-card:focus-visible { border-color: var(--c-accent); outline: none; transform: translateY(-2px); }
+  .var-card canvas { width: 100%; height: 100%; display: block; }
+  .var-card .var-tag {
+    position: absolute; left: 6px; bottom: 6px; font-family: var(--font-mono); font-size: 9px;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--text);
+    background: rgba(6,10,16,0.7); padding: 2px 6px; pointer-events: none;
+  }
+
+  .mode-card {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 12px;
+    margin: 3px 0 10px;
+    border: 1px solid var(--line);
+    background: var(--panel-bg-raised);
+  }
+  .mode-card small { color: var(--muted); line-height: 1.45; font-size: 11px; }
+
+  .footer-note {
+    padding: 12px 16px 14px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    border-top: 1px solid var(--line);
+    line-height: 1.6;
+  }
+
+  /* presentation / fullscreen states (class toggles driven by the engine) */
+  .app.ui-hidden { grid-template-columns: minmax(0, 1fr); }
+  .app.ui-hidden .panel { display: none; }
+
+  .app.is-fullscreen {
+    height: 100%;
+    border: 0;
+    gap: 0;
+    background: var(--stage-bg);
+  }
+  .app.is-fullscreen .stage { border: 0; }
+
+  .presentation-dock {
+    position: absolute;
+    z-index: 8;
+    right: 16px;
+    bottom: 16px;
+    display: flex;
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    opacity: .32;
+    transition: opacity .2s ease;
+  }
+  .presentation-dock:hover,
+  .app.ui-hidden .presentation-dock,
+  .app.is-fullscreen .presentation-dock { opacity: .96; }
+
+  .dock-btn {
+    font-family: var(--font-mono);
+    min-width: 38px;
+    height: 34px;
+    padding: 0 11px;
+    border: 0;
+    color: var(--c-hud-text);
+    background: rgba(6, 16, 23, 0.86);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .dock-btn:hover { color: var(--c-accent); background: var(--panel-bg-raised); }
+
+  .app:not(.ui-hidden) #floatingUiBtn .show-label { display: none; }
+  .app.ui-hidden #floatingUiBtn .hide-label { display: none; }
+
+  @media (max-width: 1024px) {
+    #app-main { padding: 16px; }
+    .app {
+      grid-template-columns: 1fr;
+      grid-template-rows: minmax(460px, 62vh) auto;
+      height: auto;
+    }
+    .panel { max-height: none; }
+    .controls { overflow: visible; }
+    .app.ui-hidden { grid-template-rows: minmax(80vh, 1fr); }
+    .hint { max-width: 78%; }
+  }
+</style>
+<script src="../../assets/theme.js"></script>
+<script src="../../assets/reveal.js"></script>
+</head>
+<body>
+  <header id="app-header">
+    <a class="brand" href="../../index.html" aria-label="RENKON home">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round">
+          <circle cx="50" cy="50" r="44"/>
+          <g transform="rotate(0 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(72 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(144 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(216 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(288 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <circle cx="50" cy="50" r="8.5"/>
+        </svg>
+      </span>
+      <span class="wordmark">RENK<b>O</b>N</span>
+    </a>
+    <div class="crumbs">Parametric Assets / Hydroform</div>
+    <div class="mark">FLUID · CANVAS</div>
+  </header>
+
+  <main id="app-main">
+    <a class="up-link" href="../parametric-generators/index.html"><span aria-hidden="true">&larr;</span> Back to Parametric Assets</a>
+    <div class="page-head">
+      <h1>Hydroform</h1>
+      <p>Deterministic, real-time Canvas fluid study &mdash; impact splashes, pressurized jets, and vertical fountains.
+         Every seed is a repeatable variation. Pipe / process-flow networks moved to their own tool, <a href="../pipeform/index.html">Pipeform</a>.
+         Keys: <b>H</b> hide UI &middot; <b>V</b> record clip &middot; <b>F</b> fullscreen &middot; <b>Space</b> pause &middot; <b>R</b> replay.</p>
+    </div>
+
+    <div class="app" id="app">
+      <section class="stage" id="stage">
+        <canvas id="canvas" aria-label="Water simulation canvas"></canvas>
+        <div class="topbar">
+          <div class="status-cluster">
+            <span>FPS <b id="fps">60</b></span>
+            <span>PARTICLES <b id="particleReadout">0</b></span>
+            <span>SEED <b id="seedReadout">2048</b></span>
+          </div>
+        </div>
+        <div class="hint">H hides UI · V records a clip · F fullscreen · Space pauses · R replays</div>
+        <div class="presentation-dock" aria-label="Presentation controls">
+          <button class="dock-btn" id="floatingRecordBtn" title="Record a WebM clip">⏺ Record</button>
+          <button class="dock-btn" id="floatingUiBtn" title="Hide or show controls"><span class="hide-label">Hide UI</span><span class="show-label">Show UI</span></button>
+          <button class="dock-btn" id="floatingFullscreenBtn" title="Toggle fullscreen">⛶ Fullscreen</button>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <div class="panel-head">
+          <h2>Water Generator</h2>
+          <p>Shape a deterministic, real-time water study. Every seed creates a repeatable variation.</p>
+        </div>
+
+        <div class="toolbar">
+          <button class="btn primary" id="replayBtn">↻ Replay</button>
+          <button class="gen-randomize" id="randomBtn" title="Randomize all settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="1"/><circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none"/><circle cx="16" cy="8" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="8" cy="16" r="1.3" fill="currentColor" stroke="none"/><circle cx="16" cy="16" r="1.3" fill="currentColor" stroke="none"/></svg>Randomize</button>
+          <button class="btn" id="variationsBtn" title="Browse a grid of randomized variations">⊞ Variations</button>
+          <button class="btn" id="pauseBtn">Ⅱ Pause</button>
+          <button class="btn" id="exportBtn">↓ Export PNG</button>
+          <button class="btn" id="recordBtn">⏺ Record WebM</button>
+          <button class="btn" id="hideUiBtn">◫ Hide UI</button>
+          <button class="btn" id="fullscreenBtn">⛶ Fullscreen</button>
+        </div>
+
+        <div class="controls">
+          <div class="mode-card">
+            <select id="mode">
+              <option value="splash">Impact splash</option>
+              <option value="jet">Pressurized side jet</option>
+              <option value="fountain">Vertical fountain</option>
+            </select>
+            <small id="modeHelp">A crown-shaped impact with a dense central plume and secondary droplets.</small>
+          </div>
+
+          <details>
+            <summary>Generator</summary>
+            <div class="field-row">
+              <div class="field">
+                <label for="seed">Seed</label>
+                <input id="seed" type="number" min="1" max="999999" step="1" value="2048" />
+              </div>
+              <div class="field">
+                <label for="preset">Preset</label>
+                <select id="preset">
+                  <option value="custom">Custom</option>
+                  <option value="clean">Clean studio</option>
+                  <option value="violent">Violent impact</option>
+                  <option value="silky">Silky jet</option>
+                  <option value="mist">Fine mist</option>
+                </select>
+              </div>
+            </div>
+            <div class="toggle-row">
+              <span>Auto replay</span>
+              <input id="autoReplay" type="checkbox" checked>
+            </div>
+          </details>
+
+          <details>
+            <summary>Flow</summary>
+            <div class="control"><label for="pressure">Pressure / launch speed</label><span class="value" data-for="pressure"></span><input id="pressure" type="range" min="0" max="100" value="56" step="1"></div>
+            <div class="control"><label for="spread">Spread</label><span class="value" data-for="spread"></span><input id="spread" type="range" min="0" max="100" value="36" step="1"></div>
+            <div class="control"><label for="angle">Jet angle</label><span class="value" data-for="angle"></span><input id="angle" type="range" min="5" max="88" value="24" step="1"></div>
+            <div class="control"><label for="nozzle">Nozzle / source width</label><span class="value" data-for="nozzle"></span><input id="nozzle" type="range" min="1" max="100" value="28" step="1"></div>
+            <div class="control"><label for="density">Particle density</label><span class="value" data-for="density"></span><input id="density" type="range" min="200" max="2400" value="1550" step="50"></div>
+          </details>
+
+          <details>
+            <summary>Fluid behavior</summary>
+            <div class="control"><label for="gravity">Gravity</label><span class="value" data-for="gravity"></span><input id="gravity" type="range" min="20" max="220" value="100" step="1"></div>
+            <div class="control"><label for="drag">Air drag</label><span class="value" data-for="drag"></span><input id="drag" type="range" min="0" max="100" value="18" step="1"></div>
+            <div class="control"><label for="tension">Surface tension</label><span class="value" data-for="tension"></span><input id="tension" type="range" min="0" max="100" value="62" step="1"></div>
+            <div class="control"><label for="turbulence">Turbulence</label><span class="value" data-for="turbulence"></span><input id="turbulence" type="range" min="0" max="100" value="22" step="1"></div>
+            <div class="control"><label for="wind">Wind</label><span class="value" data-for="wind"></span><input id="wind" type="range" min="-100" max="100" value="0" step="1"></div>
+            <div class="control"><label for="droplet">Droplet scale</label><span class="value" data-for="droplet"></span><input id="droplet" type="range" min="10" max="100" value="34" step="1"></div>
+          </details>
+
+          <details>
+            <summary>Look development</summary>
+            <div class="field-row">
+              <div class="field">
+                <label>Water</label>
+                <div class="color-field"><input id="waterColor" type="color" value="#4fd1d9"><input id="waterHex" type="text" value="#4fd1d9" maxlength="7"></div>
+              </div>
+              <div class="field">
+                <label>Background</label>
+                <div class="color-field"><input id="bgColor" type="color" value="#060a10"><input id="bgHex" type="text" value="#060a10" maxlength="7"></div>
+              </div>
+            </div>
+            <div class="control"><label for="opacity">Water opacity</label><span class="value" data-for="opacity"></span><input id="opacity" type="range" min="10" max="100" value="64" step="1"></div>
+            <div class="control"><label for="highlight">Highlight intensity</label><span class="value" data-for="highlight"></span><input id="highlight" type="range" min="0" max="100" value="62" step="1"></div>
+            <div class="control"><label for="trail">Motion streak</label><span class="value" data-for="trail"></span><input id="trail" type="range" min="0" max="100" value="24" step="1"></div>
+            <div class="control"><label for="perspective">Depth / perspective</label><span class="value" data-for="perspective"></span><input id="perspective" type="range" min="0" max="100" value="42" step="1"></div>
+            <div class="toggle-row"><span>Surface & ripples</span><input id="surface" type="checkbox" checked></div>
+            <div class="toggle-row"><span>Specular sparkle</span><input id="sparkle" type="checkbox" checked></div>
+            <div class="toggle-row"><span>Transparent PNG export</span><input id="transparentExport" type="checkbox"></div>
+            <div class="keybg">
+              <span class="keybg-label">Keyable background</span>
+              <div class="keybg-swatches" id="keyBgSwatches">
+                <button type="button" class="keybg-sw sw-none on" data-key="none" title="Off — use the scene background"></button>
+                <button type="button" class="keybg-sw" data-key="#000000" title="Black" style="background:#000000"></button>
+                <button type="button" class="keybg-sw" data-key="#ffffff" title="White" style="background:#ffffff"></button>
+                <button type="button" class="keybg-sw" data-key="#00e676" title="Key green" style="background:#00e676"></button>
+                <button type="button" class="keybg-sw" data-key="#2962ff" title="Key blue" style="background:#2962ff"></button>
+                <button type="button" class="keybg-sw" data-key="#ff00ff" title="Key magenta" style="background:#ff00ff"></button>
+                <label class="keybg-custom" title="Custom colour"><input id="keyBgCustom" type="color" value="#00e676"></label>
+              </div>
+              <div class="keybg-note">Fills a flat, uniform colour behind the fluid for both PNG and WebM &mdash; pick a key colour and chroma it out in your editor. Turn Surface &amp; ripples off for the cleanest key.</div>
+            </div>
+          </details>
+        </div>
+        <div class="footer-note">Standalone Canvas 2D simulation · no libraries · settings remain editable in the source.</div>
+      </aside>
+    </div>
+  </main>
+
+  <div class="var-modal" id="varModal" hidden>
+    <div class="var-modal-inner">
+      <div class="var-modal-head">
+        <span class="var-modal-title">Surprise me — variations</span>
+        <button class="btn" id="varReroll" type="button">↻ Reroll</button>
+        <span class="var-modal-hint">Click a variation to adopt it.</span>
+        <button class="btn" id="varClose" type="button">✕ Close</button>
+      </div>
+      <div class="var-modal-grid" id="varGrid"></div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d', { alpha: true });
+  const stage = document.getElementById('stage');
+  const app = document.getElementById('app');
+  const fpsEl = document.getElementById('fps');
+  const particleEl = document.getElementById('particleReadout');
+  const seedReadout = document.getElementById('seedReadout');
+  const modeHelp = document.getElementById('modeHelp');
+
+  const ids = [
+    'mode','seed','preset','autoReplay','pressure','spread','angle','nozzle','density',
+    'gravity','drag','tension','turbulence','wind','droplet','waterColor','waterHex',
+    'bgColor','bgHex','opacity','highlight','trail','perspective','surface','sparkle','transparentExport'
+  ];
+  const ui = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
+
+  const settings = {
+    mode: 'splash', seed: 2048, autoReplay: true,
+    pressure: 56, spread: 36, angle: 24, nozzle: 28, density: 1550,
+    gravity: 100, drag: 18, tension: 62, turbulence: 22, wind: 0, droplet: 34,
+    waterColor: '#4fd1d9', bgColor: '#060a10', opacity: 64, highlight: 62,
+    trail: 24, perspective: 42, surface: true, sparkle: true, transparentExport: false,
+    keyBg: 'none'
+  };
+
+  const presets = {
+    clean:   { mode:'splash', pressure:58, spread:40, angle:24, nozzle:28, density:1300, gravity:100, drag:20, tension:74, turbulence:10, wind:0, droplet:52, opacity:70, highlight:86, trail:25, perspective:38, waterColor:'#a7efff', bgColor:'#071119' },
+    violent: { mode:'splash', pressure:92, spread:76, angle:28, nozzle:66, density:2200, gravity:118, drag:12, tension:40, turbulence:72, wind:9, droplet:38, opacity:82, highlight:68, trail:54, perspective:55, waterColor:'#7cdfff', bgColor:'#03070a' },
+    silky:   { mode:'jet', pressure:74, spread:9, angle:20, nozzle:43, density:1800, gravity:82, drag:9, tension:90, turbulence:4, wind:0, droplet:62, opacity:68, highlight:92, trail:74, perspective:35, waterColor:'#b2f2ff', bgColor:'#050d13' },
+    mist:    { mode:'fountain', pressure:55, spread:73, angle:82, nozzle:52, density:2350, gravity:68, drag:65, tension:18, turbulence:58, wind:18, droplet:22, opacity:42, highlight:75, trail:18, perspective:60, waterColor:'#b9f5ff', bgColor:'#07131a' }
+  };
+
+  const state = {
+    particles: [], ripples: [], splashes: [], paused: false,
+    burstAge: 0, emissionAccumulator: 0, lastTime: performance.now(),
+    fpsFrames: 0, fpsTimer: 0, fps: 60, targetX: 0, rng: null,
+    width: 0, height: 0, dpr: 1, waterline: 0, scale: 1,
+    cycle: 0, nozzlePulse: 0,
+    uiHidden: false, recorder: null, recordedChunks: []
+  };
+
+  function hashSeed(n) {
+    n = Number(n) || 1;
+    n = Math.abs(Math.floor(n)) % 2147483647;
+    return n || 1;
+  }
+
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function() {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  const rand = () => state.rng();
+  const range = (a,b) => a + (b-a) * rand();
+  const signed = (m=1) => (rand()*2-1)*m;
+  const clamp = (v,a,b) => Math.max(a, Math.min(b,v));
+  const lerp = (a,b,t) => a + (b-a)*t;
+
+  function hexToRgb(hex) {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return m ? { r:parseInt(m[1],16), g:parseInt(m[2],16), b:parseInt(m[3],16) } : {r:143,g:232,b:255};
+  }
+
+  function rgba(rgb, a) { return `rgba(${rgb.r},${rgb.g},${rgb.b},${a})`; }
+  function brighten(rgb, amt) {
+    return { r: Math.round(lerp(rgb.r,255,amt)), g:Math.round(lerp(rgb.g,255,amt)), b:Math.round(lerp(rgb.b,255,amt)) };
+  }
+
+  function resize() {
+    const r = stage.getBoundingClientRect();
+    state.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    state.width = Math.max(1, r.width);
+    state.height = Math.max(1, r.height);
+    canvas.width = Math.floor(state.width * state.dpr);
+    canvas.height = Math.floor(state.height * state.dpr);
+    canvas.style.width = `${state.width}px`;
+    canvas.style.height = `${state.height}px`;
+    ctx.setTransform(state.dpr,0,0,state.dpr,0,0);
+    state.waterline = state.height * (settings.mode === 'fountain' ? .79 : .72);
+    state.scale = Math.min(state.width, state.height) * .24;
+  }
+
+  function project(p) {
+    const depth = settings.perspective / 100;
+    const rx = p.x;
+    const rz = p.z;
+    const perspective = 1 / (1 + Math.max(-.7, rz) * .18 * depth);
+    return {
+      x: state.width * .5 + state.targetX * state.scale + rx * state.scale * perspective,
+      y: state.waterline - p.y * state.scale * perspective + rz * state.scale * .16 * depth,
+      s: perspective,
+      depth: rz
+    };
+  }
+
+  function addParticle(x,y,z,vx,vy,vz,r,life,type='drop') {
+    if (state.particles.length >= 2900) return;
+    state.particles.push({
+      x,y,z,vx,vy,vz,r,
+      age:0, life, type,
+      phase: range(0, Math.PI*2),
+      prevX:x, prevY:y, prevZ:z,
+      hit:false,
+      sparkle: rand()
+    });
+  }
+
+  function addRipple(x,z,strength=1) {
+    if (!settings.surface) return;
+    state.ripples.push({ x, z, age:0, life:range(1.0,1.8), radius:range(.02,.08), strength });
+    if (state.ripples.length > 28) state.ripples.shift();
+  }
+
+  function emitSplash() {
+    const count = Math.round(settings.density * .78);
+    const speed = 1.65 + settings.pressure * .028;
+    const spread = settings.spread / 100;
+    const source = settings.nozzle / 100;
+    const tension = settings.tension / 100;
+
+    // Crown wall: coherent radial sheets that break into droplets.
+    const crownCount = Math.round(count * .54);
+    for (let i=0; i<crownCount; i++) {
+      const a = (i / crownCount) * Math.PI * 2 + signed(.025 + spread*.08);
+      const sectors = 7 + Math.floor(rand()*5);
+      const scallop = .76 + .24 * Math.pow(Math.max(0, Math.sin(a*sectors + state.cycle)), 1.8);
+      const ring = range(.02, .10 + source*.16);
+      const radial = speed * range(.48, 1.04) * scallop;
+      const vertical = speed * range(.58, 1.18) * lerp(.8, 1.18, tension);
+      addParticle(
+        Math.cos(a)*ring, range(.002,.035), Math.sin(a)*ring,
+        Math.cos(a)*radial*(.58+spread*.5), vertical, Math.sin(a)*radial*(.58+spread*.5),
+        range(.012,.035) * lerp(.7,1.45,settings.droplet/100), range(1.05,2.15), 'sheet'
+      );
+    }
+
+    // Central impact plume.
+    const plumeCount = Math.round(count * .30);
+    for (let i=0; i<plumeCount; i++) {
+      const a = range(0,Math.PI*2);
+      const radial = speed * range(.06, .42 + spread*.32);
+      addParticle(
+        signed(.035+source*.08), range(.01,.08), signed(.035+source*.08),
+        Math.cos(a)*radial, speed*range(.72,1.48), Math.sin(a)*radial,
+        range(.012,.05)*lerp(.6,1.5,settings.droplet/100), range(.85,2.35), 'drop'
+      );
+    }
+
+    // Fine spray.
+    const sprayCount = count - crownCount - plumeCount;
+    for (let i=0; i<sprayCount; i++) {
+      const a = range(0,Math.PI*2);
+      const radial = speed * range(.55,1.35) * lerp(.45,1.15,spread);
+      addParticle(
+        signed(.08), range(.01,.12), signed(.08),
+        Math.cos(a)*radial, speed*range(.25,1.1), Math.sin(a)*radial,
+        range(.005,.019)*lerp(.55,1.25,settings.droplet/100), range(.55,1.5), 'mist'
+      );
+    }
+
+    addRipple(0,0,1.2);
+    addRipple(0,0,.8);
+    state.splashes.push({age:0, life:.62, x:0, z:0, strength:1});
+  }
+
+  function emitJet(dt) {
+    const countPerSecond = settings.density * .94;
+    state.emissionAccumulator += countPerSecond * dt;
+    const n = Math.min(120, Math.floor(state.emissionAccumulator));
+    state.emissionAccumulator -= n;
+
+    const speed = 1.5 + settings.pressure * .032;
+    const theta = settings.angle * Math.PI/180;
+    const spread = settings.spread/100;
+    const nozzle = settings.nozzle/100;
+    const tension = settings.tension/100;
+    const pulse = 1 + Math.sin(state.nozzlePulse*3.1)*.025*(1-tension);
+
+    for (let i=0;i<n;i++) {
+      const jitter = .012 + spread*.23;
+      const az = signed(jitter);
+      const el = signed(jitter*.65);
+      const r = range(.012,.032) * lerp(.7,1.6,settings.droplet/100);
+      const sourceY = .62 + range(-.06,.06)*nozzle;
+      const sourceZ = signed(.055*nozzle);
+      const v = speed * pulse * range(.91,1.07);
+      addParticle(
+        -1.48, sourceY, sourceZ,
+        Math.cos(theta+el)*v,
+        Math.sin(theta+el)*v,
+        Math.sin(az)*v*.55,
+        r, range(1.15,2.35), tension>.62 ? 'sheet':'drop'
+      );
+    }
+  }
+
+  function emitFountain(dt) {
+    const countPerSecond = settings.density * .78;
+    state.emissionAccumulator += countPerSecond*dt;
+    const n = Math.min(110,Math.floor(state.emissionAccumulator));
+    state.emissionAccumulator -= n;
+
+    const speed = 1.5 + settings.pressure*.031;
+    const spread = settings.spread/100;
+    const nozzle = settings.nozzle/100;
+    for(let i=0;i<n;i++) {
+      const a = range(0,Math.PI*2);
+      const cone = range(0.015, .10 + spread*.62);
+      const r = range(.009,.03)*lerp(.65,1.55,settings.droplet/100);
+      addParticle(
+        signed(.04*nozzle), .015, signed(.04*nozzle),
+        Math.cos(a)*speed*cone,
+        speed*range(.86,1.12),
+        Math.sin(a)*speed*cone,
+        r, range(1.25,2.7), settings.tension>67?'sheet':'drop'
+      );
+    }
+  }
+
+  function secondaryImpact(p, impactSpeed) {
+    if (p.hit || impactSpeed < 1.0 || state.particles.length > 2550) return;
+    p.hit = true;
+    const tension = settings.tension/100;
+    const n = Math.round(clamp(impactSpeed*2.2*(1-tension*.4),2,11));
+    for(let i=0;i<n;i++) {
+      const a = range(0,Math.PI*2);
+      const s = range(.16,.55)*impactSpeed;
+      addParticle(p.x, .006, p.z,
+        Math.cos(a)*s, range(.18,.55)*impactSpeed, Math.sin(a)*s,
+        p.r*range(.35,.75), range(.3,.95), 'mist');
+    }
+    if (rand() < .25) addRipple(p.x,p.z,clamp(impactSpeed/4,.2,1));
+  }
+
+  function reset() {
+    settings.seed = hashSeed(ui.seed.value);
+    ui.seed.value = settings.seed;
+    state.rng = mulberry32(settings.seed);
+    state.particles.length = 0;
+    state.ripples.length = 0;
+    state.splashes.length = 0;
+    state.burstAge = 0;
+    state.emissionAccumulator = 0;
+    state.cycle = rand()*Math.PI*2;
+    state.nozzlePulse = rand()*10;
+    seedReadout.textContent = settings.seed;
+    state.waterline = state.height * (settings.mode === 'fountain' ? .79 : .72);
+    if (settings.mode === 'splash') emitSplash();
+  }
+
+  function update(dt) {
+    state.burstAge += dt;
+    state.nozzlePulse += dt;
+
+    if (settings.mode === 'jet') emitJet(dt);
+    if (settings.mode === 'fountain') emitFountain(dt);
+
+    const gravity = 3.35 * settings.gravity/100;
+    const drag = .025 + (settings.drag/100)*.72;
+    const wind = settings.wind/100 * 1.15;
+    const turbulence = settings.turbulence/100;
+    const tension = settings.tension/100;
+
+    for (let i=state.particles.length-1; i>=0; i--) {
+      const p = state.particles[i];
+      p.age += dt;
+      p.prevX=p.x; p.prevY=p.y; p.prevZ=p.z;
+
+      const noise = Math.sin(p.phase + p.age*6.7 + p.y*3.1) * turbulence;
+      p.vx += (wind + noise*.22) * dt;
+      p.vz += Math.cos(p.phase*1.7 + p.age*5.2) * turbulence*.17*dt;
+      p.vy -= gravity * dt;
+
+      const d = Math.exp(-drag*dt);
+      p.vx*=d; p.vy*=d; p.vz*=d;
+
+      // Tension keeps larger particles coherent and subtly pulls sheets inward.
+      if (p.type === 'sheet') {
+        p.vx *= 1 - tension*.028*dt;
+        p.vz *= 1 - tension*.028*dt;
+      }
+
+      p.x += p.vx*dt;
+      p.y += p.vy*dt;
+      p.z += p.vz*dt;
+
+      if (p.y <= 0) {
+        const impact = Math.abs(p.vy);
+        secondaryImpact(p,impact);
+        p.y = 0;
+        if (p.type === 'mist' && impact < .75) {
+          p.vy *= -.16; p.vx*=.48; p.vz*=.48; p.life=Math.min(p.life,p.age+.16);
+        } else {
+          p.life = Math.min(p.life,p.age+.035);
+        }
+      }
+
+      if (p.age > p.life || p.x > 4 || p.x < -4 || Math.abs(p.z)>4) {
+        state.particles.splice(i,1);
+      }
+    }
+
+    for(let i=state.ripples.length-1;i>=0;i--) {
+      const r=state.ripples[i]; r.age+=dt; r.radius += dt*(.38+.34*r.strength);
+      if(r.age>r.life) state.ripples.splice(i,1);
+    }
+    for(let i=state.splashes.length-1;i>=0;i--) {
+      const s=state.splashes[i]; s.age+=dt;
+      if(s.age>s.life) state.splashes.splice(i,1);
+    }
+
+    if (settings.mode === 'splash' && settings.autoReplay && state.particles.length < 18 && state.burstAge > 1.45) {
+      reset();
+    }
+  }
+
+  function drawBackground() {
+    const bg = hexToRgb(settings.bgColor);
+    const water=hexToRgb(settings.waterColor);
+
+    const g = ctx.createRadialGradient(state.width*.54,state.height*.34,0,state.width*.5,state.height*.42,Math.max(state.width,state.height)*.84);
+    g.addColorStop(0, rgba(brighten(bg,.10),1));
+    g.addColorStop(.48, rgba(bg,1));
+    g.addColorStop(1, `rgb(${Math.round(bg.r*.38)},${Math.round(bg.g*.42)},${Math.round(bg.b*.48)})`);
+    ctx.fillStyle=g;
+    ctx.fillRect(0,0,state.width,state.height);
+
+    // Soft atmospheric glow behind the fluid.
+    const glow=ctx.createRadialGradient(state.width*.52,state.waterline-state.height*.22,0,state.width*.52,state.waterline-state.height*.18,state.width*.47);
+    glow.addColorStop(0,rgba(water,.09));
+    glow.addColorStop(.55,rgba(water,.025));
+    glow.addColorStop(1,rgba(water,0));
+    ctx.fillStyle=glow;
+    ctx.fillRect(0,0,state.width,state.height);
+
+    // Subtle vignette.
+    const v=ctx.createRadialGradient(state.width*.5,state.height*.47,state.height*.18,state.width*.5,state.height*.47,state.width*.72);
+    v.addColorStop(0,'rgba(0,0,0,0)');
+    v.addColorStop(1,'rgba(0,0,0,.54)');
+    ctx.fillStyle=v;
+    ctx.fillRect(0,0,state.width,state.height);
+  }
+
+  function drawSurface() {
+    if (!settings.surface) return;
+    const water=hexToRgb(settings.waterColor);
+    const y=state.waterline;
+
+    const surface=ctx.createLinearGradient(0,y-18,0,state.height);
+    surface.addColorStop(0,rgba(water,.07));
+    surface.addColorStop(.12,rgba(water,.035));
+    surface.addColorStop(1,'rgba(0,0,0,.12)');
+    ctx.fillStyle=surface;
+    ctx.fillRect(0,y,state.width,state.height-y);
+
+    const horizon=ctx.createLinearGradient(0,y-1,state.width,y+1);
+    horizon.addColorStop(0,rgba(water,0));
+    horizon.addColorStop(.2,rgba(water,.08));
+    horizon.addColorStop(.5,rgba(brighten(water,.35),.2));
+    horizon.addColorStop(.8,rgba(water,.08));
+    horizon.addColorStop(1,rgba(water,0));
+    ctx.fillStyle=horizon;
+    ctx.fillRect(0,y-1,state.width,2);
+
+    // Broad elliptical reflection.
+    const refl=ctx.createRadialGradient(state.width*.5+state.targetX*state.scale,y,0,state.width*.5+state.targetX*state.scale,y,state.width*.36);
+    refl.addColorStop(0,rgba(water,.12));
+    refl.addColorStop(.45,rgba(water,.035));
+    refl.addColorStop(1,rgba(water,0));
+    ctx.save();
+    ctx.scale(1,.18);
+    ctx.fillStyle=refl;
+    ctx.beginPath();
+    ctx.arc(state.width*.5+state.targetX*state.scale,y/.18,state.width*.36,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalCompositeOperation='screen';
+    for (const r of state.ripples) {
+      const p=project({x:r.x,y:0,z:r.z});
+      const t=r.age/r.life;
+      const alpha=(1-t)*.24*r.strength;
+      ctx.strokeStyle=rgba(brighten(water,.35),alpha);
+      ctx.lineWidth=Math.max(.5,1.2*(1-t));
+      ctx.beginPath();
+      ctx.ellipse(p.x,p.y,r.radius*state.scale, r.radius*state.scale*.19, 0,0,Math.PI*2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawImpactFlash() {
+    const water=hexToRgb(settings.waterColor);
+    for(const s of state.splashes) {
+      const t=s.age/s.life;
+      const p=project({x:s.x,y:.02,z:s.z});
+      const rad=state.scale*(.08+t*.44);
+      const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,rad);
+      g.addColorStop(0,rgba(brighten(water,.55),(1-t)*.22));
+      g.addColorStop(.35,rgba(water,(1-t)*.08));
+      g.addColorStop(1,rgba(water,0));
+      ctx.fillStyle=g;
+      ctx.beginPath(); ctx.arc(p.x,p.y,rad,0,Math.PI*2); ctx.fill();
+    }
+  }
+
+  function drawParticles() {
+    const water=hexToRgb(settings.waterColor);
+    const light=brighten(water,.72);
+    const alphaBase=settings.opacity/100;
+    const trailAmount=settings.trail/100;
+    const highlight=settings.highlight/100;
+
+    // Depth sort gives the spray a more volumetric silhouette.
+    const particles = state.particles.slice().sort((a,b)=>b.z-a.z);
+
+    // Soft volume pass.
+    ctx.save();
+    ctx.globalCompositeOperation='screen';
+    ctx.lineCap='round';
+    for(const p of particles) {
+      const a=1-p.age/p.life;
+      if(a<=0) continue;
+      const q=project(p);
+      const prev=project({x:p.prevX,y:p.prevY,z:p.prevZ});
+      const speed=Math.hypot(p.vx,p.vy,p.vz);
+      const size=Math.max(.45,p.r*state.scale*q.s);
+      const streak=lerp(.3,2.4,trailAmount)*clamp(speed/2.4,.25,1.5);
+      const sx=q.x-(q.x-prev.x)*streak*5.0;
+      const sy=q.y-(q.y-prev.y)*streak*5.0;
+      const typeAlpha=p.type==='mist'?.34:p.type==='sheet'?.72:.58;
+      ctx.strokeStyle=rgba(water,a*alphaBase*typeAlpha*.34);
+      ctx.lineWidth=size*(p.type==='sheet'?3.4:2.8);
+      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(q.x,q.y); ctx.stroke();
+    }
+
+    // Main body and specular pass.
+    ctx.globalCompositeOperation='source-over';
+    for(const p of particles) {
+      const life=1-p.age/p.life;
+      if(life<=0) continue;
+      const q=project(p);
+      const prev=project({x:p.prevX,y:p.prevY,z:p.prevZ});
+      const speed=Math.hypot(p.vx,p.vy,p.vz);
+      const size=Math.max(.42,p.r*state.scale*q.s);
+      const streak=lerp(.25,2.05,trailAmount)*clamp(speed/2.5,.18,1.55);
+      const sx=q.x-(q.x-prev.x)*streak*4.2;
+      const sy=q.y-(q.y-prev.y)*streak*4.2;
+      const mist=p.type==='mist';
+      const bodyAlpha=life*alphaBase*(mist?.42:p.type==='sheet'?.78:.68);
+
+      ctx.strokeStyle=rgba(water,bodyAlpha);
+      ctx.lineWidth=size*(p.type==='sheet'?1.72:1.32);
+      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(q.x,q.y); ctx.stroke();
+
+      if(size>1.1 && !mist) {
+        ctx.strokeStyle=rgba(light,bodyAlpha*.55*highlight);
+        ctx.lineWidth=Math.max(.45,size*.34);
+        ctx.beginPath();
+        ctx.moveTo(lerp(sx,q.x,.30)-size*.14,lerp(sy,q.y,.30)-size*.13);
+        ctx.lineTo(q.x-size*.12,q.y-size*.12);
+        ctx.stroke();
+      }
+
+      if(settings.sparkle && p.sparkle>.82 && life>.35 && size>.75) {
+        const twinkle=.35+.65*Math.max(0,Math.sin(p.phase+p.age*13));
+        ctx.fillStyle=rgba(light,twinkle*highlight*life*.75);
+        ctx.beginPath(); ctx.arc(q.x-size*.16,q.y-size*.18,Math.max(.35,size*.19),0,Math.PI*2); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawNozzleGuide() {
+    if(settings.mode==='splash') return;
+    const water=hexToRgb(settings.waterColor);
+    ctx.save();
+    ctx.globalAlpha=.5;
+    ctx.strokeStyle=rgba(brighten(water,.25),.35);
+    ctx.fillStyle='rgba(5,16,23,.8)';
+    ctx.lineWidth=1;
+
+    if(settings.mode==='jet') {
+      const a=project({x:-1.58,y:.62,z:0});
+      const b=project({x:-1.43,y:.62,z:0});
+      ctx.beginPath();
+      ctx.roundRect(a.x-30,a.y-8,38,16,5); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(b.x,b.y); ctx.lineTo(b.x+15,b.y); ctx.stroke();
+    } else {
+      const p=project({x:0,y:0,z:0});
+      ctx.beginPath(); ctx.ellipse(p.x,p.y,28,6,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function render(exportPass=false) {
+    ctx.setTransform(state.dpr,0,0,state.dpr,0,0);
+    ctx.clearRect(0,0,state.width,state.height);
+    if (settings.keyBg && settings.keyBg !== 'none') {
+      // Flat, uniform keyable fill — replaces the atmospheric gradient so the
+      // background chroma-keys cleanly. Applied live too, so the WebM (which
+      // records the live canvas) carries it.
+      ctx.fillStyle = settings.keyBg;
+      ctx.fillRect(0,0,state.width,state.height);
+    } else if (!(exportPass && settings.transparentExport)) {
+      drawBackground();
+    }
+    drawSurface();
+    drawImpactFlash();
+    drawNozzleGuide();
+    drawParticles();
+  }
+
+  function loop(now) {
+    const rawDt=(now-state.lastTime)/1000;
+    state.lastTime=now;
+    const dt=Math.min(.033,Math.max(.001,rawDt));
+
+    state.fpsFrames++;
+    state.fpsTimer+=rawDt;
+    if(state.fpsTimer>.55) {
+      state.fps=Math.round(state.fpsFrames/state.fpsTimer);
+      state.fpsFrames=0; state.fpsTimer=0;
+      fpsEl.textContent=state.fps;
+    }
+
+    if(!state.paused) update(dt);
+    render();
+    particleEl.textContent=state.particles.length;
+    requestAnimationFrame(loop);
+  }
+
+  function setRangeVisual(el) {
+    const min=Number(el.min), max=Number(el.max), value=Number(el.value);
+    const pct=((value-min)/(max-min))*100;
+    el.style.setProperty('--pct',`${pct}%`);
+  }
+
+  function formatValue(id,v) {
+    const n=Number(v);
+    const map={
+      pressure:`${n}%`, spread:`${n}%`, angle:`${n}°`, nozzle:`${n}%`, density:n.toLocaleString(),
+      gravity:`${(n/100).toFixed(2)} g`, drag:`${n}%`, tension:`${n}%`, turbulence:`${n}%`,
+      wind:n===0?'Still':`${n>0?'+':''}${n}%`, droplet:`${n}%`, opacity:`${n}%`, highlight:`${n}%`,
+      trail:`${n}%`, perspective:`${n}%`
+    };
+    return map[id] ?? String(v);
+  }
+
+  function syncRange(id) {
+    const el=ui[id];
+    settings[id]=Number(el.value);
+    setRangeVisual(el);
+    const out=document.querySelector(`[data-for="${id}"]`);
+    if(out) out.textContent=formatValue(id,el.value);
+  }
+
+  const rangeIds=['pressure','spread','angle','nozzle','density','gravity','drag','tension','turbulence','wind','droplet','opacity','highlight','trail','perspective'];
+  rangeIds.forEach(id=>{
+    syncRange(id);
+    ui[id].addEventListener('input',()=>{
+      syncRange(id); ui.preset.value='custom';
+      if(['density','pressure','spread','nozzle','droplet','tension'].includes(id) && settings.mode==='splash') reset();
+    });
+  });
+
+  function syncColor(colorId,textId,key) {
+    const color=ui[colorId], text=ui[textId];
+    color.addEventListener('input',()=>{ text.value=color.value; settings[key]=color.value; ui.preset.value='custom'; });
+    text.addEventListener('change',()=>{
+      if(/^#[0-9a-f]{6}$/i.test(text.value)) { color.value=text.value; settings[key]=text.value; ui.preset.value='custom'; }
+      else text.value=color.value;
+    });
+  }
+  syncColor('waterColor','waterHex','waterColor');
+  syncColor('bgColor','bgHex','bgColor');
+
+  function syncPresentationClasses() {
+    app.classList.toggle('ui-hidden', state.uiHidden);
+    document.getElementById('hideUiBtn').textContent = state.uiHidden ? '◫ Show UI' : '◫ Hide UI';
+  }
+
+  function setUiHidden(hidden) {
+    state.uiHidden = !!hidden;
+    syncPresentationClasses();
+    requestAnimationFrame(resize);
+  }
+
+  async function toggleFullscreen() {
+    try {
+      if(!document.fullscreenElement) await app.requestFullscreen();
+      else await document.exitFullscreen();
+    } catch (err) {
+      console.warn('Fullscreen is unavailable in this browser.', err);
+    }
+  }
+
+  ui.surface.addEventListener('change',()=>settings.surface=ui.surface.checked);
+  ui.sparkle.addEventListener('change',()=>settings.sparkle=ui.sparkle.checked);
+  ui.transparentExport.addEventListener('change',()=>settings.transparentExport=ui.transparentExport.checked);
+
+  // Keyable background swatches (flat solid fill for export; 'none' = scene)
+  const keyBgSwatches = document.getElementById('keyBgSwatches');
+  const keyBgCustom = document.getElementById('keyBgCustom');
+  function setKeyBg(val, markCustom) {
+    settings.keyBg = val;
+    keyBgSwatches.querySelectorAll('.keybg-sw').forEach(b =>
+      b.classList.toggle('on', !markCustom && b.dataset.key === val));
+    if (/^#/.test(val)) keyBgCustom.value = val;
+  }
+  keyBgSwatches.querySelectorAll('.keybg-sw').forEach(b =>
+    b.addEventListener('click', () => setKeyBg(b.dataset.key, false)));
+  keyBgCustom.addEventListener('input', () => setKeyBg(keyBgCustom.value, true));
+  ui.autoReplay.addEventListener('change',()=>settings.autoReplay=ui.autoReplay.checked);
+  ui.seed.addEventListener('change',reset);
+
+  const modeDescriptions={
+    splash:'A crown-shaped impact with a dense central plume and secondary droplets.',
+    jet:'A continuous pressurized stream that breaks up, arcs under gravity, and splashes on contact.',
+    fountain:'A vertical nozzle with adjustable cone spread, droplet breakup, drift, and mist.'
+  };
+
+  ui.mode.addEventListener('change',()=>{
+    settings.mode=ui.mode.value;
+    modeHelp.textContent=modeDescriptions[settings.mode];
+    ui.preset.value='custom';
+    reset();
+  });
+
+  function applyPreset(name) {
+    const p=presets[name];
+    if(!p) return;
+    Object.assign(settings,p);
+    Object.entries(p).forEach(([key,value])=>{
+      if(!ui[key]) return;
+      if(ui[key].type==='range') { ui[key].value=value; syncRange(key); }
+      else if(ui[key].type==='checkbox') ui[key].checked=value;
+      else ui[key].value=value;
+    });
+    ui.waterHex.value=settings.waterColor; ui.bgHex.value=settings.bgColor;
+    modeHelp.textContent=modeDescriptions[settings.mode];
+    reset();
+  }
+  ui.preset.addEventListener('change',()=>applyPreset(ui.preset.value));
+
+  document.getElementById('replayBtn').addEventListener('click',reset);
+  document.getElementById('pauseBtn').addEventListener('click',()=>{
+    state.paused=!state.paused;
+    document.getElementById('pauseBtn').textContent=state.paused?'▶ Resume':'Ⅱ Pause';
+  });
+
+  document.getElementById('randomBtn').addEventListener('click',()=>{
+    const seed=Math.floor(1+Math.random()*999998);
+    ui.seed.value=seed;
+    const choose=(a,b)=>Math.round(a+Math.random()*(b-a));
+    const modes=['splash','jet','fountain'];
+    ui.mode.value=modes[Math.floor(Math.random()*modes.length)];
+    settings.mode=ui.mode.value;
+    const randomValues={ pressure:choose(38,96), spread:choose(8,82), angle:choose(12,84), nozzle:choose(15,75), density:choose(900,2300), gravity:choose(65,135), drag:choose(4,55), tension:choose(20,94), turbulence:choose(4,72), wind:choose(-25,25), droplet:choose(22,78), opacity:choose(48,88), highlight:choose(55,96), trail:choose(12,78), perspective:choose(18,72) };
+    Object.entries(randomValues).forEach(([k,v])=>{ ui[k].value=v; syncRange(k); });
+    ui.preset.value='custom';
+    modeHelp.textContent=modeDescriptions[settings.mode];
+    reset();
+  });
+
+  /* ---- "Surprise me" variations: a grid of randomized snapshots -----------
+     Each tile runs the sim with a randomized setting set, warms it up, and
+     copies the main canvas into a thumbnail. Colours/surface stay as-is so the
+     grid reads as one palette; dynamics + seed + mode vary. Generation flickers
+     the main canvas, but the modal backdrop covers it. */
+  const VAR_KEYS = ['pressure','spread','angle','nozzle','density','gravity','drag','tension','turbulence','wind','droplet','opacity','highlight','trail','perspective'];
+  function randomVariantSettings(){
+    const choose=(a,b)=>Math.round(a+Math.random()*(b-a));
+    const modes=['splash','jet','fountain'];
+    return Object.assign({}, settings, {
+      seed: Math.floor(1+Math.random()*999998),
+      mode: modes[Math.floor(Math.random()*modes.length)],
+      pressure:choose(38,96), spread:choose(8,82), angle:choose(12,84), nozzle:choose(15,75),
+      density:choose(900,2300), gravity:choose(65,135), drag:choose(4,55), tension:choose(20,94),
+      turbulence:choose(4,72), wind:choose(-25,25), droplet:choose(22,78), opacity:choose(48,88),
+      highlight:choose(55,96), trail:choose(12,78), perspective:choose(18,72)
+    });
+  }
+  function renderVariantThumb(vs, tc){
+    Object.assign(settings, vs);
+    ui.seed.value = vs.seed;  // reset() reads the seed from the DOM
+    reset();
+    for(let i=0;i<110;i++) update(1/60);
+    render();
+    const g = tc.getContext('2d');
+    g.clearRect(0,0,tc.width,tc.height);
+    g.drawImage(canvas, 0,0, tc.width, tc.height);
+  }
+  function buildVariations(){
+    const grid = document.getElementById('varGrid');
+    grid.innerHTML = '';
+    const saved = Object.assign({}, settings);
+    const savedSeed = ui.seed.value;
+    for(let i=0;i<12;i++){
+      const vs = randomVariantSettings();
+      const card = document.createElement('button');
+      card.className = 'var-card'; card.type = 'button'; card.title = 'Adopt this variation';
+      const tc = document.createElement('canvas');
+      tc.width = 384; tc.height = 216;
+      card.appendChild(tc);
+      const tag = document.createElement('span');
+      tag.className = 'var-tag'; tag.textContent = vs.mode + ' · ' + vs.seed;
+      card.appendChild(tag);
+      grid.appendChild(card);
+      renderVariantThumb(vs, tc);
+      card.addEventListener('click', () => adoptVariation(vs));
+    }
+    // restore the live sim
+    Object.assign(settings, saved);
+    ui.seed.value = savedSeed;
+    reset();
+  }
+  function adoptVariation(vs){
+    Object.assign(settings, vs);
+    ui.seed.value = vs.seed;
+    ui.mode.value = vs.mode;
+    VAR_KEYS.forEach(k => { if(ui[k]){ ui[k].value = vs[k]; syncRange(k); } });
+    ui.preset.value = 'custom';
+    modeHelp.textContent = modeDescriptions[settings.mode];
+    reset();
+    closeVariations();
+  }
+  const varModal = document.getElementById('varModal');
+  function openVariations(){ varModal.hidden = false; buildVariations(); }
+  function closeVariations(){ varModal.hidden = true; }
+  document.getElementById('variationsBtn').addEventListener('click', openVariations);
+  document.getElementById('varReroll').addEventListener('click', buildVariations);
+  document.getElementById('varClose').addEventListener('click', closeVariations);
+  varModal.addEventListener('click', e => { if(e.target === varModal) closeVariations(); });
+  document.addEventListener('keydown', e => { if(e.key === 'Escape' && !varModal.hidden) closeVariations(); });
+
+  document.getElementById('hideUiBtn').addEventListener('click',()=>setUiHidden(true));
+  document.getElementById('floatingUiBtn').addEventListener('click',()=>setUiHidden(!state.uiHidden));
+  document.getElementById('fullscreenBtn').addEventListener('click',toggleFullscreen);
+  document.getElementById('floatingFullscreenBtn').addEventListener('click',toggleFullscreen);
+  document.addEventListener('fullscreenchange',()=>{
+    const active=!!document.fullscreenElement;
+    app.classList.toggle('is-fullscreen',active);
+    document.getElementById('fullscreenBtn').textContent=active?'⛶ Exit fullscreen':'⛶ Fullscreen';
+    document.getElementById('floatingFullscreenBtn').textContent=active?'⛶ Exit':'⛶ Fullscreen';
+    requestAnimationFrame(resize);
+  });
+
+  document.getElementById('exportBtn').addEventListener('click',()=>{
+    render(true);
+    const a=document.createElement('a');
+    a.download=`hydroform-${settings.mode}-seed-${settings.seed}.png`;
+    a.href=canvas.toDataURL('image/png');
+    a.click();
+    requestAnimationFrame(()=>render(false));
+  });
+
+  function pickRecordingMimeType() {
+    const candidates = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+    return candidates.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
+  }
+
+  function setRecordingUi(recording) {
+    [document.getElementById('recordBtn'), document.getElementById('floatingRecordBtn')].forEach(btn => {
+      btn.classList.toggle('recording', recording);
+      btn.textContent = recording ? '■ Stop recording' : '⏺ Record WebM';
+    });
+  }
+
+  function toggleRecording() {
+    if (!window.MediaRecorder) {
+      console.warn('MediaRecorder is unavailable in this browser.');
+      return;
+    }
+    if (state.recorder && state.recorder.state === 'recording') {
+      state.recorder.stop();
+      return;
+    }
+    const mimeType = pickRecordingMimeType();
+    const stream = canvas.captureStream(60);
+    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    state.recordedChunks = [];
+    recorder.ondataavailable = e => { if (e.data.size > 0) state.recordedChunks.push(e.data); };
+    recorder.onstop = () => {
+      const blob = new Blob(state.recordedChunks, { type: mimeType || 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `hydroform-${settings.mode}-seed-${settings.seed}.webm`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      state.recorder = null;
+      setRecordingUi(false);
+    };
+    recorder.start();
+    state.recorder = recorder;
+    setRecordingUi(true);
+  }
+
+  document.getElementById('recordBtn').addEventListener('click', toggleRecording);
+  document.getElementById('floatingRecordBtn').addEventListener('click', toggleRecording);
+
+  canvas.addEventListener('pointerdown',e=>{
+    const r=canvas.getBoundingClientRect();
+    const x=(e.clientX-r.left-r.width*.5)/state.scale;
+    state.targetX=clamp(x,-1.45,1.45);
+    reset();
+  });
+
+  window.addEventListener('keydown',e=>{
+    if(e.target.matches('input,select')) return;
+    if(e.code==='Space') {
+      e.preventDefault(); state.paused=!state.paused;
+      document.getElementById('pauseBtn').textContent=state.paused?'▶ Resume':'Ⅱ Pause';
+    }
+    if(e.key.toLowerCase()==='r') reset();
+    if(e.key.toLowerCase()==='h') setUiHidden(!state.uiHidden);
+    if(e.key.toLowerCase()==='v') toggleRecording();
+    if(e.key.toLowerCase()==='f') toggleFullscreen();
+  });
+
+  window.addEventListener('resize',resize);
+  resize();
+  syncPresentationClasses();
+  reset();
+  requestAnimationFrame(loop);
+})();
+</script>
+<script src="../../assets/menu.js"></script>
+</body>
+</html>

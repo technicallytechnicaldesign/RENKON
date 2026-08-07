@@ -1,0 +1,3655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Parametric Assets</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap"></noscript>
+<link rel="stylesheet" href="../../assets/generator-ui.css">
+<style>
+  :root {
+    --bg: #0C141D;
+    --panel-bg: #14202C;
+    --panel-bg-raised: #182635;
+    --line: #22303E;
+    --text: #ECF2F6;
+    --muted: #6E7E8C;
+
+    --c-structural: #002F67;
+    --c-fluid: #4FD1D9;
+    --c-accent: #F08A3C;
+    --c-leader: #E8E8E8;
+    --c-panel-base: #001A33;
+    --c-panel: rgba(0,26,51,0.85);
+    --c-label: #F5F7F8;
+    --c-caution: #E0342B;
+
+    --font-display: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "Space Mono", ui-monospace, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  button, input { font-family: inherit; }
+  button { cursor: pointer; border-radius: 0; }
+  button:focus-visible, input:focus-visible, a:focus-visible {
+    outline: 2px solid var(--c-accent); outline-offset: 3px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; }
+  }
+
+  #app-header {
+    display: flex; align-items: center; gap: 20px;
+    padding: 14px 28px; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; background: var(--bg); z-index: 10;
+  }
+  #app-header .crumbs {
+    font-family: var(--font-mono);
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+    min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #app-header .crumbs button {
+    background: none; border: none; color: var(--c-accent); font-size: 11px;
+    letter-spacing: 0.08em; text-transform: uppercase; padding: 0; font-family: inherit;
+  }
+  #app-header .crumbs button:hover { text-decoration: underline; }
+  #app-header .mark { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.08em; margin-left: auto; flex: none; }
+  #app-header .brand { display: flex; align-items: center; gap: 11px; color: var(--text); margin-right: 24px; flex: none; }
+  #app-header .brand .mark { width: 26px; height: 26px; flex: none; color: var(--c-accent); margin-left: 0; }
+  #app-header .brand .mark svg { display: block; width: 100%; height: 100%; }
+  #app-header .wordmark { font-family: var(--font-display); font-size: 14px; letter-spacing: 0.28em; font-weight: 500; flex: none; }
+  #app-header .wordmark b { color: var(--c-accent); font-weight: 500; }
+  @media (max-width: 600px) {
+    #app-header { padding: 12px 16px; gap: 12px; }
+  }
+  #app-main { padding: 28px; max-width: 1400px; margin: 0 auto; }
+
+  .page-head { margin-bottom: 24px; }
+  .page-head h1 {
+    font-family: var(--font-display);
+    font-size: 17px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text); margin: 0 0 6px 0; font-weight: 500;
+  }
+  .page-head p { color: var(--muted); font-size: 12px; margin: 0; max-width: 62ch; line-height: 1.6; }
+  .up-link {
+    font-family: var(--font-mono);
+    display: inline-flex; align-items: center; gap: 5px;
+    background: none; border: none; color: var(--c-accent);
+    font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 0; margin-bottom: 10px;
+  }
+  .up-link:hover { text-decoration: underline; }
+  .up-icon { font-size: 12px; line-height: 1; }
+
+  .card-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1px; background: var(--line); border: 1px solid var(--line);
+  }
+  .card {
+    background: var(--panel-bg); padding: 20px; min-height: 130px;
+    display: flex; flex-direction: column; gap: 10px; text-align: left;
+    border: none; color: var(--text); transition: background 0.15s ease;
+  }
+  .card.active { cursor: pointer; }
+  .card.active:hover { background: var(--panel-bg-raised); }
+  .card .tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-accent); }
+  .card .tag.inwork { color: var(--muted); }
+  .card.planned .tag { color: var(--muted); }
+  .card h2 { font-family: var(--font-display); font-size: 13px; margin: 0; font-weight: 500; }
+  .card p { font-size: 12px; color: var(--muted); margin: 0; line-height: 1.6; }
+  .card.planned { opacity: 0.55; border: 1px dashed var(--line); background: transparent; }
+  .card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 4px; }
+  .card-tag {
+    font-family: var(--font-mono);
+    font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--muted); border: 1px solid var(--line); padding: 2px 7px;
+  }
+  .card.subtype-card { padding-bottom: 12px; }
+  .mini-stage {
+    margin-top: 4px; background: var(--stage-bg, #060a10); border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    min-height: 90px; padding: 8px; overflow: hidden;
+  }
+  .mini-stage svg { max-width: 100%; height: auto; display: block; }
+
+  /* Collapsed-by-default (Lens 4B.1 — the one intentional exception to
+     "everything defaults open" in this pass): a rarely-used advanced panel
+     that used to dominate every customize screen. */
+  .palette-details {
+    background: var(--panel-bg); border: 1px solid var(--line); margin-bottom: 16px;
+  }
+  .palette-details > summary {
+    font-family: var(--font-mono);
+    padding: 14px 18px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text); font-weight: 500; cursor: pointer; list-style: none;
+  }
+  .palette-details > summary::-webkit-details-marker { display: none; }
+  .palette-details > summary .chev { display: inline-block; color: var(--c-accent); margin-right: 4px; transition: transform 0.15s ease; }
+  .palette-details[open] > summary .chev { transform: rotate(90deg); }
+  .palette-panel {
+    display: flex; flex-wrap: wrap; gap: 18px; padding: 4px 18px 16px;
+  }
+  .palette-role { display: flex; align-items: center; gap: 8px; }
+  .palette-role label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .palette-role input[type=color] { width: 28px; height: 28px; padding: 0; border: 1px solid var(--line); background: none; }
+  .palette-actions { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+  .save-status { font-size: 10px; color: var(--muted); min-width: 90px; }
+
+  .param-panel {
+    display: flex; flex-wrap: wrap; gap: 18px; align-items: center;
+    padding: 14px 18px; background: var(--panel-bg); border: 1px solid var(--line); margin-bottom: 16px;
+  }
+  .param-row { display: flex; align-items: center; gap: 8px; }
+  .param-row label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .param-row input[type=range] { width: 100px; accent-color: var(--c-accent); }
+  .param-row input[type=checkbox] { accent-color: var(--c-accent); width: 16px; height: 16px; }
+  .param-value { font-family: var(--font-mono); font-size: 10px; color: var(--c-fluid); min-width: 54px; text-align: right; font-variant-numeric: tabular-nums; }
+  .param-panel .btn { margin-left: auto; }
+  .param-hint { flex-basis: 100%; font-size: 12px; color: var(--muted); }
+
+  /* Texture tool control panel: ordered, labeled sections stacked vertically
+     (Lens 4A reorg) — each .control-section holds a .section-label header
+     (or <summary class="section-label"> for the two <details open> blocks)
+     plus a .texture-sliders row-wrap body. */
+  .texture-controls { align-items: stretch; flex-direction: column; flex-wrap: nowrap; gap: 22px; }
+  .control-section { width: 100%; }
+  .texture-sliders { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
+  .pattern-groups { display: flex; flex-wrap: wrap; gap: 18px; }
+  .pattern-group { display: flex; flex-direction: column; gap: 6px; }
+  .pattern-group-label {
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+  }
+  .pattern-select { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pattern-btn { display: inline-flex; align-items: center; gap: 8px; }
+  .pattern-btn .ic svg { width: 16px; height: 16px; display: block; flex: none; }
+  .pattern-filter-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 6px; }
+  .filter-chip {
+    font-family: var(--font-mono);
+    display: flex; align-items: center; gap: 6px; padding: 6px 10px;
+    border: 1px solid var(--line); background: transparent; color: var(--muted);
+    font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase;
+    cursor: pointer;
+  }
+  .filter-chip .ic svg { width: 14px; height: 14px; display: block; flex: none; }
+  .filter-chip:hover { border-color: var(--c-accent); color: var(--c-accent); }
+  .filter-chip.active { border-color: var(--c-accent); color: var(--c-accent); background: var(--panel-bg-raised); }
+
+  /* Overlay-kit landing view: FN / VIBE tag filter bar. Reuses
+     .pattern-group-label + .pattern-filter-row + .filter-chip verbatim —
+     same chip grammar as the texture tool's pattern filter, just
+     multi-select (OR within an axis, AND across axes) instead of
+     single-select, and hash-driven instead of local DOM state. */
+  .tag-filter-bar { display: flex; flex-direction: column; gap: 12px; margin-bottom: 22px; }
+  .tag-filter-axis { display: flex; flex-direction: column; gap: 6px; }
+  .tag.subtype-cat-tag { color: var(--muted); }
+  .tag-filter-empty {
+    font-family: var(--font-mono);
+    padding: 40px 20px; text-align: center; color: var(--muted);
+    font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase;
+    border: 1px dashed var(--line);
+  }
+  .section-label {
+    font-family: var(--font-mono);
+    display: block; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text); font-weight: 500; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 4px;
+  }
+  summary.section-label { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; }
+  summary.section-label:hover { color: var(--c-accent); }
+  summary.section-label::-webkit-details-marker { display: none; }
+  summary.section-label .chev { display: none; } /* replaced by +/- marker to match hydroform */
+  summary.section-label::after { content: "+"; color: var(--muted); font-size: 15px; font-weight: 400; }
+  details[open] > summary.section-label::after { content: "\2013"; }
+  details.control-section > .texture-sliders { padding-top: 14px; }
+  .export-section {
+    padding: 14px 18px; background: var(--panel-bg); border: 1px solid var(--line);
+    margin-bottom: 16px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .preview-caption { flex-basis: 100%; font-size: 12px; color: var(--muted); text-align: center; margin-top: 2px; }
+  .canvas-row { display: flex; flex-wrap: wrap; gap: 1px; background: var(--line); border: 1px solid var(--line); margin-bottom: 16px; }
+  .canvas-panel { background: var(--panel-bg); padding: 16px; flex: 1 1 260px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .canvas-panel-title { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); align-self: flex-start; }
+  .canvas-panel canvas { width: 100%; max-width: 320px; height: auto; background: var(--stage-bg, #060a10); border: 1px solid var(--line); }
+
+  .text-field-wrap {
+    display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;
+    padding: 14px 18px; background: var(--panel-bg); border: 1px solid var(--line); max-width: 420px;
+  }
+  .text-field-wrap label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .text-field-wrap input[type=text] {
+    background: var(--panel-bg-raised, #060a10); border: 1px solid var(--line); color: var(--text);
+    padding: 8px 10px; font-size: 13px;
+  }
+  .text-field-wrap input[type=text]:focus-visible { border-color: var(--c-accent); }
+  .text-field-wrap .hint { font-size: 10px; color: var(--muted); }
+
+  .large-stage {
+    background: var(--stage-bg, #060a10); border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    min-height: 140px; padding: 18px; margin-bottom: 14px;
+  }
+  .large-stage svg { max-width: min(260px, 100%); max-height: 180px; width: auto; height: auto; display: block; }
+  /* transparent-export preview: a theme-aware checkerboard behind the overlay */
+  .large-stage.stage-transparent {
+    background-color: var(--panel-bg);
+    background-image:
+      linear-gradient(45deg, var(--line) 25%, transparent 25%, transparent 75%, var(--line) 75%),
+      linear-gradient(45deg, var(--line) 25%, transparent 25%, transparent 75%, var(--line) 75%);
+    background-size: 16px 16px; background-position: 0 0, 8px 8px;
+  }
+
+  .bg-control { margin-bottom: 14px; }
+  .bg-control-label {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+  }
+  .bg-swatches { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .bg-sw {
+    width: 26px; height: 26px; border: 1px solid var(--line); cursor: pointer;
+    padding: 0; border-radius: 0; position: relative; background: transparent;
+  }
+  .bg-sw:hover { border-color: var(--c-accent); }
+  .bg-sw.on { outline: 2px solid var(--c-accent); outline-offset: 1px; }
+  .bg-sw.sw-none {
+    background-color: var(--panel-bg);
+    background-image:
+      linear-gradient(45deg, var(--line) 25%, transparent 25%, transparent 75%, var(--line) 75%),
+      linear-gradient(45deg, var(--line) 25%, transparent 25%, transparent 75%, var(--line) 75%);
+    background-size: 10px 10px; background-position: 0 0, 5px 5px;
+  }
+  .bg-sw.sw-none::after {
+    content: ""; position: absolute; left: -1px; top: 50%; width: 34px; height: 1px;
+    background: var(--c-caution); transform: rotate(-45deg); transform-origin: center;
+  }
+  .bg-custom { display: inline-flex; align-items: center; margin-left: 2px; }
+  .bg-custom input[type=color] {
+    width: 30px; height: 26px; border: 1px solid var(--line); padding: 0;
+    background: transparent; cursor: pointer;
+  }
+  .bg-control-note {
+    font-family: var(--font-mono); font-size: 9.5px; color: var(--muted);
+    margin-top: 8px; line-height: 1.5; max-width: 52ch;
+  }
+
+  /* Surprise-me variations grid */
+  .var-actions { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+  .var-hint { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.04em; color: var(--muted); }
+  .var-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  @media (max-width: 640px) { .var-grid { grid-template-columns: repeat(2, 1fr); } }
+  .var-tile {
+    background: var(--stage-bg, #060a10); border: 1px solid var(--line); border-radius: 0;
+    cursor: pointer; padding: 10px; aspect-ratio: 4 / 3; display: flex;
+    align-items: center; justify-content: center; overflow: hidden; transition: border-color 0.12s ease;
+  }
+  .var-tile:hover, .var-tile:focus-visible { border-color: var(--c-accent); outline: none; }
+  .var-stage { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+  .var-stage svg { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; }
+
+  .btn {
+    font-family: var(--font-mono);
+    background: transparent; border: 1px solid var(--line); color: var(--text);
+    font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; padding: 8px 14px;
+  }
+  .btn:hover { border-color: var(--c-accent); color: var(--c-accent); }
+  .btn.primary { border-color: var(--c-accent); color: var(--c-accent); }
+  .btn.primary:hover { background: var(--c-accent); color: var(--bg); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn:disabled:hover { border-color: var(--line); color: var(--text); }
+  .cell-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .status-line { font-size: 12px; color: var(--muted); min-height: 14px; margin-top: 8px; }
+
+  footer.note {
+    margin-top: 26px; font-size: 12px; color: var(--muted); line-height: 1.6;
+    border-top: 1px solid var(--line); padding-top: 14px; max-width: 74ch;
+  }
+  footer.note ul.note-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+  footer.note ul.note-list li { padding-left: 18px; position: relative; }
+  footer.note ul.note-list li::before {
+    content: "\25B8"; position: absolute; left: 0; top: 0; color: var(--c-accent);
+  }
+  footer.note .k { color: var(--text); }
+  footer.note .k::after { content: " \2192"; color: var(--muted); }
+</style>
+<script src="../../assets/theme.js"></script>
+<script src="../../assets/reveal.js"></script>
+</head>
+<body>
+  <div id="app">
+    <header id="app-header">
+      <a class="brand" href="../../index.html" aria-label="RENKON home">
+        <span class="mark" aria-hidden="true">
+          <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round">
+            <circle cx="50" cy="50" r="44"/>
+            <g transform="rotate(0 50 50)"><circle cx="50" cy="24" r="9"/></g>
+            <g transform="rotate(72 50 50)"><circle cx="50" cy="24" r="9"/></g>
+            <g transform="rotate(144 50 50)"><circle cx="50" cy="24" r="9"/></g>
+            <g transform="rotate(216 50 50)"><circle cx="50" cy="24" r="9"/></g>
+            <g transform="rotate(288 50 50)"><circle cx="50" cy="24" r="9"/></g>
+            <circle cx="50" cy="50" r="8.5"/>
+          </svg>
+        </span>
+        <span class="wordmark">RENK<b>O</b>N</span>
+      </a>
+      <div class="crumbs" id="crumbs"></div>
+      <div class="mark">OVERLAY TOOLKIT</div>
+    </header>
+    <main id="app-main"></main>
+  </div>
+  <canvas id="capture-canvas" style="display:none"></canvas>
+
+<script src="../../assets/overlay-engine.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  /* =========================================================
+     PALETTE
+     ========================================================= */
+  const PALETTE_ROLES = [
+    { key: "structural", cssVar: "--c-structural", label: "Structural", hex: "#002F67" },
+    { key: "fluid",      cssVar: "--c-fluid",      label: "Fluid",      hex: "#4FD1D9" },
+    { key: "accent",     cssVar: "--c-accent",     label: "Accent",     hex: "#F08A3C" },
+    { key: "leader",     cssVar: "--c-leader",     label: "Leader",     hex: "#E8E8E8" },
+    { key: "panel",      cssVar: "--c-panel-base", label: "Panel BG",   hex: "#001A33" },
+    { key: "label",      cssVar: "--c-label",      label: "Label Text", hex: "#F5F7F8" },
+    { key: "caution",    cssVar: "--c-caution",    label: "Caution",    hex: "#E0342B" }
+  ];
+
+  function hexToRgb(hex) {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!m) return { r: 0, g: 0, b: 0 };
+    return { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) };
+  }
+
+  function applyPaletteToDOM(palette) {
+    const root = document.documentElement.style;
+    PALETTE_ROLES.forEach(role => root.setProperty(role.cssVar, palette[role.key]));
+    const rgb = hexToRgb(palette.panel);
+    root.setProperty("--c-panel", `rgba(${rgb.r},${rgb.g},${rgb.b},0.85)`);
+  }
+
+  function defaultPalette() {
+    const p = {};
+    PALETTE_ROLES.forEach(r => p[r.key] = r.hex);
+    return p;
+  }
+
+  let palette = defaultPalette();
+  // Reload a persisted palette on mount (Lens 4B.2 — Save/Load Palette use
+  // localStorage, same reasoning as the texture tool's preset persistence
+  // below: no window.storage global exists in a plain browser). Falls back
+  // silently to the built-in default if nothing was saved yet.
+  try {
+    const savedPalette = localStorage.getItem("palette:default");
+    if (savedPalette) palette = Object.assign(defaultPalette(), JSON.parse(savedPalette));
+  } catch (e) {}
+
+  /* =========================================================
+     PER-ASSET LIVE PARAMS (opacity / thickness / speed / roundness)
+     All four are wired through CSS custom properties set inline on
+     each asset's own <svg> root (--t-mult, --s-mult, --r-mult, plus
+     plain `opacity`), so adjusting a slider never has to re-render
+     the markup or restart an animation — except SMIL speed, which
+     has no CSS equivalent for its `dur` attribute and is re-baked
+     into the template on change instead.
+     ========================================================= */
+  const DEFAULT_PARAMS = { opacity: 1, thickness: 1, speed: 1, roundness: 0, size: 1, rotation: 0 };
+  // Per-asset look, persisted across reloads so a tuned overlay survives a
+  // refresh. (Colours live in the palette store; the export bg in overlay:bg.)
+  const assetParams = (function () {
+    try { return JSON.parse(localStorage.getItem("overlay:params")) || {}; } catch (e) { return {}; }
+  })();
+  let paramsSaveTimer = null;
+  function persistParams() {
+    if (paramsSaveTimer) return; // debounce a burst of slider input into one write
+    paramsSaveTimer = setTimeout(function () {
+      paramsSaveTimer = null;
+      try { localStorage.setItem("overlay:params", JSON.stringify(assetParams)); } catch (e) {}
+    }, 300);
+  }
+  function getParams(asset) {
+    if (!assetParams[asset.id]) {
+      assetParams[asset.id] = Object.assign({}, DEFAULT_PARAMS, asset.paramPreset || {});
+    } else {
+      // backfill any keys missing from an older persisted look, in place
+      for (var k in DEFAULT_PARAMS) if (assetParams[asset.id][k] === undefined) assetParams[asset.id][k] = DEFAULT_PARAMS[k];
+    }
+    return assetParams[asset.id];
+  }
+  // Wrap all of an asset's SVG content in one <g class="pk-xform"> so Size and
+  // Rotation can be applied — and baked into exports — without editing each
+  // asset's markup. defs/style ride along harmlessly (transforms don't affect
+  // non-rendering nodes, and id/class references resolve document-wide).
+  const SVGNS = "http://www.w3.org/2000/svg";
+  function ensureXformGroup(svgEl) {
+    let g = svgEl.querySelector(":scope > g.pk-xform");
+    if (!g) {
+      g = document.createElementNS(SVGNS, "g");
+      g.setAttribute("class", "pk-xform");
+      while (svgEl.firstChild) g.appendChild(svgEl.firstChild);
+      svgEl.appendChild(g);
+    }
+    return g;
+  }
+  function applyLiveParams(asset, stage) {
+    const svgEl = stage.querySelector("svg");
+    if (!svgEl) return;
+    const p = getParams(asset);
+    svgEl.style.opacity = p.opacity;
+    svgEl.style.setProperty("--t-mult", p.thickness);
+    if (asset.engine === "css") svgEl.style.setProperty("--s-mult", p.speed);
+    if (asset.roundable) svgEl.style.setProperty("--r-mult", p.roundness + "px");
+    // size + rotation via the transform wrapper, around the viewBox centre
+    const g = ensureXformGroup(svgEl);
+    const size = p.size == null ? 1 : p.size;
+    const rot = p.rotation || 0;
+    if (size === 1 && rot === 0) {
+      g.removeAttribute("transform");
+    } else {
+      const { w, h } = viewBoxSize(svgEl);
+      const cx = w / 2, cy = h / 2;
+      g.setAttribute("transform",
+        "translate(" + cx + " " + cy + ") rotate(" + rot + ") scale(" + size + ") translate(" + (-cx) + " " + (-cy) + ")");
+    }
+    persistParams(); // every mutation path renders through here
+  }
+
+  /* ---- shareable "look" links -------------------------------------------
+     Encode the current asset's params + export bg + palette into the hash so a
+     tuned overlay is a copy-pasteable URL. Parsed back in mountOverlayKit. */
+  function categorySlugFor(asset) {
+    const c = CATEGORIES.find(function (x) { return x.label === asset.category; });
+    return c ? c.slug : "";
+  }
+  function encodeLook(asset) {
+    const p = getParams(asset);
+    const parts = [
+      "sz=" + Math.round(p.size * 100),
+      "rot=" + Math.round(p.rotation),
+      "op=" + Math.round(p.opacity * 100),
+      "sp=" + Math.round(p.speed * 100),
+      "th=" + Math.round(p.thickness * 100)
+    ];
+    if (asset.roundable) parts.push("rn=" + Math.round(p.roundness));
+    parts.push("bg=" + (overlayBg === "transparent" ? "t" : overlayBg.replace("#", "")));
+    parts.push("pal=" + PALETTE_ROLES.map(function (r) { return palette[r.key].replace("#", ""); }).join("-"));
+    return parts.join("&");
+  }
+  function applyLook(asset, q) {
+    const p = getParams(asset);
+    // parseHashQuery yields arrays (built for multi-select filters) — read the
+    // first value of each key.
+    const val = function (k) { const v = q[k]; return Array.isArray(v) ? v[0] : v; };
+    const has = function (k) { return val(k) != null && val(k) !== ""; };
+    const num = function (k, d) { const v = parseFloat(val(k)); return isFinite(v) ? v : d; };
+    if (has("sz")) p.size = num("sz", 100) / 100;
+    if (has("rot")) p.rotation = num("rot", 0);
+    if (has("op")) p.opacity = num("op", 100) / 100;
+    if (has("sp")) p.speed = num("sp", 100) / 100;
+    if (has("th")) p.thickness = num("th", 100) / 100;
+    if (has("rn") && asset.roundable) p.roundness = num("rn", 0);
+    if (has("bg")) { const bg = String(val("bg")); setOverlayBg(bg === "t" ? "transparent" : ("#" + bg.replace("#", ""))); }
+    if (has("pal")) {
+      const hexes = String(val("pal")).split("-");
+      PALETTE_ROLES.forEach(function (r, i) { if (hexes[i]) palette[r.key] = "#" + hexes[i].replace("#", ""); });
+      applyPaletteToDOM(palette);
+    }
+  }
+  function shareURL(asset) {
+    return location.href.split("#")[0] + "#overlay-kit/" + categorySlugFor(asset) + "/" + asset.id + "?" + encodeLook(asset);
+  }
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+    return new Promise(function (res, rej) {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); res();
+      } catch (e) { rej(e); }
+    });
+  }
+
+  /* =========================================================
+     CUSTOM TEXT STATE
+     ========================================================= */
+  const customText = {};
+
+  /* =========================================================
+     ASSET MANIFEST
+     ========================================================= */
+  let renderCounter = 0;
+  function nextRid() { return "r" + (renderCounter++); }
+
+  // Overlay asset library now lives in the shared engine (single source of
+  // truth); loaded via assets/overlay-engine.js before this script.
+  const ASSETS = window.RENKON_OVERLAYS;
+
+  ASSETS.forEach(a => { if (a.hasText) customText[a.id] = a.textDefault; });
+
+  const CATEGORIES = [
+    { slug: "fluid-flow", label: "Fluid Flow", blurb: "Directional flow indicators for pipe and tube runs." },
+    { slug: "splashes",   label: "Splashes",   blurb: "Droplets, drips and impact ripples — organic fluid motion." },
+    { slug: "callouts",   label: "Callouts",   blurb: "Point at something on a render and label it." },
+    { slug: "arrows",     label: "Arrows",     blurb: "General-purpose direction and motion, not fluid-specific." },
+    { slug: "pings",      label: "Pings",      blurb: "Draw attention to a spot or a region." },
+    { slug: "frame",      label: "Frame",      blurb: "Instrument-panel chrome — dividers, badges, HUD frames." },
+    { slug: "backgrounds", label: "Backgrounds", blurb: "Ambient full-frame layers behind the render — slow, quiet, edge-weighted." },
+    { slug: "wildcards", label: "Wildcards", blurb: "The loud drawer — glitch, sparks, holograms, redline drama. Foreground energy; use sparingly." }
+  ];
+
+  /* =========================================================
+     TAG TAXONOMY + FILTER ICONS
+     Two orthogonal axes on every asset: fn (what job it does) and
+     vibe (how it feels). The landing-view chip bar filters OR within
+     an axis ("flow OR direction"), AND across axes ("flow AND dramatic").
+     Icons are hand-authored 16x16 monoline glyphs, stroke-only (no
+     fills except the point tag's center dot) so a chip recolors its
+     icon for free via `color` / currentColor when it goes active.
+     ========================================================= */
+  const TAG_AXES = [
+    { key: "fn", label: "Function", tags: ["point", "label", "direction", "flow", "state", "atmosphere", "chrome", "transition"] },
+    { key: "vibe", label: "Vibe", tags: ["precise", "organic", "ambient", "dramatic", "playful", "retro-tech"] }
+  ];
+
+  const TAG_ICONS = {
+    // fn --------------------------------------------------------------
+    point: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none"/><path d="M8 1.5v2.6M8 11.9v2.6M1.5 8h2.6M11.9 8h2.6"/></svg>',
+    label: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M2 7.3 7.3 2H13a1 1 0 0 1 1 1v5.7L7.7 14.7 2 9Z"/><circle cx="10.2" cy="5.3" r="0.9"/></svg>',
+    direction: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 8h11.5"/><path d="M9 4l4 4-4 4"/></svg>',
+    flow: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M1 5.8c1.3-1.6 2.7-1.6 4 0s2.7 1.6 4 0 2.7-1.6 4-1"/><path d="M1 10.8c1.3-1.6 2.7-1.6 4 0s2.7 1.6 4 0 2.7-1.6 4-1"/></svg>',
+    state: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M8 1.8 14.6 13.4H1.4Z"/><path d="M8 6.2v3.1"/><circle cx="8" cy="11.4" r="0.5"/></svg>',
+    atmosphere: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3 6.2a4.6 4.6 0 0 1 8.6-1.4"/><circle cx="2.6" cy="11" r="0.6"/><circle cx="7.6" cy="12.6" r="0.6"/><circle cx="12.4" cy="10.2" r="0.6"/></svg>',
+    chrome: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.5 5.2V1.5h3.7"/><path d="M10.8 1.5h3.7v3.7"/><path d="M14.5 10.8v3.7h-3.7"/><path d="M5.2 14.5H1.5v-3.7"/></svg>',
+    transition: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><rect x="1.5" y="2.5" width="8" height="8"/><rect x="6.5" y="7.5" width="8" height="8"/></svg>',
+    // vibe ------------------------------------------------------------
+    precise: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M1.5 11.5h13"/><path d="M2.7 11.5V8.3M5.1 11.5V6.7M7.5 11.5V8.3M9.9 11.5V6.7M12.3 11.5V8.3M14.5 11.5V9.9"/></svg>',
+    organic: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M8 1.6c2.8 3.1 4.3 5.7 4.3 7.9a4.3 4.3 0 0 1-8.6 0c0-2.2 1.5-4.8 4.3-7.9Z"/></svg>',
+    ambient: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><path d="M10.8 2.4a5.8 5.8 0 1 0 0 11.2A6.8 6.8 0 0 1 10.8 2.4Z"/><circle cx="2.6" cy="12.4" r="0.6"/><circle cx="5.3" cy="14" r="0.6"/></svg>',
+    dramatic: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M9 1.2 3.6 9h3.7L6.3 14.8l6.1-8.4H8.9Z"/></svg>',
+    playful: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 1.5v3.6M8 10.9v3.6M1.5 8h3.6M10.9 8h3.6M3.4 3.4l2.5 2.5M10.1 10.1l2.5 2.5M12.6 3.4l-2.5 2.5M5.9 10.1l-2.5 2.5"/></svg>',
+    "retro-tech": '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><rect x="1.5" y="2.5" width="13" height="9" rx="1.3"/><path d="M1.5 7.3h13" stroke-width="1"/><path d="M6.2 14h3.6"/></svg>'
+  };
+
+  function tagLabel(tag) {
+    return tag.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("-");
+  }
+
+  /* =========================================================
+     RENDER + TEXT HELPERS
+     ========================================================= */
+  function applyText(asset, stage) {
+    if (!asset.hasText) return;
+    const slot = stage.querySelector("[data-text-slot]");
+    if (slot) slot.textContent = customText[asset.id];
+  }
+
+  function renderAssetInto(stage, asset) {
+    const rid = nextRid();
+    const p = getParams(asset);
+    stage.innerHTML = asset.engine === "smil" ? asset.svg(rid, p.speed) : asset.svg(rid);
+    applyText(asset, stage);
+    applyLiveParams(asset, stage);
+  }
+
+  /* ---- export background (shared across every overlay + every export) ----
+     Overlays are transparent by nature; WebM can't hold alpha, so let the user
+     pick a solid background that bakes into every export — most usefully a key
+     colour they can chroma out later. "transparent" keeps PNG alpha. */
+  let overlayBg = (function () {
+    try { return localStorage.getItem("overlay:bg") || "transparent"; } catch (e) { return "transparent"; }
+  })();
+  function setOverlayBg(v) {
+    overlayBg = v;
+    try { localStorage.setItem("overlay:bg", v); } catch (e) {}
+  }
+  // live preview: colour behind the stage, or a checkerboard when transparent
+  function applyStageBg(stage) {
+    if (!stage) return;
+    if (overlayBg === "transparent") {
+      stage.style.background = "";
+      stage.classList.add("stage-transparent");
+    } else {
+      stage.classList.remove("stage-transparent");
+      stage.style.background = overlayBg;
+    }
+  }
+  // bake into a capture canvas before the overlay frame is drawn on top
+  function paintExportBg(ctx, cw, ch) {
+    if (overlayBg && overlayBg !== "transparent") {
+      ctx.fillStyle = overlayBg;
+      ctx.fillRect(0, 0, cw, ch);
+    }
+  }
+
+  function buildBackgroundControl(stage) {
+    const wrap = document.createElement("div");
+    wrap.className = "bg-control";
+    const label = document.createElement("div");
+    label.className = "bg-control-label";
+    label.textContent = "Export background";
+    wrap.appendChild(label);
+
+    const row = document.createElement("div");
+    row.className = "bg-swatches";
+
+    const SWATCHES = [
+      { key: "transparent", label: "None (transparent)" },
+      { key: "#000000", label: "Black" },
+      { key: "#FFFFFF", label: "White" },
+      { key: "#00E676", label: "Key green" },
+      { key: "#2962FF", label: "Key blue" },
+      { key: "#FF00FF", label: "Key magenta" }
+    ];
+
+    const custom = document.createElement("input");
+    custom.type = "color";
+    custom.value = /^#/.test(overlayBg) ? overlayBg : "#00E676";
+
+    function reflect() {
+      row.querySelectorAll(".bg-sw").forEach(b => b.classList.toggle("on", b.dataset.key === overlayBg));
+      if (/^#/.test(overlayBg)) custom.value = overlayBg;
+      applyStageBg(stage);
+    }
+
+    SWATCHES.forEach(s => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "bg-sw" + (s.key === "transparent" ? " sw-none" : "");
+      b.dataset.key = s.key;
+      b.title = s.label;
+      if (s.key !== "transparent") b.style.background = s.key;
+      b.addEventListener("click", () => { setOverlayBg(s.key); reflect(); });
+      row.appendChild(b);
+    });
+
+    const customWrap = document.createElement("label");
+    customWrap.className = "bg-custom";
+    customWrap.title = "Custom colour";
+    custom.addEventListener("input", () => { setOverlayBg(custom.value); reflect(); });
+    customWrap.appendChild(custom);
+    row.appendChild(customWrap);
+
+    wrap.appendChild(row);
+
+    const note = document.createElement("div");
+    note.className = "bg-control-note";
+    note.innerHTML = "Fills behind the overlay in every export. “None” keeps the PNG transparent; pick a key colour for WebM so you can chroma it out in your editor.";
+    wrap.appendChild(note);
+
+    reflect();
+    return wrap;
+  }
+
+  function formatParamValue(key, val) {
+    if (key === "opacity") return Math.round(val * 100) + "%";
+    if (key === "roundness") return Math.round(val) + "px";
+    if (key === "rotation") return Math.round(val) + "°";
+    return val.toFixed(2) + "x";
+  }
+
+  /* =========================================================
+     TOOL REGISTRY + ROUTER
+     ========================================================= */
+  const TOOLS = [
+    {
+      id: "overlay-kit",
+      title: "Overlay Asset Customizer",
+      description: "Browse by type, pick a variant, then recolor, retext, adjust and export.",
+      status: "inwork",
+      tags: ["overlay", "svg", "motion"],
+      mount: mountOverlayKit
+    },
+    {
+      id: "texture-generator",
+      title: "Texture & Bump Map Generator",
+      description: "Procedural grayscale texture and bump-map previews.",
+      status: "inwork",
+      tags: ["texture", "bump-map", "procedural"],
+      mount: mountTextureTool
+    }
+  ];
+
+  // Cards for tools that live in their own file — link out rather than mount.
+  const EXTERNAL_TOOLS = [
+    { title: "Render Labels", href: "../label-generator/index.html", status: "inwork",
+      tags: ["label", "decal", "raster"],
+      description: "Placeable decals (fingerprints, scuffs, machining marks) with opacity, bump and spec maps." },
+    { title: "Signage &amp; Stickers", href: "../signage/index.html", status: "inwork",
+      tags: ["signage", "decal", "warning"],
+      description: "Placeable warning, data-plate and certification decals with opacity, bump and spec maps." },
+    { title: "Hydroform", href: "../hydroform/index.html", status: "inwork",
+      tags: ["fluid", "canvas", "realtime"],
+      description: "A real-time Canvas fluid generator for splashes, jets and fountains, with WebM and PNG export." },
+    { title: "Pipeform", href: "../pipeform/index.html", status: "inwork",
+      tags: ["pipe", "canvas", "process"],
+      description: "A real-time Canvas pipe / process-flow generator, split out of Hydroform, with WebM and PNG export." }
+  ];
+
+  function statusTagHTML(status) {
+    return status === "active" ? '<div class="tag">Active</div>' : '<div class="tag inwork">In work</div>';
+  }
+  function cardTagsHTML(tags) {
+    return `<div class="card-tags">${tags.map(t => `<span class="card-tag">${t}</span>`).join("")}</div>`;
+  }
+
+  function mountHome(main) {
+    main.innerHTML = "";
+    const up = document.createElement("a");
+    up.className = "up-link";
+    up.href = "../../index.html";
+    up.innerHTML = `<span class="up-icon" aria-hidden="true">&#8592;</span> Back to RENKON`;
+    main.appendChild(up);
+    const head = document.createElement("div");
+    head.className = "page-head";
+    head.innerHTML = `<h1>Parametric Assets</h1><p>Procedural generators for the rendering and overlay pipeline. Each tile is a standalone tool.</p>`;
+    main.appendChild(head);
+
+    const grid = document.createElement("div");
+    grid.className = "card-grid";
+
+    TOOLS.forEach(tool => {
+      const card = document.createElement("button");
+      card.className = "card active";
+      card.innerHTML = `${statusTagHTML(tool.status)}<h2>${tool.title}</h2><p>${tool.description}</p>${cardTagsHTML(tool.tags)}`;
+      card.addEventListener("click", () => { location.hash = "#" + tool.id; });
+      grid.appendChild(card);
+    });
+
+    // Tools that live in their own file — link out to them.
+    EXTERNAL_TOOLS.forEach(tool => {
+      const card = document.createElement("button");
+      card.className = "card active";
+      card.innerHTML = `${statusTagHTML(tool.status)}<h2>${tool.title}</h2><p>${tool.description}</p>${cardTagsHTML(tool.tags)}`;
+      card.addEventListener("click", () => { window.location.href = tool.href; });
+      grid.appendChild(card);
+    });
+
+    const placeholder = document.createElement("div");
+    placeholder.className = "card planned";
+    placeholder.innerHTML = `<div class="tag">Reserved</div><h2>Next tool slot</h2><p>New tools appear here as they're added.</p>`;
+    grid.appendChild(placeholder);
+
+    main.appendChild(grid);
+    setCrumbs([]);
+  }
+
+  function setCrumbs(items) {
+    const el = document.getElementById("crumbs");
+    el.innerHTML = "";
+    const all = [{ label: "Parametric Assets", hash: "" }].concat(items);
+    all.forEach((item, i) => {
+      const isLast = i === all.length - 1;
+      if (isLast) {
+        const span = document.createElement("span");
+        span.textContent = item.label;
+        span.style.color = "var(--text)";
+        el.appendChild(span);
+      } else {
+        const btn = document.createElement("button");
+        btn.textContent = item.label;
+        btn.addEventListener("click", () => { location.hash = item.hash; });
+        el.appendChild(btn);
+        const sep = document.createElement("span");
+        sep.textContent = " / ";
+        sep.style.color = "var(--muted)";
+        el.appendChild(sep);
+      }
+    });
+  }
+
+  function buildPageHead(title, subtitleHtml, up) {
+    const head = document.createElement("div");
+    head.className = "page-head";
+    if (up) {
+      const upLink = document.createElement("button");
+      upLink.className = "up-link";
+      upLink.innerHTML = `<span class="up-icon" aria-hidden="true">&#8592;</span> Back to ${up.label}`;
+      upLink.addEventListener("click", () => { location.hash = up.hash; });
+      head.appendChild(upLink);
+    }
+    const h1 = document.createElement("h1");
+    h1.textContent = title;
+    head.appendChild(h1);
+    if (subtitleHtml) {
+      const p = document.createElement("p");
+      p.innerHTML = subtitleHtml;
+      head.appendChild(p);
+    }
+    return head;
+  }
+
+  // Hash query parsing: the router historically split only on "/". Filter
+  // state rides a "?key=val,val&key2=val" query string glued onto the FIRST
+  // segment (e.g. "#overlay-kit?fn=flow&vibe=dramatic" or, one level deeper,
+  // "#overlay-kit/fluid-flow?..." if that's ever needed) — split it off
+  // before matching against TOOLS/CATEGORIES/ASSETS ids, which never
+  // contain "?". Multi-select per axis is comma-joined (OR within an axis).
+  function parseHashQuery(raw) {
+    const query = {};
+    if (!raw) return query;
+    raw.split("&").forEach(pair => {
+      if (!pair) return;
+      const eq = pair.indexOf("=");
+      const key = eq === -1 ? pair : pair.slice(0, eq);
+      const val = eq === -1 ? "" : decodeURIComponent(pair.slice(eq + 1));
+      query[key] = val ? val.split(",").filter(Boolean) : [];
+    });
+    return query;
+  }
+
+  function navigate() {
+    const rawParts = location.hash.replace(/^#/, "").split("/").filter(Boolean);
+    const main = document.getElementById("app-main");
+    if (rawParts.length === 0) { mountHome(main); return; }
+    const qIdx = rawParts[0].indexOf("?");
+    const toolId = qIdx === -1 ? rawParts[0] : rawParts[0].slice(0, qIdx);
+    const query = qIdx === -1 ? {} : parseHashQuery(rawParts[0].slice(qIdx + 1));
+    const tool = TOOLS.find(t => t.id === toolId);
+    if (!tool) { mountHome(main); return; }
+    main.innerHTML = "";
+    tool.mount(main, rawParts.slice(1), query);
+  }
+  window.addEventListener("hashchange", navigate);
+
+  /* =========================================================
+     OVERLAY KIT TOOL — type -> subtype -> customize
+     ========================================================= */
+  function mountOverlayKit(main, subpath, query) {
+    const [catSlug, assetSeg] = subpath;
+    if (!catSlug) { renderTypeGrid(main, query || {}); return; }
+    const category = CATEGORIES.find(c => c.slug === catSlug);
+    if (!category) { location.hash = "#overlay-kit"; return; }
+    if (!assetSeg) { renderSubtypeGrid(main, category); return; }
+    // A shared-look link carries the params in a query on the asset segment:
+    //   #overlay-kit/fluid-flow/flow-straight?sz=120&rot=15&bg=00E676&pal=...
+    let assetId = assetSeg, look = null;
+    const qi = assetSeg.indexOf("?");
+    if (qi !== -1) { assetId = assetSeg.slice(0, qi); look = parseHashQuery(assetSeg.slice(qi + 1)); }
+    const asset = ASSETS.find(a => a.id === assetId && a.category === category.label);
+    if (!asset) { location.hash = "#overlay-kit/" + category.slug; return; }
+    if (look) applyLook(asset, look);
+    renderCustomize(main, category, asset);
+  }
+
+  // Builds the "#overlay-kit?fn=..&vibe=.." hash for a given filter state
+  // (empty axes are omitted entirely, so the plain "#overlay-kit" landing
+  // hash is unchanged when no chip is active).
+  function buildOverlayKitHash(fn, vibe) {
+    const params = [];
+    if (fn && fn.length) params.push("fn=" + fn.join(","));
+    if (vibe && vibe.length) params.push("vibe=" + vibe.join(","));
+    return "#overlay-kit" + (params.length ? "?" + params.join("&") : "");
+  }
+
+  function toggledTag(list, tag) {
+    return list.includes(tag) ? list.filter(t => t !== tag) : list.concat([tag]);
+  }
+
+  // FN/VIBE chip bar — two labeled rows, one chip per taxonomy tag, multi-
+  // select. Same visual grammar as the texture tool's pattern-group filter
+  // chips (.filter-chip / .filter-chip.active), just multi-select instead
+  // of single-select, and driving the URL hash instead of local DOM state.
+  function buildTagFilterBar(query) {
+    const activeFn = query.fn || [];
+    const activeVibe = query.vibe || [];
+    const bar = document.createElement("div");
+    bar.className = "tag-filter-bar";
+
+    TAG_AXES.forEach(axis => {
+      const activeList = axis.key === "fn" ? activeFn : activeVibe;
+      const axisWrap = document.createElement("div");
+      axisWrap.className = "tag-filter-axis";
+      const label = document.createElement("div");
+      label.className = "pattern-group-label";
+      label.textContent = axis.label.toUpperCase();
+      axisWrap.appendChild(label);
+
+      const chipRow = document.createElement("div");
+      chipRow.className = "pattern-filter-row";
+      axis.tags.forEach(tag => {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "filter-chip" + (activeList.includes(tag) ? " active" : "");
+        chip.innerHTML = '<span class="ic" aria-hidden="true">' + TAG_ICONS[tag] + "</span><span>" + tagLabel(tag) + "</span>";
+        chip.addEventListener("click", () => {
+          const nextFn = axis.key === "fn" ? toggledTag(activeFn, tag) : activeFn;
+          const nextVibe = axis.key === "vibe" ? toggledTag(activeVibe, tag) : activeVibe;
+          location.hash = buildOverlayKitHash(nextFn, nextVibe);
+        });
+        chipRow.appendChild(chip);
+      });
+      axisWrap.appendChild(chipRow);
+      bar.appendChild(axisWrap);
+    });
+
+    return bar;
+  }
+
+  // Shared asset-card builder for both the per-category subtype grid and
+  // the flat filtered grid (Task B reuses this renderer rather than
+  // building a second card look). Returns the unattached {card, stage}
+  // pair so callers can append-then-render in the same order the original
+  // subtype grid did (SMIL/CSS assets render into a stage already in the
+  // live DOM).
+  function buildAssetCard(asset, opts) {
+    opts = opts || {};
+    const category = CATEGORIES.find(c => c.label === asset.category);
+    const card = document.createElement("button");
+    card.className = "card active subtype-card";
+    let tag = asset.engine === "static" ? "Static" : (asset.loop ? "Loops" : "Plays once");
+    const catTagHtml = opts.showCategory ? `<div class="tag subtype-cat-tag">${asset.category}</div>` : "";
+    card.innerHTML = `<div class="tag">${tag}</div>${catTagHtml}<h2>${asset.name}</h2>`;
+    const stage = document.createElement("div");
+    stage.className = "mini-stage";
+    card.appendChild(stage);
+    card.addEventListener("click", () => { location.hash = "#overlay-kit/" + category.slug + "/" + asset.id; });
+    return { card, stage };
+  }
+
+  function renderTypeGrid(main, query) {
+    query = query || {};
+    const activeFn = query.fn || [];
+    const activeVibe = query.vibe || [];
+    const anyActive = activeFn.length > 0 || activeVibe.length > 0;
+
+    setCrumbs([{ label: "Overlay Asset Customizer", hash: "#overlay-kit" }]);
+    main.appendChild(buildPageHead(
+      "Select a Type",
+      "Families of overlay. Pick one to see its variants, or filter by function and vibe below.",
+      { label: "Parametric Assets", hash: "" }
+    ));
+
+    main.appendChild(buildTagFilterBar(query));
+
+    if (anyActive) {
+      // OR within an axis, AND across axes: an asset passes an axis check
+      // if that axis has no active chips (untouched) or its tags intersect
+      // the active set.
+      const filtered = ASSETS.filter(a => {
+        const tags = a.tags || { fn: [], vibe: [] };
+        const fnOk = activeFn.length === 0 || tags.fn.some(t => activeFn.includes(t));
+        const vibeOk = activeVibe.length === 0 || tags.vibe.some(t => activeVibe.includes(t));
+        return fnOk && vibeOk;
+      });
+
+      if (filtered.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "tag-filter-empty";
+        empty.textContent = "Nothing matches — try dropping a chip.";
+        main.appendChild(empty);
+        return;
+      }
+
+      const grid = document.createElement("div");
+      grid.className = "card-grid";
+      filtered.forEach(asset => {
+        const { card, stage } = buildAssetCard(asset, { showCategory: true });
+        grid.appendChild(card);
+        renderAssetInto(stage, asset);
+      });
+      main.appendChild(grid);
+      return;
+    }
+
+    const grid = document.createElement("div");
+    grid.className = "card-grid";
+    CATEGORIES.forEach(cat => {
+      const count = ASSETS.filter(a => a.category === cat.label).length;
+      const card = document.createElement("button");
+      card.className = "card active";
+      card.innerHTML = `<div class="tag">${count} variant${count === 1 ? "" : "s"}</div><h2>${cat.label}</h2><p>${cat.blurb}</p>`;
+      card.addEventListener("click", () => { location.hash = "#overlay-kit/" + cat.slug; });
+      grid.appendChild(card);
+    });
+    main.appendChild(grid);
+  }
+
+  function renderSubtypeGrid(main, category) {
+    setCrumbs([
+      { label: "Overlay Asset Customizer", hash: "#overlay-kit" },
+      { label: category.label }
+    ]);
+    main.appendChild(buildPageHead(
+      category.label,
+      `${category.blurb} Pick a variant to customize and export it.`,
+      { label: "Types", hash: "#overlay-kit" }
+    ));
+
+    const grid = document.createElement("div");
+    grid.className = "card-grid";
+    ASSETS.filter(a => a.category === category.label).forEach(asset => {
+      const { card, stage } = buildAssetCard(asset);
+      grid.appendChild(card);
+      renderAssetInto(stage, asset);
+    });
+    main.appendChild(grid);
+  }
+
+  // Curated one-tap starting points — merged over DEFAULT_PARAMS so unset keys
+  // return to default. The studio-style "vibe" dropdown next to Randomize.
+  const VIBES = [
+    { label: "Subtle",     p: { opacity: 0.5,  thickness: 0.85, speed: 0.7, size: 0.9,  rotation: 0 } },
+    { label: "Bold",       p: { opacity: 1,    thickness: 2.0,  speed: 1,   size: 1.12, rotation: 0 } },
+    { label: "Fast",       p: { opacity: 0.9,  thickness: 1.1,  speed: 3.2, size: 1,    rotation: 0 } },
+    { label: "Slow drift", p: { opacity: 0.8,  thickness: 1.0,  speed: 0.3, size: 1,    rotation: 0 } },
+    { label: "Oversize",   p: { opacity: 0.95, thickness: 1.3,  speed: 1,   size: 1.4,  rotation: 0 } },
+    { label: "Tilted",     p: { opacity: 0.9,  thickness: 1.1,  speed: 1,   size: 0.95, rotation: -14 } }
+  ];
+  const DICE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="1"/><circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none"/><circle cx="16" cy="8" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="8" cy="16" r="1.3" fill="currentColor" stroke="none"/><circle cx="16" cy="16" r="1.3" fill="currentColor" stroke="none"/></svg>';
+
+  // Randomize an overlay's look & motion within tasteful ranges — "feels random"
+  // without wandering into unusable extremes.
+  // A fresh randomized look (does NOT touch the asset's live params) — used by
+  // both the Randomize button and the "Surprise me" variations grid.
+  function randomLook(asset) {
+    const rnd = (lo, hi) => Math.round((lo + Math.random() * (hi - lo)) * 100) / 100;
+    const p = Object.assign({}, DEFAULT_PARAMS, asset.paramPreset || {});
+    p.opacity = rnd(0.45, 1);
+    p.thickness = rnd(0.6, 2.2);
+    if (asset.engine !== "static") p.speed = rnd(0.4, 3.2);
+    p.size = rnd(0.65, 1.35);
+    p.rotation = Math.round(rnd(-22, 22));
+    if (asset.roundable) p.roundness = Math.round(rnd(0, 14));
+    return p;
+  }
+  function randomizeAssetParams(asset) { Object.assign(getParams(asset), randomLook(asset)); }
+
+  // Render an asset into a container at an explicit param set (independent of
+  // the asset's live params) — the variations tiles use this.
+  function renderVariantInto(container, asset, p) {
+    const holder = document.createElement("div");
+    holder.className = "var-stage";
+    holder.innerHTML = asset.engine === "smil" ? asset.svg(nextRid(), p.speed) : asset.svg(nextRid());
+    const svg = holder.querySelector("svg");
+    if (svg) {
+      svg.style.opacity = p.opacity;
+      svg.style.setProperty("--t-mult", p.thickness);
+      if (asset.engine === "css") svg.style.setProperty("--s-mult", p.speed);
+      if (asset.roundable) svg.style.setProperty("--r-mult", p.roundness + "px");
+      const g = ensureXformGroup(svg);
+      const size = p.size == null ? 1 : p.size, rot = p.rotation || 0;
+      if (!(size === 1 && rot === 0)) {
+        const { w, h } = viewBoxSize(svg); const cx = w / 2, cy = h / 2;
+        g.setAttribute("transform",
+          "translate(" + cx + " " + cy + ") rotate(" + rot + ") scale(" + size + ") translate(" + (-cx) + " " + (-cy) + ")");
+      }
+    }
+    container.appendChild(holder);
+  }
+
+  // "Surprise me" — a collapsible grid of randomized variants; click to adopt.
+  function buildVariations(asset, onAdopt) {
+    const details = document.createElement("details");
+    details.className = "gen-section var-section";
+    const summary = document.createElement("summary");
+    summary.innerHTML = '<span class="sec-name">Surprise me — variations</span>';
+    details.appendChild(summary);
+
+    const body = document.createElement("div");
+    body.className = "gen-section-body";
+    const actions = document.createElement("div");
+    actions.className = "var-actions";
+    const reroll = document.createElement("button");
+    reroll.className = "btn"; reroll.type = "button"; reroll.textContent = "Reroll";
+    const hint = document.createElement("span");
+    hint.className = "var-hint"; hint.textContent = "Click a tile to adopt its look.";
+    actions.appendChild(reroll); actions.appendChild(hint);
+    const grid = document.createElement("div");
+    grid.className = "var-grid";
+    body.appendChild(actions); body.appendChild(grid);
+    details.appendChild(body);
+
+    const COUNT = 12;
+    function fill() {
+      grid.innerHTML = "";
+      for (let i = 0; i < COUNT; i++) {
+        const params = randomLook(asset);
+        const tile = document.createElement("button");
+        tile.className = "var-tile"; tile.type = "button"; tile.title = "Adopt this variation";
+        renderVariantInto(tile, asset, params);
+        tile.addEventListener("click", () => { Object.assign(getParams(asset), params); persistParams(); onAdopt(); });
+        grid.appendChild(tile);
+      }
+    }
+    reroll.addEventListener("click", fill);
+    // Render the 12 tiles lazily, only once the section is first opened.
+    details.addEventListener("toggle", () => { if (details.open && !grid.childElementCount) fill(); });
+    return details;
+  }
+
+  function buildParamControls(asset, stage, onReset) {
+    const container = document.createElement("div");
+    const p = getParams(asset);
+    const controls = {};
+
+    function syncControl(key) {
+      const c = controls[key]; if (!c) return;
+      c.input.value = p[key];
+      c.valSpan.textContent = formatParamValue(key, p[key]);
+    }
+    // Re-apply after a bulk change (randomize / vibe): sync every slider, then
+    // re-render — which re-bakes SMIL speed and re-wraps for size/rotation.
+    function refreshAll() {
+      Object.keys(controls).forEach(syncControl);
+      renderAssetInto(stage, asset);
+    }
+
+    // --- quick-start strip: vibe starters + Randomize, first thing (studio-style)
+    const strip = document.createElement("div");
+    strip.className = "gen-quickstart";
+
+    const qsLabel = document.createElement("span");
+    qsLabel.className = "qs-label"; qsLabel.textContent = "Start";
+
+    const qsField = document.createElement("div");
+    qsField.className = "qs-field";
+    const qsSelLabel = document.createElement("label");
+    qsSelLabel.setAttribute("for", "vibe-select"); qsSelLabel.textContent = "Vibe";
+    const vibeSel = document.createElement("select");
+    vibeSel.id = "vibe-select";
+    vibeSel.setAttribute("aria-label", "Pick a starting vibe");
+    vibeSel.innerHTML = '<option value="">Starter…</option>' +
+      VIBES.map((v, i) => '<option value="' + i + '">' + v.label + "</option>").join("");
+    vibeSel.addEventListener("change", () => {
+      const v = VIBES[parseInt(vibeSel.value, 10)];
+      if (v) { Object.assign(p, DEFAULT_PARAMS, v.p); refreshAll(); }
+      vibeSel.selectedIndex = 0; // reset so the same vibe can be re-applied
+    });
+    qsField.appendChild(qsSelLabel); qsField.appendChild(vibeSel);
+
+    const randBtn = document.createElement("button");
+    randBtn.className = "gen-randomize"; randBtn.type = "button";
+    randBtn.title = "Randomize this overlay's look & motion";
+    randBtn.innerHTML = DICE_SVG + " Randomize";
+    randBtn.addEventListener("click", () => {
+      randomizeAssetParams(asset); refreshAll();
+      randBtn.classList.remove("rolling"); void randBtn.offsetWidth; randBtn.classList.add("rolling");
+    });
+
+    const shareBtn = document.createElement("button");
+    shareBtn.className = "btn"; shareBtn.type = "button";
+    shareBtn.textContent = "Copy link";
+    shareBtn.title = "Copy a shareable link that reproduces this exact look";
+    shareBtn.addEventListener("click", () => {
+      copyText(shareURL(asset)).then(
+        () => { shareBtn.textContent = "Copied!"; setTimeout(() => shareBtn.textContent = "Copy link", 1500); },
+        () => { shareBtn.textContent = "Copy failed"; setTimeout(() => shareBtn.textContent = "Copy link", 1500); }
+      );
+    });
+
+    const qsHint = document.createElement("span");
+    qsHint.className = "qs-hint";
+    qsHint.textContent = "Tuned looks persist + share — Copy link bakes the settings into a URL.";
+
+    strip.appendChild(qsLabel); strip.appendChild(qsField);
+    strip.appendChild(randBtn); strip.appendChild(shareBtn); strip.appendChild(qsHint);
+    container.appendChild(strip);
+
+    // --- sliders ---
+    const wrap = document.createElement("div");
+    wrap.className = "param-panel";
+
+    function row(key, label, min, max, step, title) {
+      const rowEl = document.createElement("div");
+      rowEl.className = "param-row";
+      if (title) rowEl.title = title;
+      const lab = document.createElement("label");
+      lab.textContent = label;
+      const input = document.createElement("input");
+      input.type = "range";
+      input.min = min; input.max = max; input.step = step;
+      input.value = p[key];
+      const valSpan = document.createElement("span");
+      valSpan.className = "param-value";
+      valSpan.textContent = formatParamValue(key, p[key]);
+      controls[key] = { input, valSpan };
+      const isSmilSpeed = asset.engine === "smil" && key === "speed";
+      input.addEventListener("input", () => {
+        p[key] = parseFloat(input.value);
+        valSpan.textContent = formatParamValue(key, p[key]);
+        if (!isSmilSpeed) applyLiveParams(asset, stage);
+      });
+      if (isSmilSpeed) {
+        input.addEventListener("change", () => renderAssetInto(stage, asset));
+      }
+      rowEl.appendChild(lab); rowEl.appendChild(input); rowEl.appendChild(valSpan);
+      wrap.appendChild(rowEl);
+    }
+
+    row("size", "Size", 0.3, 1.6, 0.05, "Scale the overlay up or down, centred");
+    if (asset.engine !== "static") row("speed", "Speed", 0.1, 5, 0.05, "Animation playback speed multiplier");
+    row("rotation", "Rotation", -180, 180, 1, "Rotate the overlay around its centre");
+    row("opacity", "Opacity", 0.15, 1, 0.05, "How see-through the overlay is");
+    row("thickness", "Thickness", 0.25, 3, 0.05, "Stroke / line-weight multiplier");
+    if (asset.roundable) row("roundness", "Roundness", 0, 16, 1, "Corner radius on roundable elements");
+
+    const resetBtn = document.createElement("button");
+    resetBtn.className = "btn";
+    resetBtn.textContent = "Reset Adjustments";
+    resetBtn.addEventListener("click", () => {
+      Object.assign(p, DEFAULT_PARAMS);
+      onReset();
+    });
+    wrap.appendChild(resetBtn);
+
+    if (asset.engine !== "static" && !asset.loop) {
+      const hint = document.createElement("div");
+      hint.className = "param-hint";
+      hint.textContent = "This piece plays once — adjust Speed, then hit Replay to see it at the new pace.";
+      wrap.appendChild(hint);
+    }
+
+    container.appendChild(wrap);
+    return container;
+  }
+
+  function renderCustomize(main, category, asset) {
+    main.innerHTML = ""; // re-renders (Reset, Adopt variation) rebuild in place
+    setCrumbs([
+      { label: "Overlay Asset Customizer", hash: "#overlay-kit" },
+      { label: category.label, hash: "#overlay-kit/" + category.slug },
+      { label: asset.name }
+    ]);
+    applyPaletteToDOM(palette);
+
+    main.appendChild(buildPageHead(
+      asset.name,
+      `${asset.file} — ${asset.engine === "static" ? "static reference glyph" : (asset.loop ? "loops indefinitely" : "plays once, replay below")}.`,
+      { label: category.label, hash: "#overlay-kit/" + category.slug }
+    ));
+
+    const stage = document.createElement("div");
+    stage.className = "large-stage";
+
+    main.appendChild(buildParamControls(asset, stage, () => renderCustomize(main, category, asset)));
+    main.appendChild(buildVariations(asset, () => renderCustomize(main, category, asset)));
+    main.appendChild(buildPalettePanel());
+    if (asset.hasText) main.appendChild(buildTextField(asset, stage));
+
+    main.appendChild(stage);
+    renderAssetInto(stage, asset);
+    applyStageBg(stage);
+
+    main.appendChild(buildBackgroundControl(stage));
+
+    const actions = document.createElement("div");
+    actions.className = "cell-actions";
+
+    if (asset.engine !== "static" && !asset.loop) {
+      const replayBtn = document.createElement("button");
+      replayBtn.className = "btn";
+      replayBtn.textContent = "Replay";
+      replayBtn.addEventListener("click", () => renderAssetInto(stage, asset));
+      actions.appendChild(replayBtn);
+    }
+
+    const statusLine = document.createElement("div");
+    statusLine.className = "status-line";
+
+    const pngBtn = document.createElement("button");
+    pngBtn.className = "btn primary";
+    pngBtn.textContent = "Export PNG";
+    pngBtn.addEventListener("click", () => exportPNG(asset, stage, statusLine));
+    actions.appendChild(pngBtn);
+
+    if (asset.engine !== "static") {
+      const framesBtn = document.createElement("button");
+      framesBtn.className = "btn";
+      framesBtn.textContent = "Export Frames";
+      framesBtn.addEventListener("click", () => exportFrameSequence(asset, stage, statusLine, framesBtn));
+      actions.appendChild(framesBtn);
+
+      const webmBtn = document.createElement("button");
+      webmBtn.className = "btn";
+      webmBtn.textContent = "Export WebM";
+      webmBtn.title = "Records one looping clip of the overlay animation as a single .webm file";
+      webmBtn.addEventListener("click", () => exportOverlayWebM(asset, stage, statusLine, webmBtn));
+      actions.appendChild(webmBtn);
+    }
+
+    main.appendChild(actions);
+    main.appendChild(statusLine);
+
+    const foot = document.createElement("footer");
+    foot.className = "note";
+    foot.innerHTML = `Colors and adjustments apply live and carry back to the type/subtype screens. Export Frames renders a numbered PNG sequence (blob: URLs, no worker, no external dependency); Export WebM records the same loop as one single-file video clip &mdash; SMIL assets are frame-scrubbed via native SVG time control, CSS assets via the Web Animations API. Set an Export background to bake a solid colour behind the overlay — leave it on “None” to keep the PNG transparent, or pick a key colour so the WebM (which can't hold alpha) chroma-keys cleanly.`;
+    main.appendChild(foot);
+  }
+
+  function buildTextField(asset, stage) {
+    const wrap = document.createElement("div");
+    wrap.className = "text-field-wrap";
+    const label = document.createElement("label");
+    label.textContent = "Custom Text";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.maxLength = 40;
+    input.value = customText[asset.id];
+    input.addEventListener("input", () => {
+      customText[asset.id] = input.value;
+      const slot = stage.querySelector("[data-text-slot]");
+      if (slot) slot.textContent = input.value;
+    });
+    const hint = document.createElement("div");
+    hint.className = "hint";
+    hint.textContent = asset.textHint || "";
+    wrap.appendChild(label);
+    wrap.appendChild(input);
+    wrap.appendChild(hint);
+    return wrap;
+  }
+
+  function buildPalettePanel() {
+    // Collapsed by default (Lens 4B.1) — the one place a collapsed-by-default
+    // disclosure is correct: this panel is a rarely-used advanced control
+    // (recolors every asset's roles) that dominated every customize screen
+    // even though most visits are here to tweak one asset's opacity/speed.
+    // Every control inside stays one click away.
+    const details = document.createElement("details");
+    details.className = "palette-details";
+    const summary = document.createElement("summary");
+    summary.innerHTML = '<span class="chev" aria-hidden="true">&rsaquo;</span> Palette (advanced) — recolor all assets';
+    details.appendChild(summary);
+
+    const panel = document.createElement("div");
+    panel.className = "palette-panel";
+
+    PALETTE_ROLES.forEach(role => {
+      const wrap = document.createElement("div");
+      wrap.className = "palette-role";
+      const label = document.createElement("label");
+      label.textContent = role.label;
+      const input = document.createElement("input");
+      input.type = "color";
+      input.value = palette[role.key];
+      input.addEventListener("input", () => {
+        palette[role.key] = input.value;
+        applyPaletteToDOM(palette);
+      });
+      wrap.appendChild(label);
+      wrap.appendChild(input);
+      panel.appendChild(wrap);
+    });
+
+    const actions = document.createElement("div");
+    actions.className = "palette-actions";
+    const status = document.createElement("span");
+    status.className = "save-status";
+
+    // Storage: window.storage is an environment-injected API that's never
+    // defined in a plain browser (see the identical rationale \u2014 and the
+    // same fix \u2014 for the texture tool's preset persistence, mountTextureTool
+    // -> presetStorageGet/Set below). Use localStorage directly so the
+    // button actually works in every context this app runs in.
+    const saveBtn = document.createElement("button");
+    saveBtn.className = "btn";
+    saveBtn.textContent = "Save Palette";
+    saveBtn.addEventListener("click", () => {
+      status.textContent = "Saving\u2026";
+      try {
+        localStorage.setItem("palette:default", JSON.stringify(palette));
+        status.textContent = "Saved";
+      } catch (e) { status.textContent = "Save failed"; }
+      setTimeout(() => status.textContent = "", 2000);
+    });
+
+    const loadBtn = document.createElement("button");
+    loadBtn.className = "btn";
+    loadBtn.textContent = "Load Palette";
+    loadBtn.addEventListener("click", () => {
+      status.textContent = "Loading\u2026";
+      try {
+        const raw = localStorage.getItem("palette:default");
+        if (raw) {
+          palette = JSON.parse(raw);
+          applyPaletteToDOM(palette);
+          panel.querySelectorAll("input[type=color]").forEach((inp, i) => { inp.value = palette[PALETTE_ROLES[i].key]; });
+          status.textContent = "Loaded";
+        } else { status.textContent = "No saved palette"; }
+      } catch (e) { status.textContent = "None saved yet"; }
+      setTimeout(() => status.textContent = "", 2000);
+    });
+
+    const resetBtn = document.createElement("button");
+    resetBtn.className = "btn";
+    resetBtn.textContent = "Reset";
+    resetBtn.addEventListener("click", () => {
+      palette = defaultPalette();
+      applyPaletteToDOM(palette);
+      panel.querySelectorAll("input[type=color]").forEach((inp, i) => { inp.value = palette[PALETTE_ROLES[i].key]; });
+    });
+
+    actions.appendChild(saveBtn);
+    actions.appendChild(loadBtn);
+    actions.appendChild(resetBtn);
+    actions.appendChild(status);
+    panel.appendChild(actions);
+    details.appendChild(panel);
+    return details;
+  }
+
+  /* =========================================================
+     TEXTURE & BUMP MAP GENERATOR
+     First pass: a working procedural core (seeded value noise,
+     plus two simpler grid/scratch generators) driven by a handful
+     of sliders, with a live grayscale texture preview and a
+     simulated-relief bump preview derived from the same height
+     data. Both export as PNG at a higher resolution than the
+     live preview. Deliberately kept to one flat screen and a
+     small, obviously-extensible generator registry — more pattern
+     types and normal-map (not just height) export are the natural
+     next additions. Spatial (XY) tiling: Noise and Grid tile
+     exactly (incl. animated); the rest are documented non-tiling —
+     use the Tile Preview toggle to inspect seams.
+     ========================================================= */
+  const TEXTURE_PREVIEW_SIZE = 320;
+  const TEXTURE_EXPORT_SIZE = 1024;
+
+  function mulberry32(seed) {
+    let s = seed >>> 0;
+    return function () {
+      s |= 0; s = (s + 0x6D2B79F5) | 0;
+      let t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function buildValueField(w, h, cellSize, rng) {
+    const cols = Math.ceil(w / cellSize) + 2, rows = Math.ceil(h / cellSize) + 2;
+    const grid = [];
+    for (let y = 0; y < rows; y++) {
+      const row = [];
+      for (let x = 0; x < cols; x++) row.push(rng());
+      grid.push(row);
+    }
+    return { grid, cellSize };
+  }
+
+  function sampleField(field, x, y) {
+    const { grid, cellSize } = field;
+    const gx = x / cellSize, gy = y / cellSize;
+    const x0 = Math.floor(gx), y0 = Math.floor(gy);
+    const sx = gx - x0, sy = gy - y0;
+    const smooth = t => t * t * (3 - 2 * t);
+    const sxs = smooth(sx), sys = smooth(sy);
+    const v00 = grid[y0][x0], v10 = grid[y0][x0 + 1];
+    const v01 = grid[y0 + 1][x0], v11 = grid[y0 + 1][x0 + 1];
+    const top = v00 + (v10 - v00) * sxs;
+    const bot = v01 + (v11 - v01) * sxs;
+    return top + (bot - top) * sys;
+  }
+
+  // Toroidal variants used by the Noise pattern so its maps tile exactly in
+  // X and Y (feature backlog #1). Two things differ from the non-tiling pair
+  // above, and both are required: (1) the lattice is snapped to a whole
+  // number of cells per tile (cell count = round(w / requestedCellSize),
+  // min 1) — a cellSize that doesn't divide w/h evenly would still seam even
+  // under modulo sampling; (2) the lattice is sampled with wraparound
+  // ((x0 + 1) % cols) instead of reading into +2 padding rows/cols.
+  // Deliberately a parallel pair rather than a change to
+  // buildValueField/sampleField: Wood Grain, Waves, Machining Marks and
+  // Paint Strokes use those as warp/flow fields and must stay byte-identical.
+  function buildValueFieldTiling(w, h, cellSize, rng) {
+    const cols = Math.max(1, Math.round(w / cellSize));
+    const rows = Math.max(1, Math.round(h / cellSize));
+    const grid = [];
+    for (let y = 0; y < rows; y++) {
+      const row = [];
+      for (let x = 0; x < cols; x++) row.push(rng());
+      grid.push(row);
+    }
+    return { grid, cols, rows, cellW: w / cols, cellH: h / rows };
+  }
+
+  function sampleFieldWrap(field, x, y) {
+    const { grid, cols, rows, cellW, cellH } = field;
+    const gx = x / cellW, gy = y / cellH;
+    let x0 = Math.floor(gx), y0 = Math.floor(gy);
+    const sx = gx - x0, sy = gy - y0;
+    x0 = ((x0 % cols) + cols) % cols;
+    y0 = ((y0 % rows) + rows) % rows;
+    const x1 = (x0 + 1) % cols, y1 = (y0 + 1) % rows;
+    const smooth = t => t * t * (3 - 2 * t);
+    const sxs = smooth(sx), sys = smooth(sy);
+    const v00 = grid[y0][x0], v10 = grid[y0][x1];
+    const v01 = grid[y1][x0], v11 = grid[y1][x1];
+    const top = v00 + (v10 - v00) * sxs;
+    const bot = v01 + (v11 - v01) * sxs;
+    return top + (bot - top) * sys;
+  }
+
+  function noiseData(w, h, p, seed) {
+    const rng = mulberry32(seed);
+    const octaves = Math.max(1, Math.round(p.octaves));
+    const fields = [];
+    let freq = Math.max(4, p.scale);
+    for (let o = 0; o < octaves; o++) {
+      // Tiling lattice per octave -> every octave (and therefore the summed
+      // fBm) wraps exactly at x = w and y = h.
+      fields.push(buildValueFieldTiling(w, h, Math.max(4, freq), rng));
+      freq = Math.max(4, freq / 2);
+    }
+    const amps = []; let amp = 1, maxAmp = 0;
+    for (let o = 0; o < octaves; o++) { amps.push(amp); maxAmp += amp; amp *= p.roughness; }
+    const data = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let v = 0;
+        for (let o = 0; o < octaves; o++) v += sampleFieldWrap(fields[o], x, y) * amps[o];
+        data[y * w + x] = v / maxAmp;
+      }
+    }
+    return data;
+  }
+
+  function generateNoise(w, h, p) {
+    const data = noiseData(w, h, p, p.seed);
+    if (!p.animate) return data;
+    // Animated: cyclically blend toward a second independent field and back.
+    // weight = 0 at time 0 and 1, peaks at 0.5 -> guaranteed-seamless loop; the
+    // static (time 0 / animation-off) frame is identical to the un-animated output.
+    // Both fields come from noiseData and therefore both tile spatially, so
+    // every blended frame of the animation tiles too.
+    const dataB = noiseData(w, h, p, (p.seed ^ 0x9e3779b9) >>> 0);
+    const wgt = 0.5 - 0.5 * Math.cos(2 * Math.PI * (p.time || 0));
+    for (let i = 0; i < data.length; i++) data[i] = data[i] * (1 - wgt) + dataB[i] * wgt;
+    return data;
+  }
+
+  function generateGrid(w, h, p) {
+    const rng = mulberry32(p.seed);
+    const count = Math.max(2, Math.round(p.count));
+    const spacing = Math.max(4, w / count);
+    const thickness = Math.min(spacing * 0.4, Math.max(1, p.scale * 0.08 * p.contrast));
+    const jitter = p.roughness * spacing * 0.15;
+    // Animated: a phase-shifted sinusoidal displacement of the sampling coords
+    // reads as heat-shimmer / vibration. Period 1 in time -> seamless loop.
+    const tm = p.time || 0;
+    const shimmer = p.animate ? spacing * 0.18 : 0;
+    // Spatial tiling (feature backlog #1): the static grid already tiles
+    // because spacing = w / count divides w exactly (per-pixel jitter is
+    // structureless noise, uniform across the seam). The shimmer's spatial
+    // frequency is quantized to a whole number of cycles per tile (nearest
+    // to the old fixed 0.06 rad/px; ~3 cycles at 320px) so animated frames
+    // wrap exactly at x = w and y = h with the same visual character.
+    const TAU = 2 * Math.PI;
+    const shimFreqY = TAU * Math.max(1, Math.round(0.06 * h / TAU)) / h;
+    const shimFreqX = TAU * Math.max(1, Math.round(0.06 * w / TAU)) / w;
+    const data = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const jx = x + (rng() - 0.5) * jitter + shimmer * Math.sin(TAU * tm + y * shimFreqY);
+        const jy = y + (rng() - 0.5) * jitter + shimmer * Math.cos(TAU * tm + x * shimFreqX);
+        const mx = ((jx % spacing) + spacing) % spacing;
+        const my = ((jy % spacing) + spacing) % spacing;
+        data[y * w + x] = (mx < thickness || my < thickness) ? 1 : 0.15;
+      }
+    }
+    return data;
+  }
+
+  function generateScratches(w, h, p) {
+    const rng = mulberry32(p.seed);
+    const data = new Float32Array(w * h).fill(0.5);
+    const count = Math.max(1, Math.round(p.count));
+    // Animated: each streak fades in/out once per loop on its own staggered
+    // phase (film-grain / static flicker). Envelope is periodic -> seamless.
+    const tm = p.time || 0;
+    for (let i = 0; i < count; i++) {
+      const x0 = rng() * w;
+      const y0 = rng() * h;
+      const len = h * (0.2 + rng() * 0.65) * (p.scale / 60);
+      const drift = (rng() - 0.5) * w * 0.25;
+      const depth = (0.25 + rng() * 0.5) * Math.min(2, p.contrast);
+      const env = p.animate ? Math.pow(0.5 + 0.5 * Math.sin(2 * Math.PI * (tm - i / count)), 1.6) : 1;
+      const depthA = depth * env;
+      const steps = Math.max(1, Math.round(len));
+      for (let s = 0; s < steps; s++) {
+        const t = s / steps;
+        const xx = Math.round(x0 + drift * t + (rng() - 0.5) * p.roughness * 3);
+        const yy = Math.round(y0 + t * len);
+        if (xx >= 0 && xx < w && yy >= 0 && yy < h) {
+          const idx = yy * w + xx;
+          data[idx] = Math.max(0, data[idx] - depthA * 0.5);
+        }
+      }
+    }
+    return data;
+  }
+
+  function generateSplotches(w, h, p) {
+    const rng = mulberry32(p.seed);
+    const data = new Float32Array(w * h).fill(0.35);
+    const count = Math.max(1, Math.round(p.count));
+    const maxR = Math.max(4, p.scale);
+    // Animated: each blob pulses size + strength on its own staggered phase
+    // (boiling / bubbling surface). Period 1 in time -> seamless loop.
+    const tm = p.time || 0;
+    for (let i = 0; i < count; i++) {
+      const cx = rng() * w, cy = rng() * h;
+      let r = maxR * (0.15 + rng() * (0.15 + p.roughness * 0.25));
+      let strength = 0.35 + rng() * 0.5;
+      if (p.animate) {
+        const pulse = 0.5 + 0.5 * Math.sin(2 * Math.PI * (tm - i / count));
+        r *= 0.6 + 0.4 * pulse;
+        strength *= 0.5 + 0.5 * pulse;
+      }
+      const x0 = Math.max(0, Math.floor(cx - r)), x1 = Math.min(w, Math.ceil(cx + r));
+      const y0 = Math.max(0, Math.floor(cy - r)), y1 = Math.min(h, Math.ceil(cy + r));
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const dx = x - cx, dy = y - cy;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < r) {
+            const falloff = 1 - dist / r;
+            const idx = y * w + x;
+            data[idx] = Math.min(1, data[idx] + falloff * falloff * strength);
+          }
+        }
+      }
+    }
+    return data;
+  }
+
+  // Shared Worley (cellular noise) field: a jittered grid of one feature point
+  // per cell, searched over its 3x3 cell neighborhood -- the standard
+  // efficient approach so a per-pixel nearest-point query stays O(1) instead
+  // of O(n). Cellular and Cracks both build on this; they differ only in how
+  // they read d1 (distance to nearest point) / d2 (second-nearest).
+  function buildWorleyField(w, h, cellSize, rng) {
+    const cols = Math.ceil(w / cellSize) + 2, rows = Math.ceil(h / cellSize) + 2;
+    const pts = [];
+    for (let gy = 0; gy < rows; gy++) {
+      const row = [];
+      for (let gx = 0; gx < cols; gx++) {
+        row.push({ x: (gx - 1 + rng()) * cellSize, y: (gy - 1 + rng()) * cellSize, phase: rng() });
+      }
+      pts.push(row);
+    }
+    return { pts, cellSize };
+  }
+
+  function sampleWorley(field, x, y, wiggle, time) {
+    const { pts, cellSize } = field;
+    const cx = Math.floor(x / cellSize) + 1, cy = Math.floor(y / cellSize) + 1;
+    let d1 = Infinity, d2 = Infinity;
+    for (let oy = -1; oy <= 1; oy++) {
+      const row = pts[cy + oy];
+      for (let ox = -1; ox <= 1; ox++) {
+        const pt = row[cx + ox];
+        let px = pt.x, py = pt.y;
+        if (wiggle) {
+          const a = 2 * Math.PI * (time - pt.phase);
+          px += wiggle * Math.sin(a); py += wiggle * Math.cos(a);
+        }
+        const dx = x - px, dy = y - py;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) { d2 = d; }
+      }
+    }
+    return { d1, d2 };
+  }
+
+  function generateCellular(w, h, p) {
+    const rng = mulberry32(p.seed);
+    const count = Math.max(2, Math.round(p.count));
+    const cellSize = Math.max(4, w / count);
+    const field = buildWorleyField(w, h, cellSize, rng);
+    // Animated: feature points wiggle around their own seeded phase -- cells
+    // breathe/drift in place. Period 1 in time -> seamless loop.
+    const wiggle = p.animate ? cellSize * 0.18 : 0;
+    const tm = p.time || 0;
+    const soft = 0.15 + p.roughness * 0.7;
+    const data = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const { d1 } = sampleWorley(field, x, y, wiggle, tm);
+        data[y * w + x] = 1 - Math.min(1, d1 / (cellSize * soft));
+      }
+    }
+    return data;
+  }
+
+  function generateCracks(w, h, p) {
+    const rng = mulberry32(p.seed);
+    const count = Math.max(2, Math.round(p.count));
+    const cellSize = Math.max(4, w / count);
+    const field = buildWorleyField(w, h, cellSize, rng);
+    const wiggle = p.animate ? cellSize * 0.1 : 0;
+    const tm = p.time || 0;
+    const width = Math.max(0.01, 0.06 + p.roughness * 0.12) * cellSize;
+    const data = new Float32Array(w * h).fill(1);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const { d1, d2 } = sampleWorley(field, x, y, wiggle, tm);
+        const edge = d2 - d1;
+        if (edge < width) data[y * w + x] = edge / width;
+      }
+    }
+    return data;
+  }
+
+  function generateWood(w, h, p) {
+    const seedRng = mulberry32(p.seed);
+    const cx = (0.2 + seedRng() * 0.6) * w, cy = (0.2 + seedRng() * 0.6) * h;
+    const warpField = buildValueField(w, h, Math.max(8, p.scale), mulberry32((p.seed ^ 0x2545F491) >>> 0));
+    const ringSpacing = Math.max(3, p.scale * 0.35);
+    const warpAmt = p.roughness * ringSpacing * 2;
+    // Animated: rings travel outward from the pith at a steady rate -- phase
+    // is subtracted inside the sine, so time 0 and time 1 land on the same
+    // ring position (seamless loop).
+    const phase = p.animate ? (p.time || 0) : 0;
+    const data = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const dx = x - cx, dy = y - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const warp = (sampleField(warpField, x, y) - 0.5) * warpAmt;
+        const ring = Math.sin((dist + warp) / ringSpacing * 2 * Math.PI - phase * 2 * Math.PI);
+        data[y * w + x] = 0.5 + 0.5 * ring;
+      }
+    }
+    return data;
+  }
+
+  function generateWaves(w, h, p) {
+    const rng = mulberry32(p.seed);
+    const freq = Math.max(4, p.scale);
+    const angle = rng() * Math.PI;
+    const ax = Math.cos(angle), ay = Math.sin(angle);
+    const warpField = buildValueField(w, h, Math.max(8, p.scale), mulberry32((p.seed ^ 0x85EBCA6B) >>> 0));
+    const warpAmt = p.roughness * freq * 0.6;
+    // Animated: bands travel along their own axis -- phase subtracted inside
+    // the sine gives a seamless loop, same trick as Wood Grain's rings.
+    const phase = p.animate ? (p.time || 0) : 0;
+    const data = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const warp = (sampleField(warpField, x, y) - 0.5) * warpAmt;
+        const proj = (x * ax + y * ay + warp) / freq;
+        const wave = Math.sin(proj * 2 * Math.PI - phase * 2 * Math.PI);
+        data[y * w + x] = 0.5 + 0.5 * wave;
+      }
+    }
+    return data;
+  }
+
+  /* ---------------------------------------------------------
+     PRO FINISH -- art-directed fabrication textures
+     (ADVANCED_TEXTURES brief, lab repo). Unlike the generic patterns
+     above, these model a specific real finishing process, and
+     they use the per-pattern custom-param mechanism: extra
+     controls declared in PATTERN_META[kind].custom, values
+     living in state.custom[kind][key]. Custom *length* params
+     (pitch, strokeLength) are specified in px at preview size
+     and normalized by w / TEXTURE_PREVIEW_SIZE inside the
+     generator, so the 320px preview and the 1024px export show
+     the same texture rather than a 3x-finer one.
+     --------------------------------------------------------- */
+
+  function generateMachining(w, h, p) {
+    const c = (p.custom && p.custom.machining) || {};
+    const res = w / TEXTURE_PREVIEW_SIZE; // custom lengths are "px at preview size"
+    const pitch = Math.max(2, c.pitch != null ? c.pitch : 10) * res;
+    const waviness = c.waviness != null ? c.waviness : 0.15;
+    const radial = c.direction === "radial";
+    const rng = mulberry32(p.seed);
+    const angle = rng() * Math.PI; // seeded pass direction (linear mode)
+    const ax = Math.cos(angle), ay = Math.sin(angle);
+    // Low-frequency toolpath wander: a real mill/lathe pass is not perfectly
+    // straight at the pixel level. Amplitude driven by `waviness`, kept
+    // proportional to pitch so grooves wander without smearing together.
+    const warpField = buildValueField(w, h, Math.max(8, pitch * 4), mulberry32((p.seed ^ 0x3C6EF372) >>> 0));
+    const warpAmt = waviness * pitch * 1.5;
+    // Roughness = groove-edge sharpness: low keeps the crisp full-depth
+    // cosine groove, high flattens it toward mid-gray (a worn / fine pass).
+    const depth = Math.min(1, 1.05 - p.roughness);
+    // Animated: the toolpath advances -- phase subtracted inside the cosine,
+    // so time 0 and time 1 land on the same groove position (seamless loop).
+    const phase = p.animate ? (p.time || 0) : 0;
+    const data = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const warp = (sampleField(warpField, x, y) - 0.5) * warpAmt;
+        let d;
+        if (radial) {
+          // Lathe/faced part: concentric grooves around the canvas center --
+          // deliberately centered (unlike Wood Grain's seeded pith), because
+          // a machined face reads as centered and stays placeable.
+          const dx = x - w / 2, dy = y - h / 2;
+          d = Math.sqrt(dx * dx + dy * dy);
+        } else {
+          d = x * ax + y * ay;
+        }
+        const groove = Math.cos(((d + warp) / pitch - phase) * 2 * Math.PI);
+        data[y * w + x] = 0.5 + 0.5 * groove * depth;
+      }
+    }
+    return data;
+  }
+
+  function generatePaintStrokes(w, h, p) {
+    const c = (p.custom && p.custom.paint) || {};
+    const res = w / TEXTURE_PREVIEW_SIZE; // custom lengths are "px at preview size"
+    const strokeLength = Math.max(8, c.strokeLength != null ? c.strokeLength : 80) * res;
+    const turbulence = c.turbulence != null ? c.turbulence : 0.5;
+    const rng = mulberry32(p.seed);
+    const baseAngle = rng() * Math.PI;
+    // Low-frequency flow field: each stroke bends with the local field value,
+    // so strokes share a smoothly-varying regional direction (hand-brushed)
+    // instead of one fixed global angle (printed) or unrelated random
+    // segments (Scratches).
+    const flowField = buildValueField(w, h, Math.max(16, w / 5), mulberry32((p.seed ^ 0x1B873593) >>> 0));
+    const count = Math.max(1, Math.round(p.count));
+    const stepLen = Math.max(1, 2 * res);
+    const brushR = Math.max(1.5, 5 * res);
+    // Roughness = dab softness: low keeps a hard-edged dab, high pushes the
+    // falloff exponent up for a soft, feathered edge.
+    const soft = 0.8 + p.roughness * 2.4;
+    const tm = p.time || 0;
+    const data = new Float32Array(w * h).fill(0.18);
+    for (let i = 0; i < count; i++) {
+      // All per-stroke randomness is drawn up front (never inside the step
+      // loop), so a partially-revealed stroke follows the exact same path as
+      // the fully-grown one and later strokes are unaffected by reveal.
+      let sx = rng() * w, sy = rng() * h;
+      const strength = 0.3 + rng() * 0.4;
+      const stagger = rng();
+      // Animated: progressive reveal -- each stroke grows along its length as
+      // time runs 0 -> 1 (slightly staggered per stroke), then resets and
+      // re-grows each cycle. NOTE (deliberate exception to the seamless-loop
+      // convention): the frame just before the loop point shows fully grown
+      // strokes and frame 0 shows them at 0%, i.e. a one-frame "snap" at the
+      // loop boundary. Documented as acceptable in the ADVANCED_TEXTURES brief
+      // -- not a bug. Static (animate off) renders the fully grown strokes.
+      const reveal = p.animate ? Math.max(0, Math.min(1, tm * 1.25 - stagger * 0.25)) : 1;
+      const steps = Math.max(2, Math.round(strokeLength / stepLen));
+      const drawn = Math.round(steps * reveal);
+      for (let s = 0; s < drawn; s++) {
+        const t = s / steps;
+        // soft round brush dab, width tapering slightly at both stroke ends
+        const r = brushR * (0.45 + 0.55 * Math.sin(Math.PI * t));
+        const x0 = Math.max(0, Math.floor(sx - r)), x1 = Math.min(w, Math.ceil(sx + r));
+        const y0 = Math.max(0, Math.floor(sy - r)), y1 = Math.min(h, Math.ceil(sy + r));
+        for (let yy = y0; yy < y1; yy++) {
+          for (let xx = x0; xx < x1; xx++) {
+            const dx = xx - sx, dy = yy - sy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < r) {
+              const fall = Math.pow(1 - dist / r, soft);
+              const idx = yy * w + xx;
+              data[idx] = Math.min(1, data[idx] + fall * strength * 0.45);
+            }
+          }
+        }
+        // step along the local flow direction; turbulence scales how far the
+        // field bends the stroke off the shared base angle. Sample coords are
+        // clamped to the canvas: strokes may wander off-canvas (their dabs
+        // just stop depositing) but the value field only covers the canvas
+        // plus a small margin -- sampling beyond it reads off the grid.
+        const fx = Math.min(w - 1, Math.max(0, sx));
+        const fy = Math.min(h - 1, Math.max(0, sy));
+        const bend = (sampleField(flowField, fx, fy) - 0.5) * turbulence * 3;
+        sx += Math.cos(baseAngle + bend) * stepLen;
+        sy += Math.sin(baseAngle + bend) * stepLen;
+      }
+    }
+    return data;
+  }
+
+  // --- P2 stretch goals (ADVANCED_TEXTURES brief, "P2 -- stretch goals,
+  // fleshed out") -- Knurling, Orange Peel, Anodize Swirl. Same Pro Finish
+  // family and custom-param mechanism as Machining Marks/Paint Strokes
+  // above; built in the doc's suggested order (cheapest/most-reused-
+  // machinery first): Knurling (pure math, reuses Machining's cosine-groove
+  // profile), Orange Peel (small extension of Cellular's Worley machinery),
+  // Anodize Swirl (extends Paint Strokes' accumulation loop with ring-biased
+  // seeding + a tangential base direction).
+
+  function generateKnurling(w, h, p) {
+    const c = (p.custom && p.custom.knurl) || {};
+    const res = w / TEXTURE_PREVIEW_SIZE; // custom lengths are "px at preview size"
+    const pitch = Math.max(2, c.pitch != null ? c.pitch : 10) * res;
+    const angleDeg = c.angle != null ? c.angle : 30;
+    const cross = c.mode !== "straight"; // default: diamond (crossed) knurl
+    const angleA = angleDeg * Math.PI / 180;
+    const angleB = angleA + Math.PI / 2; // second band derived from angle+90,
+    // not a hardcoded +-45 -- so `angle` drives the whole pattern's
+    // orientation and any crossing (not just a symmetric diamond) is reachable.
+    const axA = Math.cos(angleA), ayA = Math.sin(angleA);
+    const axB = Math.cos(angleB), ayB = Math.sin(angleB);
+    // Roughness = groove-edge sharpness, same role as Machining Marks (low
+    // keeps a crisp full-depth cosine groove, high flattens toward mid-gray).
+    const depth = Math.min(1, 1.05 - p.roughness);
+    // Animated: both bands' phase advances together -- reads as the tool
+    // still cutting. Phase subtracted inside the cosine -> time 0 and time 1
+    // land on the same groove position (seamless loop).
+    const phase = p.animate ? (p.time || 0) : 0;
+    const data = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const dA = x * axA + y * ayA;
+        const bandA = 0.5 + 0.5 * Math.cos((dA / pitch - phase) * 2 * Math.PI) * depth;
+        if (cross) {
+          const dB = x * axB + y * ayB;
+          const bandB = 0.5 + 0.5 * Math.cos((dB / pitch - phase) * 2 * Math.PI) * depth;
+          data[y * w + x] = bandA * bandB;
+        } else {
+          data[y * w + x] = bandA;
+        }
+      }
+    }
+    return data;
+  }
+
+  function generateOrangePeel(w, h, p) {
+    const c = (p.custom && p.custom.peel) || {};
+    const blend = c.blend != null ? c.blend : 0.25;
+    const rng = mulberry32(p.seed);
+    const count = Math.max(2, Math.round(p.count));
+    // Fine dimpling reads at a noticeably smaller cell size than Cellular's
+    // own blobs -- w/(count*3), not Cellular's w/count.
+    const cellSize = Math.max(3, w / (count * 3));
+    const field = buildWorleyField(w, h, cellSize, rng);
+    // Low-frequency noise blended in for irregularity, so cells don't look
+    // perfectly regular -- sized to the same order as the Worley cells
+    // themselves (not an unrelated frequency) so the two read as one finish.
+    const noiseField = buildValueField(w, h, Math.max(4, cellSize * 1.5), mulberry32((p.seed ^ 0x27D4EB2F) >>> 0));
+    // Animated: reuse Cellular's wiggle-the-feature-points trick verbatim --
+    // already seamless, already proven; this is a finish variant of
+    // Cellular, not a new animation personality.
+    const wiggle = p.animate ? cellSize * 0.18 : 0;
+    const tm = p.time || 0;
+    // Roughness = Worley falloff softness, same role it plays in generateCellular.
+    const soft = 0.15 + p.roughness * 0.7;
+    const data = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const { d1 } = sampleWorley(field, x, y, wiggle, tm);
+        const worleyValue = 1 - Math.min(1, d1 / (cellSize * soft));
+        const noiseValue = sampleField(noiseField, x, y);
+        data[y * w + x] = worleyValue * (1 - blend) + noiseValue * blend;
+      }
+    }
+    return data;
+  }
+
+  function generateAnodizeSwirl(w, h, p) {
+    const c = (p.custom && p.custom.anodize) || {};
+    const res = w / TEXTURE_PREVIEW_SIZE; // custom lengths are "px at preview size"
+    const strokeLength = Math.max(8, c.strokeLength != null ? c.strokeLength : 80) * res;
+    const turbulence = c.turbulence != null ? c.turbulence : 0.5;
+    const rng = mulberry32(p.seed);
+    const cx = w / 2, cy = h / 2;
+    const maxRadius = Math.sqrt(cx * cx + cy * cy);
+    // Same flow field role as Paint Strokes: perturbs the base direction so
+    // strokes don't look mechanically perfect.
+    const flowField = buildValueField(w, h, Math.max(16, w / 5), mulberry32((p.seed ^ 0x1B873593) >>> 0));
+    const count = Math.max(1, Math.round(p.count));
+    const stepLen = Math.max(1, 2 * res);
+    const brushR = Math.max(1.5, 5 * res);
+    // Roughness = dab softness, same role it plays in generatePaintStrokes.
+    const soft = 0.8 + p.roughness * 2.4;
+    const tm = p.time || 0;
+    const data = new Float32Array(w * h).fill(0.18);
+    for (let i = 0; i < count; i++) {
+      // Ring-biased seeding: sqrt(rng()) gives a uniform-area distribution
+      // over the disc (rather than uniform-radius, which over-concentrates
+      // points near dead-center) -- radial brushing reads denser away from
+      // the center, not uniformly across the whole canvas.
+      const r = maxRadius * Math.sqrt(rng());
+      const theta = rng() * 2 * Math.PI;
+      let sx = cx + r * Math.cos(theta), sy = cy + r * Math.sin(theta);
+      const strength = 0.3 + rng() * 0.4;
+      const stagger = rng();
+      // Animated: same progressive-reveal trick as Paint Strokes, including
+      // the same documented one-frame loop-boundary snap (frame just before
+      // the loop shows fully-grown strokes, frame 0 shows 0% grown) -- this
+      // is the same deliberate, accepted trade-off Paint Strokes' own
+      // comment calls out, not a new bug. Static (animate off) renders the
+      // fully grown strokes, matching Paint Strokes' convention.
+      const reveal = p.animate ? Math.max(0, Math.min(1, tm * 1.25 - stagger * 0.25)) : 1;
+      const steps = Math.max(2, Math.round(strokeLength / stepLen));
+      const drawn = Math.round(steps * reveal);
+      for (let s = 0; s < drawn; s++) {
+        const t = s / steps;
+        const rr = brushR * (0.45 + 0.55 * Math.sin(Math.PI * t));
+        const x0 = Math.max(0, Math.floor(sx - rr)), x1 = Math.min(w, Math.ceil(sx + rr));
+        const y0 = Math.max(0, Math.floor(sy - rr)), y1 = Math.min(h, Math.ceil(sy + rr));
+        for (let yy = y0; yy < y1; yy++) {
+          for (let xx = x0; xx < x1; xx++) {
+            const dx = xx - sx, dy = yy - sy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < rr) {
+              const fall = Math.pow(1 - dist / rr, soft);
+              const idx = yy * w + xx;
+              data[idx] = Math.min(1, data[idx] + fall * strength * 0.45);
+            }
+          }
+        }
+        // Tangential base direction, recomputed each step from the stroke's
+        // *current* position -- atan2(y - cy, x - cx) + PI/2 is perpendicular
+        // to the radius vector from canvas center, so the stroke curves
+        // around the center instead of following one fixed straight angle
+        // (that's what makes this "radial variant of Paint Strokes" rather
+        // than just Paint Strokes with a different seed distribution). Still
+        // perturbed by the same turbulence-scaled flow-field bend Paint
+        // Strokes uses, so it doesn't look mechanically perfect.
+        const baseAngle = Math.atan2(sy - cy, sx - cx) + Math.PI / 2;
+        const fx = Math.min(w - 1, Math.max(0, sx));
+        const fy = Math.min(h - 1, Math.max(0, sy));
+        const bend = (sampleField(flowField, fx, fy) - 0.5) * turbulence * 3;
+        sx += Math.cos(baseAngle + bend) * stepLen;
+        sy += Math.sin(baseAngle + bend) * stepLen;
+      }
+    }
+    return data;
+  }
+
+  const TEXTURE_GENERATORS = {
+    noise: generateNoise, cellular: generateCellular, wood: generateWood,
+    grid: generateGrid, waves: generateWaves,
+    scratches: generateScratches, splotches: generateSplotches, cracks: generateCracks,
+    machining: generateMachining, paint: generatePaintStrokes,
+    knurl: generateKnurling, peel: generateOrangePeel, anodize: generateAnodizeSwirl
+  };
+
+  const PATTERN_GROUPS = [
+    { label: "Organic", kinds: ["noise", "cellular", "wood"] },
+    { label: "Geometric", kinds: ["grid", "waves"] },
+    { label: "Weathering", kinds: ["scratches", "splotches", "cracks"] },
+    { label: "Pro Finish", kinds: ["machining", "paint", "knurl", "peel", "anodize"] }
+  ];
+  // Each entry may optionally declare a `custom` array of extra controls on
+  // top of the shared slider set: { key, label, type: "range"|"select", ... }.
+  // Rows for these are built once at mount (see mountTextureTool) and the
+  // values live in state.custom[kind][key], so they never collide across
+  // patterns. The 8 generic patterns declare none and are unaffected.
+  const PATTERN_META = {
+    noise:     { name: "Noise",     params: { scale: true,  octaves: true,  count: false } },
+    cellular:  { name: "Cellular",  params: { scale: false, octaves: false, count: true  } },
+    wood:      { name: "Wood Grain",params: { scale: true,  octaves: false, count: false } },
+    grid:      { name: "Grid",      params: { scale: true,  octaves: false, count: true  } },
+    waves:     { name: "Waves",     params: { scale: true,  octaves: false, count: false } },
+    scratches: { name: "Scratches", params: { scale: true,  octaves: false, count: true  } },
+    splotches: { name: "Splotches", params: { scale: true,  octaves: false, count: true  } },
+    cracks:    { name: "Cracks",    params: { scale: false, octaves: false, count: true  } },
+    machining: {
+      name: "Machining Marks",
+      params: { scale: false, octaves: false, count: false },
+      custom: [
+        { key: "direction", label: "Direction", type: "select",
+          options: [{ value: "linear", label: "Linear" }, { value: "radial", label: "Radial" }],
+          default: "linear" },
+        { key: "pitch", label: "Pitch", type: "range", min: 2, max: 40, step: 1, default: 10 },
+        { key: "waviness", label: "Waviness", type: "range", min: 0, max: 1, step: 0.05, default: 0.15 }
+      ]
+    },
+    paint: {
+      name: "Paint Strokes",
+      params: { scale: false, octaves: false, count: true },
+      custom: [
+        { key: "strokeLength", label: "Stroke Length", type: "range", min: 20, max: 200, step: 5, default: 80 },
+        { key: "turbulence", label: "Turbulence", type: "range", min: 0, max: 1, step: 0.05, default: 0.5 }
+      ]
+    },
+    knurl: {
+      name: "Knurling",
+      params: { scale: false, octaves: false, count: false },
+      custom: [
+        { key: "angle", label: "Angle", type: "range", min: 0, max: 90, step: 1, default: 30 },
+        { key: "pitch", label: "Pitch", type: "range", min: 2, max: 40, step: 1, default: 10 },
+        { key: "mode", label: "Mode", type: "select",
+          options: [{ value: "cross", label: "Cross" }, { value: "straight", label: "Straight" }],
+          default: "cross" }
+      ]
+    },
+    peel: {
+      name: "Orange Peel",
+      params: { scale: false, octaves: false, count: true },
+      custom: [
+        { key: "blend", label: "Blend", type: "range", min: 0, max: 0.6, step: 0.05, default: 0.25 }
+      ]
+    },
+    anodize: {
+      name: "Anodize Swirl",
+      params: { scale: false, octaves: false, count: true },
+      custom: [
+        { key: "strokeLength", label: "Stroke Length", type: "range", min: 20, max: 200, step: 5, default: 80 },
+        { key: "turbulence", label: "Turbulence", type: "range", min: 0, max: 1, step: 0.05, default: 0.5 }
+      ]
+    }
+  };
+
+  // Small monoline glyphs (24x24, stroke=currentColor, same convention as
+  // assets/menu.js's icon set) — one per group filter chip and one per
+  // pattern button, so the picker reads by shape as well as by label.
+  const ALL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>';
+  const GROUP_ICONS = {
+    "Organic": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c0-8 4-14 14-15-1 10-7 14-14 15Z"/><path d="M6 18c3-4 6-7 12-12"/></svg>',
+    "Geometric": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3 20 7.5 V16 L12 21 4 16 V7.5 Z"/></svg>',
+    "Weathering": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2"/><path d="M9 4 11 10 8 12 14 15 12 20"/></svg>',
+    "Pro Finish": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c0 4 2 6 6 6-4 0-6 2-6 6 0-4-2-6-6-6 4 0 6-2 6-6Z"/><path d="M19 16c0 1.5.9 2.5 2.5 2.5-1.6 0-2.5 1-2.5 2.5 0-1.5-.9-2.5-2.5-2.5 1.6 0 2.5-1 2.5-2.5Z"/></svg>'
+  };
+  const PATTERN_ICONS = {
+    noise: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="6" r="1.2"/><circle cx="12" cy="4" r="1.2"/><circle cx="19" cy="7" r="1.2"/><circle cx="4" cy="13" r="1.2"/><circle cx="11" cy="12" r="1.2"/><circle cx="18" cy="14" r="1.2"/><circle cx="7" cy="19" r="1.2"/><circle cx="14" cy="20" r="1.2"/><circle cx="20" cy="19" r="1.2"/></svg>',
+    cellular: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3 9 9 4 15 7 13 13 6 15Z"/><path d="M15 7 21 5 21 12 19 18 13 13Z"/><path d="M6 15 13 13 19 18 15 21 8 20Z"/></svg>',
+    wood: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="7" cy="12" rx="3" ry="8"/><ellipse cx="7" cy="12" rx="7" ry="10.5"/><ellipse cx="7" cy="12" rx="11" ry="13"/></svg>',
+    grid: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>',
+    waves: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 8c2.5-3 5-3 7 0s4.5 3 7 0 4.5-3 6-1"/><path d="M2 16c2.5-3 5-3 7 0s4.5 3 7 0 4.5-3 6-1"/></svg>',
+    scratches: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 20 10 4M9 21 15 5M14 21 20 5M19 20 22 12"/></svg>',
+    splotches: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="5"/><circle cx="16" cy="14" r="4"/><circle cx="7" cy="18" r="2.5"/></svg>',
+    cracks: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 10 9 14 11 9 15 11 22"/><path d="M14 11 19 13"/><path d="M9 15 4 17"/></svg>',
+    machining: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="10"/></svg>',
+    paint: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19c3-8 8-14 16-16"/><path d="M6.5 20c3-6.5 6.5-11.5 13-14.5" stroke-width="1"/></svg>',
+    knurl: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 17 17 2M2 22 22 2M7 22 22 7"/><path d="M22 17 7 2M22 22 2 2M17 22 2 7"/></svg>',
+    peel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="2"/><circle cx="16" cy="6" r="1.6"/><circle cx="12" cy="13" r="2.2"/><circle cx="5" cy="16" r="1.6"/><circle cx="18" cy="16" r="2"/></svg>',
+    anodize: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 12c2 0 3-1.2 3-3s-1.3-3.5-4-3.5S6 7.3 6 11s2.5 6.5 6.5 6.5S20 14.8 20 10"/></svg>'
+  };
+
+  // --- Preset library (backlog #3) --------------------------------------
+  // Built-in presets are hardcoded state snapshots (never touch storage),
+  // merged into the dropdown alongside any user-saved presets. Each is built
+  // from a shared "look" baseline plus overrides, with a full custom-param
+  // object seeded from PATTERN_META defaults for every pattern kind (so a
+  // preset stays well-formed even if the active pattern later changes).
+  function defaultCustomState() {
+    const custom = {};
+    Object.keys(PATTERN_META).forEach(kind => {
+      (PATTERN_META[kind].custom || []).forEach(def => {
+        (custom[kind] = custom[kind] || {})[def.key] = def.default;
+      });
+    });
+    return custom;
+  }
+  function builtinPresetState(overrides, customOverrides) {
+    const s = Object.assign({
+      pattern: "noise", scale: 60, octaves: 4, count: 24, roughness: 0.5,
+      contrast: 1.2, levelsBlack: 0, levelsWhite: 1, levelsGamma: 1,
+      bumpStrength: 1, lightAngle: 135, invert: false
+    }, overrides);
+    s.custom = defaultCustomState();
+    if (customOverrides) {
+      Object.keys(customOverrides).forEach(kind => {
+        s.custom[kind] = Object.assign({}, s.custom[kind], customOverrides[kind]);
+      });
+    }
+    return s;
+  }
+  // 5 built-ins spanning all 4 pattern groups (Organic/Geometric/Weathering/
+  // Pro Finish), including two Pro Finish looks per the backlog's example.
+  const BUILTIN_PRESETS = {
+    "Steel — Brushed": builtinPresetState(
+      { pattern: "machining", roughness: 0.3, contrast: 1.4, levelsBlack: 0.05,
+        levelsWhite: 0.95, bumpStrength: 1.2, lightAngle: 135 },
+      { machining: { direction: "linear", pitch: 6, waviness: 0.1 } }
+    ),
+    "Weathered Paint": builtinPresetState(
+      { pattern: "paint", count: 40, roughness: 0.6, contrast: 1.1, levelsBlack: 0.1,
+        levelsWhite: 0.9, levelsGamma: 1.3, bumpStrength: 0.8, lightAngle: 200 },
+      { paint: { strokeLength: 140, turbulence: 0.8 } }
+    ),
+    "Rubber — Pebbled": builtinPresetState(
+      { pattern: "splotches", scale: 40, count: 60, roughness: 0.5, contrast: 1.6,
+        levelsBlack: 0.15, levelsWhite: 0.85, levelsGamma: 0.9, bumpStrength: 1.5,
+        lightAngle: 120, invert: true }
+    ),
+    "Wood — Oak": builtinPresetState(
+      { pattern: "wood", scale: 90, roughness: 0.4, contrast: 1.3, levelsBlack: 0.05,
+        levelsWhite: 0.95, levelsGamma: 1.1, bumpStrength: 1.0, lightAngle: 150 }
+    ),
+    "Waves — Ripples": builtinPresetState(
+      { pattern: "waves", scale: 50, roughness: 0.35, contrast: 1.2, bumpStrength: 1.1,
+        lightAngle: 90 }
+    )
+  };
+
+  function applyContrast(data, contrast) {
+    for (let i = 0; i < data.length; i++) {
+      data[i] = Math.min(1, Math.max(0, (data[i] - 0.5) * contrast + 0.5));
+    }
+  }
+
+  // Photoshop-style levels: remap [black, white] to [0, 1] then apply a gamma
+  // (midtone) curve. Runs after contrast, before invert.
+  function applyLevels(data, black, white, gamma) {
+    const range = Math.max(1e-4, white - black);
+    const invGamma = 1 / Math.max(0.05, gamma);
+    for (let i = 0; i < data.length; i++) {
+      let v = (data[i] - black) / range;
+      v = Math.min(1, Math.max(0, v));
+      data[i] = Math.pow(v, invGamma);
+    }
+  }
+
+  function paintHeightMap(canvas, data, w, h) {
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    const img = ctx.createImageData(w, h);
+    for (let i = 0; i < data.length; i++) {
+      const v = Math.round(data[i] * 255);
+      img.data[i * 4] = v; img.data[i * 4 + 1] = v; img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  function paintBumpPreview(canvas, data, w, h, bumpStrength, lightAngleDeg) {
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    const img = ctx.createImageData(w, h);
+    const angle = (lightAngleDeg * Math.PI) / 180;
+    const lx = Math.cos(angle), ly = Math.sin(angle);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const xp = Math.min(w - 1, x + 1), xm = Math.max(0, x - 1);
+        const yp = Math.min(h - 1, y + 1), ym = Math.max(0, y - 1);
+        const dx = (data[y * w + xp] - data[y * w + xm]) * bumpStrength;
+        const dy = (data[yp * w + x] - data[ym * w + x]) * bumpStrength;
+        let shade = 0.55 - (dx * lx + dy * ly) * 1.5;
+        shade = Math.min(1, Math.max(0, shade));
+        const v = Math.round(shade * 255);
+        const idx = (y * w + x) * 4;
+        img.data[idx] = v; img.data[idx + 1] = v; img.data[idx + 2] = v; img.data[idx + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  // Sobel-filter height-to-normal-map conversion (feature backlog #2). Operates
+  // on the same grayscale `data` array computeTextureData produces, at export
+  // size — pattern-agnostic (works for all pattern kinds unmodified). `at()`
+  // wraps toroidally regardless of whether the source pattern actually tiles
+  // (see FEATURE_BACKLOG brief item #2): for non-tiling patterns this is a
+  // harmless one-pixel-wide inaccuracy at the border, and avoids needing
+  // separate edge-clamping logic. `strength` reuses state.bumpStrength so the
+  // normal map's apparent intensity matches the bump preview already shown.
+  function heightToNormalMap(data, w, h, strength) {
+    const out = new Uint8ClampedArray(w * h * 4);
+    const at = (x, y) => data[((y + h) % h) * w + ((x + w) % w)];
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const l = at(x - 1, y), r = at(x + 1, y), u = at(x, y - 1), d = at(x, y + 1);
+        const dx = (l - r) * strength, dy = (u - d) * strength;
+        const len = Math.sqrt(dx * dx + dy * dy + 1);
+        const idx = (y * w + x) * 4;
+        out[idx]     = Math.round((dx / len * 0.5 + 0.5) * 255); // R
+        out[idx + 1] = Math.round((dy / len * 0.5 + 0.5) * 255); // G
+        out[idx + 2] = Math.round((1 / len * 0.5 + 0.5) * 255);  // B
+        out[idx + 3] = 255;
+      }
+    }
+    return out;
+  }
+
+  function paintNormalMap(canvas, data, w, h, bumpStrength) {
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    const img = ctx.createImageData(w, h);
+    img.data.set(heightToNormalMap(data, w, h, bumpStrength));
+    ctx.putImageData(img, 0, 0);
+  }
+
+  function computeTextureData(size, state) {
+    const gen = TEXTURE_GENERATORS[state.pattern] || generateNoise;
+    const data = gen(size, size, state);
+    applyContrast(data, state.contrast);
+    applyLevels(data, state.levelsBlack, state.levelsWhite, state.levelsGamma);
+    if (state.invert) { for (let i = 0; i < data.length; i++) data[i] = 1 - data[i]; }
+    return data;
+  }
+
+  function mountTextureTool(main) {
+    setCrumbs([{ label: "Texture & Bump Map Generator" }]);
+
+    main.appendChild(buildPageHead(
+      "Texture & Bump Map Generator",
+      "Procedural grayscale texture and bump previews, driven by a few seeded generation criteria. Hit Play for a live, seamless-looping animation of any pattern — each has its own motion. Export a single static PNG, the full animated loop as a numbered frame sequence, or that same loop as a single WebM clip.",
+      { label: "Parametric Assets", hash: "" }
+    ));
+
+    // Quick-start strip: the standard full Randomize (shared look via
+    // assets/generator-ui.css). The Preset section below serves as the curated
+    // "starter" list. randomizeAll() is defined further down (hoisted).
+    const quickstart = document.createElement("div");
+    quickstart.className = "gen-quickstart";
+    quickstart.innerHTML =
+      '<span class="qs-label">Start</span>' +
+      '<button class="gen-randomize" type="button" title="Randomize all settings">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="1"/><circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none"/><circle cx="16" cy="8" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="8" cy="16" r="1.3" fill="currentColor" stroke="none"/><circle cx="16" cy="16" r="1.3" fill="currentColor" stroke="none"/></svg>Randomize</button>' +
+      '<span class="qs-hint">Roll a random texture, or load a preset below.</span>';
+    main.appendChild(quickstart);
+    const quickRandomBtn = quickstart.querySelector(".gen-randomize");
+    quickRandomBtn.addEventListener("click", () => {
+      randomizeAll();
+      quickRandomBtn.classList.remove("rolling");
+      void quickRandomBtn.offsetWidth; // reflow so the dice spin restarts each click
+      quickRandomBtn.classList.add("rolling");
+    });
+
+    const state = {
+      pattern: "noise",
+      scale: 60,
+      octaves: 4,
+      count: 24,
+      roughness: 0.5,
+      contrast: 1.2,
+      levelsBlack: 0,
+      levelsWhite: 1,
+      levelsGamma: 1,
+      bumpStrength: 1,
+      lightAngle: 135,
+      invert: false,
+      seed: Math.floor(Math.random() * 1e9),
+      animate: false,
+      time: 0,
+      custom: {}
+    };
+
+    // Per-pattern custom params (Pro Finish patterns): eagerly seed every
+    // declared custom param with its default. Because every export path
+    // (static PNG + frame sequence) passes `state` straight into
+    // computeTextureData, custom params flow into exports with no
+    // export-code changes.
+    Object.keys(PATTERN_META).forEach(kind => {
+      (PATTERN_META[kind].custom || []).forEach(def => {
+        (state.custom[kind] = state.custom[kind] || {})[def.key] = def.default;
+      });
+    });
+
+    const controls = document.createElement("div");
+    controls.className = "param-panel texture-controls";
+    main.appendChild(controls);
+
+    // Ordered, labeled sections (Lens 4A reorg, later made uniformly
+    // collapsible for the mobile-responsiveness pass): PRESET -> PATTERN ->
+    // SHAPE (+ PATTERN OPTIONS) -> SURFACE & TONE -> PREVIEW & ANIMATION.
+    // Purely a DOM-grouping helper — every row/control built below is the
+    // same element, wired the same way, just appended into a labeled
+    // container instead of one flat wall. Every section here is a
+    // <details open> (expanded by default, so nothing is hidden — just
+    // collapsible, so a long control panel doesn't have to stay fully
+    // expanded on a small screen); see EXPORT below for the export group's
+    // own <details open> block. The primary "Static maps" export actions
+    // are deliberately NOT collapsible — see EXPORT.
+    function section(label, opts) {
+      opts = opts || {};
+      const wrap = document.createElement(opts.details ? "details" : "div");
+      wrap.className = "control-section";
+      // Closed by default (see CHANGELOG "Collapsed by default" entry) — a
+      // first-time view of this panel should read as a short, calm list of
+      // section headers, not five sections' worth of controls all at once.
+      // Nothing is hidden permanently: every section is one click away.
+      if (opts.details) wrap.open = false;
+      const head = document.createElement(opts.details ? "summary" : "div");
+      head.className = "section-label";
+      head.innerHTML = opts.details ? `<span class="chev" aria-hidden="true">&rsaquo;</span> ${label}` : label;
+      wrap.appendChild(head);
+      const body = document.createElement("div");
+      body.className = "texture-sliders";
+      wrap.appendChild(body);
+      controls.appendChild(wrap);
+      return body;
+    }
+
+    // --- 1. PRESET ---------------------------------------------------------
+    const presetBody = section("Preset", { details: true });
+    const presetHelp = document.createElement("div");
+    presetHelp.className = "param-hint";
+    presetHelp.textContent = "Start from a preset, then tweak — or build from scratch below.";
+    presetBody.appendChild(presetHelp);
+
+    const presetRow = document.createElement("div");
+    presetRow.className = "param-row";
+    const presetRowLabel = document.createElement("label");
+    presetRowLabel.textContent = "Preset";
+    presetRow.appendChild(presetRowLabel);
+    // Preset dropdown + Save button. Population/wiring happens further down,
+    // once every control that a preset can affect (sliders, custom rows,
+    // pattern buttons, invert) has been built — the dropdown's change
+    // handler needs to resync all of it.
+    const presetSelect = document.createElement("select");
+    presetSelect.className = "btn";
+    presetSelect.title = "Load a saved preset";
+    const savePresetBtn = document.createElement("button");
+    savePresetBtn.className = "btn";
+    savePresetBtn.textContent = "Save Preset";
+    const presetStatus = document.createElement("span");
+    presetStatus.className = "param-value";
+    presetStatus.style.minWidth = "0";
+    presetRow.appendChild(presetSelect);
+    presetRow.appendChild(savePresetBtn);
+    presetRow.appendChild(presetStatus);
+    presetBody.appendChild(presetRow);
+
+    // --- 2. PATTERN ----------------------------------------------------------
+    const patternBody = section("Pattern", { details: true });
+    const patternHelp = document.createElement("div");
+    patternHelp.className = "param-hint";
+    patternHelp.textContent = "Filter by group, or browse everything, then pick a pattern.";
+    patternBody.appendChild(patternHelp);
+
+    // Icon-driven group filter: narrows the pattern list below to one group
+    // at a time (or "All"). Groups stay in the DOM always — this just toggles
+    // display, same approach as the per-pattern custom-param rows — so no
+    // pattern, event listener, or piece of state is ever removed.
+    const patternFilterRow = document.createElement("div");
+    patternFilterRow.className = "pattern-filter-row";
+    const groupWrapByLabel = {};
+    function applyPatternFilter(filter) {
+      Array.prototype.forEach.call(patternFilterRow.children, chip => {
+        chip.classList.toggle("active", chip.dataset.filter === filter);
+      });
+      Object.keys(groupWrapByLabel).forEach(label => {
+        groupWrapByLabel[label].style.display = (filter === "all" || filter === label) ? "flex" : "none";
+      });
+    }
+    function filterChip(filterKey, label, icon) {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "filter-chip";
+      chip.dataset.filter = filterKey;
+      chip.innerHTML = '<span class="ic" aria-hidden="true">' + icon + "</span><span>" + label + "</span>";
+      chip.addEventListener("click", () => applyPatternFilter(filterKey));
+      patternFilterRow.appendChild(chip);
+      return chip;
+    }
+    filterChip("all", "All", ALL_ICON);
+    PATTERN_GROUPS.forEach(group => filterChip(group.label, group.label, GROUP_ICONS[group.label]));
+    patternBody.appendChild(patternFilterRow);
+
+    const patternRow = document.createElement("div");
+    patternRow.className = "param-row";
+    const patternLabel = document.createElement("label");
+    patternLabel.textContent = "Pattern";
+    patternRow.appendChild(patternLabel);
+    const patternGroup = document.createElement("div");
+    patternGroup.className = "pattern-groups";
+    patternRow.appendChild(patternGroup);
+    patternBody.appendChild(patternRow);
+
+    const seedRow = document.createElement("div");
+    seedRow.className = "param-row";
+    const seedLabel = document.createElement("label");
+    seedLabel.textContent = "Seed";
+    const seedValue = document.createElement("span");
+    seedValue.className = "param-value";
+    seedValue.style.minWidth = "90px";
+    const randomizeBtn = document.createElement("button");
+    randomizeBtn.className = "btn";
+    randomizeBtn.textContent = "Roll";
+    randomizeBtn.title = "Re-roll the seed (keeps the current settings)";
+    randomizeBtn.addEventListener("click", () => {
+      state.seed = Math.floor(Math.random() * 1e9);
+      seedValue.textContent = String(state.seed);
+      regenerate();
+    });
+    seedRow.appendChild(seedLabel);
+    seedRow.appendChild(seedValue);
+    seedRow.appendChild(randomizeBtn);
+    patternBody.appendChild(seedRow);
+
+    // --- 3. SHAPE (+ PATTERN OPTIONS) --------------------------------------
+    let sliderRowsWrap = section("Shape", { details: true });
+
+    const sliderRefs = {};
+    function row(key, label, min, max, step) {
+      const rowEl = document.createElement("div");
+      rowEl.className = "param-row";
+      const lab = document.createElement("label");
+      lab.textContent = label;
+      const input = document.createElement("input");
+      input.type = "range";
+      input.min = min; input.max = max; input.step = step;
+      input.value = state[key];
+      const valSpan = document.createElement("span");
+      valSpan.className = "param-value";
+      valSpan.textContent = state[key];
+      input.addEventListener("input", () => {
+        state[key] = parseFloat(input.value);
+        valSpan.textContent = state[key];
+        regenerate();
+      });
+      rowEl.appendChild(lab); rowEl.appendChild(input); rowEl.appendChild(valSpan);
+      sliderRowsWrap.appendChild(rowEl);
+      sliderRefs[key] = { input, valSpan };
+      return rowEl;
+    }
+
+    const scaleRow = row("scale", "Scale", 8, 160, 2);
+    const octaveRow = row("octaves", "Octaves", 1, 6, 1);
+    const countRow = row("count", "Count", 2, 80, 1);
+
+    const patternOptionsLabel = document.createElement("div");
+    patternOptionsLabel.className = "pattern-group-label";
+    patternOptionsLabel.textContent = "Pattern Options";
+    sliderRowsWrap.appendChild(patternOptionsLabel);
+
+    // Custom control rows (declared per pattern in PATTERN_META[kind].custom):
+    // built once at mount into one container per pattern -- shown only while
+    // that pattern is selected (toggled in the pattern-button handler, same as
+    // scaleRow/octaveRow/countRow) -- and reading/writing
+    // state.custom[kind][key], so values persist across pattern switches
+    // exactly like the shared sliders do.
+    const customRangeRefs = {};
+    const customSelectRefs = {};
+    function customRangeRow(kind, def) {
+      const rowEl = document.createElement("div");
+      rowEl.className = "param-row";
+      const lab = document.createElement("label");
+      lab.textContent = def.label;
+      const input = document.createElement("input");
+      input.type = "range";
+      input.min = def.min; input.max = def.max; input.step = def.step;
+      input.value = state.custom[kind][def.key];
+      const valSpan = document.createElement("span");
+      valSpan.className = "param-value";
+      valSpan.textContent = state.custom[kind][def.key];
+      input.addEventListener("input", () => {
+        state.custom[kind][def.key] = parseFloat(input.value);
+        valSpan.textContent = state.custom[kind][def.key];
+        regenerate();
+      });
+      rowEl.appendChild(lab); rowEl.appendChild(input); rowEl.appendChild(valSpan);
+      (customRangeRefs[kind] = customRangeRefs[kind] || {})[def.key] = { input, valSpan };
+      return rowEl;
+    }
+    function customSelectRow(kind, def) {
+      const rowEl = document.createElement("div");
+      rowEl.className = "param-row";
+      const lab = document.createElement("label");
+      lab.textContent = def.label;
+      rowEl.appendChild(lab);
+      const group = document.createElement("div");
+      group.className = "pattern-select";
+      const btns = [];
+      def.options.forEach(opt => {
+        const btn = document.createElement("button");
+        btn.className = "btn" + (state.custom[kind][def.key] === opt.value ? " primary" : "");
+        btn.textContent = opt.label;
+        btn.addEventListener("click", () => {
+          state.custom[kind][def.key] = opt.value;
+          btns.forEach(b => b.classList.remove("primary"));
+          btn.classList.add("primary");
+          regenerate();
+        });
+        btns.push(btn);
+        group.appendChild(btn);
+      });
+      rowEl.appendChild(group);
+      (customSelectRefs[kind] = customSelectRefs[kind] || {})[def.key] = { btns, def };
+      return rowEl;
+    }
+    // display:contents so the rows inside participate directly in the
+    // .texture-sliders flex flow, identical to the shared slider rows.
+    const customWraps = {};
+    Object.keys(PATTERN_META).forEach(kind => {
+      const defs = PATTERN_META[kind].custom;
+      if (!defs || !defs.length) return;
+      const wrap = document.createElement("div");
+      wrap.style.display = kind === state.pattern ? "contents" : "none";
+      defs.forEach(def => {
+        wrap.appendChild(def.type === "select" ? customSelectRow(kind, def) : customRangeRow(kind, def));
+      });
+      sliderRowsWrap.appendChild(wrap);
+      customWraps[kind] = wrap;
+    });
+    countRow.style.display = "none";
+
+    // --- 4. SURFACE & TONE (<details open> — expanded by default, nothing
+    // hidden, just collapsible for a shorter panel) ------------------------
+    sliderRowsWrap = section("Surface & Tone", { details: true });
+    row("roughness", "Roughness", 0.1, 0.9, 0.05);
+    row("contrast", "Contrast", 0.5, 3, 0.05);
+
+    const levelsLabel = document.createElement("div");
+    levelsLabel.className = "pattern-group-label";
+    levelsLabel.textContent = "Levels";
+    sliderRowsWrap.appendChild(levelsLabel);
+    row("levelsBlack", "Black Point", 0, 0.9, 0.01);
+    row("levelsWhite", "White Point", 0.1, 1, 0.01);
+    row("levelsGamma", "Gamma", 0.2, 3, 0.05);
+
+    const invertRow = document.createElement("div");
+    invertRow.className = "param-row";
+    const invertLabel = document.createElement("label");
+    invertLabel.textContent = "Invert";
+    const invertInput = document.createElement("input");
+    invertInput.type = "checkbox";
+    invertInput.checked = state.invert;
+    invertInput.addEventListener("change", () => {
+      state.invert = invertInput.checked;
+      regenerate();
+    });
+    invertRow.appendChild(invertLabel);
+    invertRow.appendChild(invertInput);
+    sliderRowsWrap.appendChild(invertRow);
+
+    // --- 5. PREVIEW & ANIMATION ---------------------------------------------
+    // Bump Strength / Light Angle drive the Bump Preview + Normal export
+    // lighting (not the height data itself), so they're grouped here with
+    // Animate / Tile Preview — the animate row (built further down, once the
+    // preview canvases exist) is appended into this same section body.
+    const previewAnimBody = section("Preview & Animation", { details: true });
+    sliderRowsWrap = previewAnimBody;
+    row("bumpStrength", "Bump Strength", 0.1, 3, 0.05);
+    row("lightAngle", "Light Angle", 0, 360, 5);
+
+    const allPatternBtns = [];
+    const patternBtnByKind = {};
+    // Shared resync used both by the pattern-button click handler and by
+    // preset loading (backlog #3) — whichever changes state.pattern must run
+    // the same active-button / row-visibility / custom-wrap sync so the UI
+    // never silently drifts from state.
+    function syncPatternUI(kind) {
+      const meta = PATTERN_META[kind];
+      allPatternBtns.forEach(b => b.classList.remove("primary"));
+      if (patternBtnByKind[kind]) patternBtnByKind[kind].classList.add("primary");
+      scaleRow.style.display = meta.params.scale ? "flex" : "none";
+      octaveRow.style.display = meta.params.octaves ? "flex" : "none";
+      countRow.style.display = meta.params.count ? "flex" : "none";
+      Object.keys(customWraps).forEach(k => {
+        customWraps[k].style.display = k === kind ? "contents" : "none";
+      });
+    }
+    PATTERN_GROUPS.forEach(group => {
+      const groupWrap = document.createElement("div");
+      groupWrap.className = "pattern-group";
+      const groupLabel = document.createElement("div");
+      groupLabel.className = "pattern-group-label";
+      groupLabel.textContent = group.label;
+      groupWrap.appendChild(groupLabel);
+      const groupBtns = document.createElement("div");
+      groupBtns.className = "pattern-select";
+      group.kinds.forEach(kind => {
+        const meta = PATTERN_META[kind];
+        const btn = document.createElement("button");
+        btn.className = "btn pattern-btn" + (state.pattern === kind ? " primary" : "");
+        btn.innerHTML = '<span class="ic" aria-hidden="true">' + (PATTERN_ICONS[kind] || "") + "</span><span>" + meta.name + "</span>";
+        btn.addEventListener("click", () => {
+          state.pattern = kind;
+          syncPatternUI(kind);
+          regenerate();
+        });
+        allPatternBtns.push(btn);
+        patternBtnByKind[kind] = btn;
+        groupBtns.appendChild(btn);
+      });
+      groupWrap.appendChild(groupBtns);
+      groupWrapByLabel[group.label] = groupWrap;
+      patternGroup.appendChild(groupWrap);
+    });
+    applyPatternFilter("all");
+
+    // Full "surprise me" for the top quick-start Randomize: roll the shape /
+    // surface sliders (keeping Levels, which clip if inverted), the current
+    // pattern's own options, invert, and a fresh seed. Pattern choice is kept —
+    // it's the equivalent of the "generator" in the other tools.
+    function randomizeAll() {
+      const skip = { levelsBlack: 1, levelsWhite: 1, levelsGamma: 1 };
+      function rollInput(inp) {
+        const min = parseFloat(inp.min), max = parseFloat(inp.max), step = parseFloat(inp.step) || 1;
+        let n = min + Math.random() * (max - min);
+        n = Math.round(n / step) * step;
+        return Math.min(max, Math.max(min, parseFloat(n.toFixed(4))));
+      }
+      Object.keys(sliderRefs).forEach(key => {
+        if (skip[key]) return;
+        const ref = sliderRefs[key];
+        ref.input.value = rollInput(ref.input);
+        state[key] = parseFloat(ref.input.value);
+        ref.valSpan.textContent = state[key];
+      });
+      state.invert = Math.random() < 0.5;
+      invertInput.checked = state.invert;
+      const pk = state.pattern;
+      const cr = customRangeRefs[pk];
+      if (cr) Object.keys(cr).forEach(key => {
+        const ref = cr[key];
+        ref.input.value = rollInput(ref.input);
+        state.custom[pk][key] = parseFloat(ref.input.value);
+        ref.valSpan.textContent = state.custom[pk][key];
+      });
+      const cs = customSelectRefs[pk];
+      if (cs) Object.keys(cs).forEach(key => {
+        const ref = cs[key];
+        const opt = ref.def.options[Math.floor(Math.random() * ref.def.options.length)];
+        state.custom[pk][key] = opt.value;
+        ref.btns.forEach(b => b.classList.toggle("primary", b.textContent === opt.label));
+      });
+      state.seed = Math.floor(Math.random() * 1e9);
+      seedValue.textContent = String(state.seed);
+      regenerate();
+    }
+
+    // --- Preset library wiring (backlog #3) --------------------------------
+    // Storage: window.storage (used by the Overlay Customizer's palette
+    // save/load, see buildPalettePanel above) is an environment-injected API
+    // that is never defined anywhere in this file — it's only present in
+    // whatever sandboxed host provides it, and silently falls through to
+    // "Storage unavailable" otherwise. This app is also opened as a plain
+    // local file and served static on GitHub Pages (see root CLAUDE.md), both
+    // plain-browser contexts with no such global. Presets use `localStorage`
+    // directly instead, under the same key-naming scheme the spec specifies
+    // (`texturepreset:<name>`, `texturepreset:index`) so the feature actually
+    // persists in every context this app runs in.
+    function presetStorageGet(key) {
+      try { return localStorage.getItem(key); } catch (e) { return null; }
+    }
+    function presetStorageSet(key, value) {
+      try { localStorage.setItem(key, value); return true; } catch (e) { return false; }
+    }
+    function loadPresetIndex() {
+      try {
+        const arr = JSON.parse(presetStorageGet("texturepreset:index") || "[]");
+        return Array.isArray(arr) ? arr : [];
+      } catch (e) { return []; }
+    }
+    function savePresetIndex(names) {
+      presetStorageSet("texturepreset:index", JSON.stringify(names));
+    }
+    function getPresetByName(name) {
+      if (BUILTIN_PRESETS[name]) return BUILTIN_PRESETS[name];
+      try {
+        const raw = presetStorageGet("texturepreset:" + name);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) { return null; }
+    }
+    // Saves the *look*, not the session: everything in `state` except `seed`
+    // (explicit in the spec — a preset should look like itself on any seed)
+    // and also except `time`/`animate` (a judgment call beyond the spec: those
+    // are transient playback state, not parameters of the look, and blindly
+    // restoring `animate` would desync the Play/Pause button and rAF loop
+    // from state.animate since those are only ever meant to change together
+    // via setAnimate()). Name collisions with a built-in are rejected outright
+    // rather than silently overwritten or renamed, so the shipped reference
+    // presets always stay exactly what's documented in CHANGELOG.md.
+    function savePresetAs(name) {
+      name = (name || "").trim();
+      if (!name) return { ok: false, reason: "empty" };
+      if (BUILTIN_PRESETS[name]) return { ok: false, reason: "builtin-collision" };
+      const toSave = {
+        pattern: state.pattern, scale: state.scale, octaves: state.octaves, count: state.count,
+        roughness: state.roughness, contrast: state.contrast, levelsBlack: state.levelsBlack,
+        levelsWhite: state.levelsWhite, levelsGamma: state.levelsGamma,
+        bumpStrength: state.bumpStrength, lightAngle: state.lightAngle, invert: state.invert,
+        custom: JSON.parse(JSON.stringify(state.custom))
+      };
+      presetStorageSet("texturepreset:" + name, JSON.stringify(toSave));
+      const idx = loadPresetIndex();
+      if (!idx.includes(name)) { idx.push(name); savePresetIndex(idx); }
+      refreshPresetDropdown();
+      return { ok: true };
+    }
+    function syncSharedSlidersUI() {
+      Object.keys(sliderRefs).forEach(key => {
+        const { input, valSpan } = sliderRefs[key];
+        input.value = state[key];
+        valSpan.textContent = state[key];
+      });
+    }
+    function syncCustomControlsUI() {
+      Object.keys(customRangeRefs).forEach(kind => {
+        Object.keys(customRangeRefs[kind]).forEach(key => {
+          const { input, valSpan } = customRangeRefs[kind][key];
+          const v = state.custom[kind][key];
+          input.value = v;
+          valSpan.textContent = v;
+        });
+      });
+      Object.keys(customSelectRefs).forEach(kind => {
+        Object.keys(customSelectRefs[kind]).forEach(key => {
+          const { btns, def } = customSelectRefs[kind][key];
+          const v = state.custom[kind][key];
+          btns.forEach(b => b.classList.remove("primary"));
+          const idx = def.options.findIndex(o => o.value === v);
+          if (idx >= 0) btns[idx].classList.add("primary");
+        });
+      });
+    }
+    // Applies every field of a saved/built-in preset object to `state`
+    // (leaving state.seed untouched) and resyncs every control that could be
+    // showing a now-stale value: shared sliders, custom-param rows for every
+    // pattern kind, the Invert checkbox, and the pattern-button/row-visibility
+    // resync shared with the pattern-button click handler.
+    function applyPresetState(preset) {
+      state.pattern = preset.pattern;
+      state.scale = preset.scale;
+      state.octaves = preset.octaves;
+      state.count = preset.count;
+      state.roughness = preset.roughness;
+      state.contrast = preset.contrast;
+      state.levelsBlack = preset.levelsBlack;
+      state.levelsWhite = preset.levelsWhite;
+      state.levelsGamma = preset.levelsGamma;
+      state.bumpStrength = preset.bumpStrength;
+      state.lightAngle = preset.lightAngle;
+      state.invert = preset.invert;
+      state.custom = JSON.parse(JSON.stringify(preset.custom || {}));
+      // Defensive: fill in any pattern kind the saved preset predates (e.g. a
+      // preset saved before a new Pro Finish pattern shipped custom params).
+      Object.keys(PATTERN_META).forEach(kind => {
+        if (!state.custom[kind]) {
+          state.custom[kind] = {};
+          (PATTERN_META[kind].custom || []).forEach(def => { state.custom[kind][def.key] = def.default; });
+        }
+      });
+      invertInput.checked = state.invert;
+      syncSharedSlidersUI();
+      syncCustomControlsUI();
+      syncPatternUI(state.pattern);
+      regenerate();
+    }
+    function refreshPresetDropdown() {
+      const savedNames = loadPresetIndex().filter(n => !BUILTIN_PRESETS[n]);
+      const allNames = Object.keys(BUILTIN_PRESETS).concat(savedNames);
+      const prevValue = presetSelect.value;
+      presetSelect.innerHTML = "";
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "Load preset…";
+      presetSelect.appendChild(placeholder);
+      allNames.forEach(name => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name + (BUILTIN_PRESETS[name] ? " ★" : "");
+        presetSelect.appendChild(opt);
+      });
+      presetSelect.value = allNames.includes(prevValue) ? prevValue : "";
+    }
+    presetSelect.addEventListener("change", () => {
+      const name = presetSelect.value;
+      presetSelect.value = "";
+      if (!name) return;
+      const preset = getPresetByName(name);
+      if (preset) applyPresetState(preset);
+    });
+    savePresetBtn.addEventListener("click", () => {
+      const name = window.prompt("Save current settings as preset:", "");
+      if (name == null) return;
+      const result = savePresetAs(name);
+      if (result.ok) {
+        presetStatus.textContent = "Saved “" + name.trim() + "”";
+      } else if (result.reason === "builtin-collision") {
+        presetStatus.textContent = "Name reserved by a built-in — pick another";
+      } else {
+        presetStatus.textContent = "";
+      }
+      setTimeout(() => presetStatus.textContent = "", 3000);
+    });
+    refreshPresetDropdown();
+
+    seedValue.textContent = String(state.seed);
+
+    const canvasRow = document.createElement("div");
+    canvasRow.className = "canvas-row";
+    main.appendChild(canvasRow);
+
+    function canvasPanel(title, caption) {
+      const panel = document.createElement("div");
+      panel.className = "canvas-panel";
+      const h3 = document.createElement("div");
+      h3.className = "canvas-panel-title";
+      h3.textContent = title;
+      const canvas = document.createElement("canvas");
+      panel.appendChild(h3);
+      panel.appendChild(canvas);
+      if (caption) {
+        const cap = document.createElement("div");
+        cap.className = "preview-caption";
+        cap.textContent = caption;
+        panel.appendChild(cap);
+      }
+      canvasRow.appendChild(panel);
+      return canvas;
+    }
+
+    const textureCanvas = canvasPanel("Texture / Height Map", "This is the exportable data.");
+    const bumpCanvas = canvasPanel("Bump Preview (simulated light)", "Lighting preview only — not exported as a texture. Adjust Bump Strength / Light Angle above.");
+
+    // --- 7. EXPORT: Group A "Static maps" (always visible) + Group B
+    // "Animated" (<details open> — expanded by default, nothing hidden).
+    const exportSection = document.createElement("div");
+    exportSection.className = "export-section";
+    const exportLabel = document.createElement("div");
+    exportLabel.className = "section-label";
+    exportLabel.textContent = "Export";
+    exportSection.appendChild(exportLabel);
+
+    const staticGroupLabel = document.createElement("div");
+    staticGroupLabel.className = "pattern-group-label";
+    staticGroupLabel.textContent = "Static maps";
+    exportSection.appendChild(staticGroupLabel);
+    const actions = document.createElement("div");
+    actions.className = "cell-actions";
+    exportSection.appendChild(actions);
+
+    const animDetails = document.createElement("details");
+    animDetails.className = "export-section";
+    animDetails.open = false; // closed by default, same as the control-panel sections above
+    const animSummary = document.createElement("summary");
+    animSummary.className = "section-label";
+    animSummary.innerHTML = '<span class="chev" aria-hidden="true">&rsaquo;</span> Animated';
+    animDetails.appendChild(animSummary);
+    const animActions = document.createElement("div");
+    animActions.className = "cell-actions";
+    animDetails.appendChild(animActions);
+
+    main.appendChild(exportSection);
+    main.appendChild(animDetails);
+
+    const statusLine = document.createElement("div");
+    statusLine.className = "status-line";
+    main.appendChild(statusLine);
+
+    const exportTextureBtn = document.createElement("button");
+    exportTextureBtn.className = "btn primary";
+    exportTextureBtn.textContent = "Export Height/Bump Map PNG";
+    exportTextureBtn.title = "The grayscale height data — drop into a bump/height slot";
+    exportTextureBtn.addEventListener("click", () => {
+      statusLine.textContent = "Rendering at " + TEXTURE_EXPORT_SIZE + "px\u2026";
+      setTimeout(() => {
+        const data = computeTextureData(TEXTURE_EXPORT_SIZE, state);
+        const exportCanvas = document.createElement("canvas");
+        paintHeightMap(exportCanvas, data, TEXTURE_EXPORT_SIZE, TEXTURE_EXPORT_SIZE);
+        openPngInNewTab(exportCanvas, "texture_" + state.pattern + "_" + state.seed + ".png");
+        statusLine.textContent = "Height/bump map opened in a new tab \u2014 save it from there";
+        setTimeout(() => statusLine.textContent = "", 3500);
+      }, 10);
+    });
+
+    const exportPreviewBtn = document.createElement("button");
+    exportPreviewBtn.className = "btn";
+    exportPreviewBtn.textContent = "Export Preview Render PNG";
+    exportPreviewBtn.title = "The shaded relief preview as a PNG — visual only, not a texture map";
+    exportPreviewBtn.addEventListener("click", () => {
+      statusLine.textContent = "Rendering at " + TEXTURE_EXPORT_SIZE + "px\u2026";
+      setTimeout(() => {
+        const data = computeTextureData(TEXTURE_EXPORT_SIZE, state);
+        const exportCanvas = document.createElement("canvas");
+        paintBumpPreview(exportCanvas, data, TEXTURE_EXPORT_SIZE, TEXTURE_EXPORT_SIZE, state.bumpStrength, state.lightAngle);
+        openPngInNewTab(exportCanvas, "bump_preview_" + state.pattern + "_" + state.seed + ".png");
+        statusLine.textContent = "Preview render opened in a new tab (not a texture map — visual only)";
+        setTimeout(() => statusLine.textContent = "", 3500);
+      }, 10);
+    });
+
+    const exportNormalBtn = document.createElement("button");
+    exportNormalBtn.className = "btn";
+    exportNormalBtn.textContent = "Export Normal Map PNG";
+    exportNormalBtn.title = "Tangent-space RGB normal map via Sobel — usually preferred over height for surface detail";
+    exportNormalBtn.addEventListener("click", () => {
+      statusLine.textContent = "Rendering at " + TEXTURE_EXPORT_SIZE + "px…";
+      setTimeout(() => {
+        const data = computeTextureData(TEXTURE_EXPORT_SIZE, state);
+        const exportCanvas = document.createElement("canvas");
+        paintNormalMap(exportCanvas, data, TEXTURE_EXPORT_SIZE, TEXTURE_EXPORT_SIZE, state.bumpStrength);
+        openPngInNewTab(exportCanvas, "normal_" + state.pattern + "_" + state.seed + ".png");
+        statusLine.textContent = "Normal map opened in a new tab — save it from there";
+        setTimeout(() => statusLine.textContent = "", 3500);
+      }, 10);
+    });
+
+    const frameCountSelect = document.createElement("select");
+    frameCountSelect.className = "btn";
+    [12, 24, 48].forEach(n => {
+      const opt = document.createElement("option");
+      opt.value = String(n);
+      opt.textContent = n + " frames";
+      if (n === 24) opt.selected = true;
+      frameCountSelect.appendChild(opt);
+    });
+
+    const exportFramesBtn = document.createElement("button");
+    exportFramesBtn.className = "btn";
+    exportFramesBtn.textContent = "Export Frame Sequence (PNG)";
+    exportFramesBtn.title = "Renders one full animation loop as a numbered PNG sequence in a new tab";
+    exportFramesBtn.addEventListener("click", () => {
+      exportFrameSequence(parseInt(frameCountSelect.value, 10));
+    });
+
+    async function exportFrameSequence(frameCount) {
+      const wasAnimating = animate;
+      if (wasAnimating) setAnimate(false);
+      const savedTime = state.time;
+      const savedAnimate = state.animate;
+      state.animate = true;
+      exportFramesBtn.disabled = true;
+      frameCountSelect.disabled = true;
+      const seedTag = state.pattern + "_" + state.seed;
+      const frames = [];
+      try {
+        const exportCanvas = document.createElement("canvas");
+        for (let k = 0; k < frameCount; k++) {
+          state.time = k / frameCount;
+          const data = computeTextureData(TEXTURE_EXPORT_SIZE, state);
+          paintHeightMap(exportCanvas, data, TEXTURE_EXPORT_SIZE, TEXTURE_EXPORT_SIZE);
+          const blob = await new Promise(res => exportCanvas.toBlob(res, "image/png"));
+          if (!blob) throw new Error("toBlob failed");
+          const url = URL.createObjectURL(blob);
+          const filename = seedTag + "_" + String(k + 1).padStart(4, "0") + ".png";
+          frames.push({ url, filename });
+          statusLine.textContent = "Rendering frame " + (k + 1) + "/" + frameCount + "…";
+          await new Promise(r => setTimeout(r, 0));
+        }
+        openFrameGalleryInNewTab(frames, seedTag);
+        statusLine.textContent = "Frame sequence (" + frameCount + ") opened in a new tab — save from there";
+      } catch (e) {
+        statusLine.textContent = "Frame sequence export failed";
+        frames.forEach(f => URL.revokeObjectURL(f.url));
+      } finally {
+        state.time = savedTime;
+        state.animate = savedAnimate;
+        regenerate();
+        exportFramesBtn.disabled = false;
+        frameCountSelect.disabled = false;
+        setTimeout(() => statusLine.textContent = "", 3500);
+      }
+    }
+
+    function pickWebMMimeType() {
+      const candidates = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+      return candidates.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || "";
+    }
+
+    const exportWebMBtn = document.createElement("button");
+    exportWebMBtn.className = "btn";
+    exportWebMBtn.textContent = "Export WebM (single file)";
+    exportWebMBtn.title = "Records one seamless loop of the height/bump map as a single .webm clip — a shareable preview, not texture-precision data (use the PNG frame sequence for that)";
+    exportWebMBtn.addEventListener("click", exportWebM);
+
+    async function exportWebM() {
+      if (!window.MediaRecorder) {
+        statusLine.textContent = "WebM export needs MediaRecorder — unavailable in this browser";
+        setTimeout(() => statusLine.textContent = "", 3500);
+        return;
+      }
+      exportFramesBtn.disabled = true;
+      frameCountSelect.disabled = true;
+      exportWebMBtn.disabled = true;
+      const seedTag = state.pattern + "_" + state.seed;
+      const wasAnimating = animate;
+      // state.time is periodic in loopMs regardless of phase, so any loopMs-long
+      // capture window loops seamlessly on playback — just make sure it's running.
+      if (!wasAnimating) setAnimate(true);
+      const mimeType = pickWebMMimeType();
+      const stream = textureCanvas.captureStream(30);
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      const chunks = [];
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+      const stopped = new Promise(resolve => { recorder.onstop = resolve; });
+      recorder.start();
+      statusLine.textContent = "Recording one loop (" + (loopMs / 1000).toFixed(1) + "s)…";
+      await new Promise(r => setTimeout(r, loopMs + 60));
+      recorder.stop();
+      try {
+        await stopped;
+        const blob = new Blob(chunks, { type: mimeType || "video/webm" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "texture_" + seedTag + ".webm";
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+        statusLine.textContent = "WebM clip downloaded";
+      } catch (e) {
+        statusLine.textContent = "WebM export failed";
+      } finally {
+        if (!wasAnimating) setAnimate(false);
+        exportFramesBtn.disabled = false;
+        frameCountSelect.disabled = false;
+        exportWebMBtn.disabled = false;
+        setTimeout(() => statusLine.textContent = "", 3500);
+      }
+    }
+
+    actions.appendChild(exportTextureBtn);
+    actions.appendChild(exportPreviewBtn);
+    actions.appendChild(exportNormalBtn);
+    animActions.appendChild(frameCountSelect);
+    animActions.appendChild(exportFramesBtn);
+    animActions.appendChild(exportWebMBtn);
+
+    const foot = document.createElement("footer");
+    foot.className = "note";
+    foot.innerHTML =
+      '<ul class="note-list">' +
+      '<li><span class="k">Height / Bump Map</span> the actual grayscale height data. Drops straight into a bump / height slot.</li>' +
+      '<li><span class="k">Preview Render</span> simulated relief shading of that data to judge depth and light. Not a texture map itself.</li>' +
+      '<li><span class="k">Normal Map</span> tangent-space RGB from the height via a Sobel filter (strength = Bump Strength). What most engines want over a height map.</li>' +
+      '<li><span class="k">Frame Sequence</span> the animated height map across one loop as numbered PNGs (new tab). For an animated bump channel.</li>' +
+      '<li><span class="k">WebM</span> the same animated loop as one single-file video clip — convenient to save or share, but lossy-compressed. Use the frame sequence when the receiving pipeline wants precise per-frame texture data.</li>' +
+      '</ul>';
+    main.appendChild(foot);
+
+    // --- Tile Preview (display-only QA view, feature backlog #1): when on,
+    // both preview panels show the already-computed map repeated 3x3 at 1/3
+    // scale so spatial seams become visible on every pattern — including the
+    // ones documented as non-tiling. It lives outside `state` and never
+    // touches computeTextureData or any export path: exports always produce
+    // the single un-tiled map. ---
+    let tilePreview = false;
+    const tileScratchTex = document.createElement("canvas");
+    const tileScratchBump = document.createElement("canvas");
+    function drawTiled3x3(dst, src, size) {
+      dst.width = size; dst.height = size;
+      const ctx = dst.getContext("2d");
+      const third = size / 3;
+      for (let ty = 0; ty < 3; ty++) {
+        for (let tx = 0; tx < 3; tx++) ctx.drawImage(src, tx * third, ty * third, third, third);
+      }
+    }
+
+    function regenerate() {
+      const data = computeTextureData(TEXTURE_PREVIEW_SIZE, state);
+      // With Tile Preview on, paint into offscreen scratch canvases and
+      // drawImage them 3x3 into the visible panels — the map is never
+      // regenerated at a different size. Runs per rAF frame while animating,
+      // so each fresh animated frame is tiled too.
+      const texTarget = tilePreview ? tileScratchTex : textureCanvas;
+      const bumpTarget = tilePreview ? tileScratchBump : bumpCanvas;
+      paintHeightMap(texTarget, data, TEXTURE_PREVIEW_SIZE, TEXTURE_PREVIEW_SIZE);
+      paintBumpPreview(bumpTarget, data, TEXTURE_PREVIEW_SIZE, TEXTURE_PREVIEW_SIZE, state.bumpStrength, state.lightAngle);
+      if (tilePreview) {
+        drawTiled3x3(textureCanvas, tileScratchTex, TEXTURE_PREVIEW_SIZE);
+        drawTiled3x3(bumpCanvas, tileScratchBump, TEXTURE_PREVIEW_SIZE);
+      }
+    }
+
+    // --- Animation: live rAF preview (§6.2). Static export is unchanged; this
+    // only drives the on-screen preview. state.time cycles 0..1 per loop. ---
+    let animate = false, rafId = null, loopMs = 3000;
+    const animRow = document.createElement("div");
+    animRow.className = "param-row";
+    animRow.style.display = "flex";
+    animRow.style.alignItems = "center";
+    animRow.style.gap = "12px";
+    animRow.style.flexWrap = "wrap";
+    const animLabel = document.createElement("label");
+    animLabel.textContent = "Animate";
+    const playBtn = document.createElement("button");
+    playBtn.className = "btn";
+    playBtn.type = "button";
+    playBtn.textContent = "▶ Play";
+    const loopInput = document.createElement("input");
+    loopInput.type = "range";
+    loopInput.min = 0.5; loopInput.max = 8; loopInput.step = 0.5; loopInput.value = 3;
+    loopInput.style.flex = "1";
+    loopInput.setAttribute("aria-label", "Loop duration (seconds)");
+    const loopVal = document.createElement("span");
+    loopVal.className = "param-value";
+    loopVal.textContent = "3.0s loop";
+    loopInput.addEventListener("input", () => {
+      loopMs = parseFloat(loopInput.value) * 1000;
+      loopVal.textContent = parseFloat(loopInput.value).toFixed(1) + "s loop";
+    });
+    function frame() {
+      // Self-cleanup: stop the loop once the tool is navigated away from.
+      if (!document.body.contains(textureCanvas)) { rafId = null; return; }
+      state.time = (performance.now() / loopMs) % 1;
+      regenerate();
+      rafId = requestAnimationFrame(frame);
+    }
+    function setAnimate(on) {
+      animate = on;
+      state.animate = on;
+      playBtn.textContent = on ? "⏸ Pause" : "▶ Play";
+      playBtn.classList.toggle("primary", on);
+      if (on) {
+        if (rafId == null) rafId = requestAnimationFrame(frame);
+      } else {
+        if (rafId != null) cancelAnimationFrame(rafId);
+        rafId = null;
+        state.time = 0;
+        regenerate();
+      }
+    }
+    playBtn.addEventListener("click", () => setAnimate(!animate));
+    const tileBtn = document.createElement("button");
+    tileBtn.className = "btn";
+    tileBtn.type = "button";
+    tileBtn.textContent = "Tile Preview (QA)";
+    tileBtn.title = "QA view: repeat the current map 3×3 at 1/3 scale to reveal spatial seams. Display-only — exports are unaffected.";
+    tileBtn.addEventListener("click", () => {
+      tilePreview = !tilePreview;
+      tileBtn.classList.toggle("primary", tilePreview);
+      regenerate();
+    });
+    animRow.appendChild(animLabel);
+    animRow.appendChild(playBtn);
+    animRow.appendChild(tileBtn);
+    animRow.appendChild(loopInput);
+    animRow.appendChild(loopVal);
+    previewAnimBody.appendChild(animRow);
+
+    regenerate();
+  }
+
+  /* =========================================================
+     FREEZE HELPERS
+     ========================================================= */
+  function bakeCssFreeze(svgEl) {
+    const clone = svgEl.cloneNode(true);
+    const liveAll = svgEl.querySelectorAll("*");
+    const cloneAll = clone.querySelectorAll("*");
+    liveAll.forEach((liveEl, i) => {
+      const cs = getComputedStyle(liveEl);
+      if (cs.animationName && cs.animationName !== "none") {
+        const t = cloneAll[i];
+        t.style.animation = "none";
+        t.style.opacity = cs.opacity;
+        t.style.transform = cs.transform;
+        if (cs.strokeDashoffset && cs.strokeDashoffset !== "none") t.style.strokeDashoffset = cs.strokeDashoffset;
+      }
+    });
+    return clone;
+  }
+
+  function matrixToString(m) { return `matrix(${m.a},${m.b},${m.c},${m.d},${m.e},${m.f})`; }
+
+  function bakeSmilFreeze(svgEl) {
+    const clone = svgEl.cloneNode(true);
+    try {
+      // Bake any <pattern> driven by an animateTransform (patternTransform), e.g. flow-straight.
+      const livePatterns = svgEl.querySelectorAll("pattern");
+      const clonePatterns = clone.querySelectorAll("pattern");
+      livePatterns.forEach((liveP, i) => {
+        const cloneP = clonePatterns[i];
+        const mat = liveP.patternTransform.baseVal.numberOfItems
+          ? liveP.patternTransform.baseVal.consolidate().matrix : null;
+        if (mat) cloneP.setAttribute("patternTransform", matrixToString(mat));
+        const animEl = cloneP.querySelector("animateTransform");
+        if (animEl) animEl.remove();
+      });
+      // Bake any number of animateMotion-driven elements, e.g. flow-pulse-wave's
+      // single glow or flow-droplet-stream's three particles.
+      //
+      // animateMotion's supplemental transform is never reflected in
+      // transform.baseVal (that's the static, non-animated attribute) or even
+      // transform.animVal (verified empirically — both stay null throughout).
+      // getCTM() is the only reliable read of the live motion transform, so
+      // derive the matrix from the target's CTM relative to the SVG root
+      // (their common ancestor's own CTM cancels out via the inverse-multiply,
+      // so this is robust regardless of viewBox/width/height scaling).
+      const liveMotion = svgEl.querySelectorAll('[data-role="motion-target"]');
+      const cloneMotion = clone.querySelectorAll('[data-role="motion-target"]');
+      // Anchor to the pk-xform wrapper (not the svg root) so the baked motion
+      // matrix excludes the Size/Rotation transform — the cloned wrapper still
+      // carries that, and baking relative to the root would apply it twice.
+      const refEl = svgEl.querySelector(":scope > g.pk-xform") || svgEl;
+      const rootCtm = refEl.getCTM();
+      liveMotion.forEach((liveEl, i) => {
+        const cloneEl = cloneMotion[i];
+        const elCtm = liveEl.getCTM();
+        const mat = (rootCtm && elCtm) ? rootCtm.inverse().multiply(elCtm) : null;
+        if (mat) cloneEl.setAttribute("transform", matrixToString(mat));
+        const animEl = cloneEl.querySelector("animateMotion");
+        if (animEl) animEl.remove();
+      });
+    } catch (e) { /* clone stays as an unfrozen fallback */ }
+    return clone;
+  }
+
+  function freezeNode(asset, svgEl) {
+    if (asset.engine === "smil") return bakeSmilFreeze(svgEl);
+    if (asset.engine === "css") return bakeCssFreeze(svgEl);
+    return svgEl.cloneNode(true);
+  }
+
+  function resolvedSvgMarkup(node) {
+    const serialized = new XMLSerializer().serializeToString(node);
+    let out = serialized;
+    PALETTE_ROLES.forEach(role => {
+      const val = getComputedStyle(document.documentElement).getPropertyValue(role.cssVar).trim();
+      out = out.split(`var(${role.cssVar})`).join(val);
+    });
+    const panelVal = getComputedStyle(document.documentElement).getPropertyValue("--c-panel").trim();
+    out = out.split("var(--c-panel)").join(panelVal);
+    return out;
+  }
+
+  function svgToImage(markup) {
+    return new Promise((resolve, reject) => {
+      const svgBlob = new Blob([markup], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(svgBlob);
+      const img = new Image();
+      img.onload = () => { resolve(img); URL.revokeObjectURL(url); };
+      img.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
+      img.src = url;
+    });
+  }
+
+  function viewBoxSize(svgEl) {
+    const vb = svgEl.viewBox.baseVal;
+    if (vb && vb.width) return { w: vb.width, h: vb.height };
+    const rect = svgEl.getBoundingClientRect();
+    return { w: rect.width || 300, h: rect.height || 150 };
+  }
+
+  function downloadDataUrl(url, filename) {
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  // Open a canvas as a PNG in a new tab, sidestepping download restrictions.
+  // Uses a blob: URL (NOT a data: URL — browsers block top-frame navigation to
+  // data: URLs) and writes a tiny host page with the image + a working save
+  // link. Works on Pages, locally, and even inside sandboxes (with popups
+  // allowed); falls back to a direct download if the popup is blocked.
+  function openPngInNewTab(canvas, filename) {
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        if (!blob) { resolve(false); return; }
+        const url = URL.createObjectURL(blob);
+        const w = window.open("", "_blank");
+        if (!w) { // popup blocked — fall back to a direct download
+          downloadDataUrl(url, filename);
+          setTimeout(() => URL.revokeObjectURL(url), 60000);
+          resolve(true); return;
+        }
+        w.document.title = filename;
+        w.document.body.style.cssText =
+          "margin:0;min-height:100vh;background:#0C141D;color:#ECF2F6;display:flex;" +
+          "flex-direction:column;align-items:center;gap:16px;padding:24px;" +
+          "font-family:'Space Mono','Courier New',monospace";
+        w.document.body.innerHTML =
+          '<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#6E7E8C">' + filename + '</div>' +
+          '<a href="' + url + '" download="' + filename + '" style="color:#F08A3C;font-size:12px;text-decoration:none;border:1px solid #F08A3C;padding:8px 16px">↓ Save PNG</a>' +
+          '<div style="font-size:10px;color:#6E7E8C">… or right-click the image below and “Save image as…”</div>' +
+          '<img src="' + url + '" alt="' + filename + '" style="max-width:94vw;max-height:78vh;border:1px solid #22303E"/>';
+        setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
+        resolve(true);
+      }, "image/png");
+    });
+  }
+
+  // BLOB-URL-GALL: open a numbered gallery of already-rendered blob: URL PNG
+  // frames in a new tab — one Save link per frame plus a Download All that
+  // sequentially triggers each frame's own download link (no zip dependency,
+  // in keeping with the Worker-free, dependency-minimal export path).
+  function openFrameGalleryInNewTab(frames, title) {
+    const w = window.open("", "_blank");
+    if (!w) { // popup blocked — fall back to sequential direct downloads
+      frames.forEach((f, i) => setTimeout(() => downloadDataUrl(f.url, f.filename), i * 150));
+      setTimeout(() => frames.forEach(f => URL.revokeObjectURL(f.url)), 60000);
+      return false;
+    }
+    w.document.title = title + " — frame sequence";
+    w.document.body.style.cssText =
+      "margin:0;min-height:100vh;background:#0C141D;color:#ECF2F6;" +
+      "font-family:'Space Mono','Courier New',monospace;padding:24px";
+
+    const header = w.document.createElement("div");
+    header.style.cssText = "display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap";
+    const label = w.document.createElement("div");
+    label.style.cssText = "font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#6E7E8C";
+    label.textContent = title + " — " + frames.length + " frames";
+    const dlAllBtn = w.document.createElement("button");
+    dlAllBtn.textContent = "↓ Download All";
+    dlAllBtn.style.cssText =
+      "color:#F08A3C;font-size:12px;background:none;border:1px solid #F08A3C;" +
+      "padding:8px 16px;cursor:pointer;font-family:inherit;letter-spacing:.04em";
+    dlAllBtn.addEventListener("click", () => {
+      dlAllBtn.disabled = true;
+      frames.forEach((f, i) => {
+        setTimeout(() => {
+          const a = w.document.createElement("a");
+          a.href = f.url; a.download = f.filename;
+          w.document.body.appendChild(a); a.click(); a.remove();
+          if (i === frames.length - 1) dlAllBtn.disabled = false;
+        }, i * 150);
+      });
+    });
+    header.appendChild(label);
+    header.appendChild(dlAllBtn);
+    w.document.body.appendChild(header);
+
+    const grid = w.document.createElement("div");
+    grid.style.cssText = "display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px";
+    frames.forEach(f => {
+      const cell = w.document.createElement("div");
+      cell.style.cssText =
+        "border:1px solid #22303E;padding:8px;display:flex;flex-direction:column;" +
+        "gap:6px;align-items:center;background:#14202C";
+      const img = w.document.createElement("img");
+      img.src = f.url; img.alt = f.filename;
+      img.style.cssText = "max-width:100%;border:1px solid #22303E";
+      const link = w.document.createElement("a");
+      link.href = f.url; link.download = f.filename; link.textContent = f.filename;
+      link.style.cssText = "color:#6E7E8C;font-size:10px;text-decoration:none";
+      cell.appendChild(img); cell.appendChild(link);
+      grid.appendChild(cell);
+    });
+    w.document.body.appendChild(grid);
+
+    setTimeout(() => frames.forEach(f => URL.revokeObjectURL(f.url)), 5 * 60 * 1000);
+    return true;
+  }
+
+  async function exportPNG(asset, stage, statusLine) {
+    statusLine.textContent = "Rendering PNG\u2026";
+    try {
+      const svgEl = stage.querySelector("svg");
+      const frozen = freezeNode(asset, svgEl);
+      const markup = resolvedSvgMarkup(frozen);
+      const { w, h } = viewBoxSize(svgEl);
+      const scale = 3;
+      const img = await svgToImage(markup);
+      const canvas = document.getElementById("capture-canvas");
+      canvas.width = w * scale; canvas.height = h * scale;
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      paintExportBg(ctx, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      downloadDataUrl(canvas.toDataURL("image/png"), asset.id + ".png");
+      statusLine.textContent = "PNG downloaded";
+    } catch (e) {
+      statusLine.textContent = "PNG export failed";
+    }
+    setTimeout(() => statusLine.textContent = "", 2500);
+  }
+
+  async function exportFrameSequence(asset, stage, statusLine, btn) {
+    btn.disabled = true;
+    statusLine.textContent = "Preparing capture\u2026";
+    const frames = [];
+    try {
+      const svgEl = stage.querySelector("svg");
+      const { w, h } = viewBoxSize(svgEl);
+      const scale = 2;
+      const frameCount = 20;
+      const speed = getParams(asset).speed || 1;
+      const effectiveDurationMs = asset.durationMs / speed;
+
+      const canvas = document.getElementById("capture-canvas");
+      canvas.width = w * scale; canvas.height = h * scale;
+      const ctx = canvas.getContext("2d");
+
+      statusLine.textContent = "Capturing frames 0%";
+
+      if (asset.engine === "css") {
+        const anims = svgEl.getAnimations ? svgEl.getAnimations({ subtree: true }) : [];
+        anims.forEach(a => a.pause());
+        for (let i = 0; i < frameCount; i++) {
+          anims.forEach(a => { a.currentTime = (effectiveDurationMs / frameCount) * i; });
+          const frozen = bakeCssFreeze(svgEl);
+          const markup = resolvedSvgMarkup(frozen);
+          const img = await svgToImage(markup);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          paintExportBg(ctx, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const blob = await new Promise(res => canvas.toBlob(res, "image/png"));
+          if (!blob) throw new Error("toBlob failed");
+          const url = URL.createObjectURL(blob);
+          const filename = asset.id + "_" + String(i + 1).padStart(4, "0") + ".png";
+          frames.push({ url, filename });
+          statusLine.textContent = "Capturing frames " + Math.round(((i + 1) / frameCount) * 100) + "%";
+        }
+        anims.forEach(a => a.cancel());
+      } else if (asset.engine === "smil") {
+        svgEl.pauseAnimations();
+        // Some assets stagger multiple animateMotion starts (e.g.
+        // flow-droplet-stream's three particles, begin 0/dur/3/2dur/3). Sampling
+        // from t=0 would capture particles before their own begin delay has
+        // elapsed, popping them in from an unanimated origin. Once every
+        // animation has begun the system is periodic with period `dur`, so
+        // start the capture window there instead — a clean loop with no pop-in.
+        const motionBegins = Array.from(svgEl.querySelectorAll("animateMotion"))
+          .map(el => parseFloat(el.getAttribute("begin")) || 0);
+        const startOffset = motionBegins.length ? Math.max(...motionBegins) : 0;
+        for (let i = 0; i < frameCount; i++) {
+          const t = startOffset + (effectiveDurationMs / 1000 / frameCount) * i;
+          svgEl.setCurrentTime(t);
+          const frozen = bakeSmilFreeze(svgEl);
+          const markup = resolvedSvgMarkup(frozen);
+          const img = await svgToImage(markup);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          paintExportBg(ctx, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const blob = await new Promise(res => canvas.toBlob(res, "image/png"));
+          if (!blob) throw new Error("toBlob failed");
+          const url = URL.createObjectURL(blob);
+          const filename = asset.id + "_" + String(i + 1).padStart(4, "0") + ".png";
+          frames.push({ url, filename });
+          statusLine.textContent = "Capturing frames " + Math.round(((i + 1) / frameCount) * 100) + "%";
+        }
+        svgEl.unpauseAnimations();
+      }
+
+      openFrameGalleryInNewTab(frames, asset.id);
+      statusLine.textContent = "Frame sequence (" + frameCount + ") opened in a new tab \u2014 save from there";
+      renderAssetInto(stage, asset);
+    } catch (e) {
+      statusLine.textContent = "Frame sequence export failed";
+      frames.forEach(f => URL.revokeObjectURL(f.url));
+    } finally {
+      btn.disabled = false;
+      setTimeout(() => statusLine.textContent = "", 3500);
+    }
+  }
+
+  // Render one loop of an animated overlay to an array of raster frames, using
+  // the same SMIL/CSS scrubbing the PNG sequence uses. Shared by the WebM
+  // export below so the two stay in lockstep.
+  async function renderOverlayFrames(asset, stage, frameCount, onPct) {
+    const svgEl = stage.querySelector("svg");
+    const { w, h } = viewBoxSize(svgEl);
+    const scale = 2;
+    const speed = getParams(asset).speed || 1;
+    const effectiveDurationMs = asset.durationMs / speed;
+    const imgs = [];
+
+    if (asset.engine === "css") {
+      const anims = svgEl.getAnimations ? svgEl.getAnimations({ subtree: true }) : [];
+      anims.forEach(a => a.pause());
+      for (let i = 0; i < frameCount; i++) {
+        anims.forEach(a => { a.currentTime = (effectiveDurationMs / frameCount) * i; });
+        const img = await svgToImage(resolvedSvgMarkup(bakeCssFreeze(svgEl)));
+        imgs.push(img);
+        if (onPct) onPct(Math.round(((i + 1) / frameCount) * 100));
+      }
+      anims.forEach(a => a.cancel());
+    } else if (asset.engine === "smil") {
+      svgEl.pauseAnimations();
+      // Match the sequence exporter: start the window after every animateMotion
+      // has begun, so staggered particles don't pop in from an unanimated origin.
+      const motionBegins = Array.from(svgEl.querySelectorAll("animateMotion"))
+        .map(el => parseFloat(el.getAttribute("begin")) || 0);
+      const startOffset = motionBegins.length ? Math.max(...motionBegins) : 0;
+      for (let i = 0; i < frameCount; i++) {
+        const t = startOffset + (effectiveDurationMs / 1000 / frameCount) * i;
+        svgEl.setCurrentTime(t);
+        const img = await svgToImage(resolvedSvgMarkup(bakeSmilFreeze(svgEl)));
+        imgs.push(img);
+        if (onPct) onPct(Math.round(((i + 1) / frameCount) * 100));
+      }
+      svgEl.unpauseAnimations();
+    }
+    return { imgs, w: w * scale, h: h * scale, effectiveDurationMs };
+  }
+
+  function pickOverlayWebMMime() {
+    const candidates = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+    return candidates.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || "";
+  }
+
+  // Export the overlay animation as a single WebM. There's no live canvas to
+  // record (the animation is SVG), so we pre-scrub the loop to raster frames,
+  // then play them onto the capture canvas in real time while a MediaRecorder
+  // captures the stream \u2014 a few loops so the clip is watchable.
+  async function exportOverlayWebM(asset, stage, statusLine, btn) {
+    if (!window.MediaRecorder) {
+      statusLine.textContent = "WebM export needs MediaRecorder \u2014 unavailable in this browser";
+      setTimeout(() => statusLine.textContent = "", 3500);
+      return;
+    }
+    btn.disabled = true;
+    statusLine.textContent = "Rendering frames 0%";
+    try {
+      const FRAMES = 36;
+      const { imgs, w, h, effectiveDurationMs } = await renderOverlayFrames(
+        asset, stage, FRAMES, pct => { statusLine.textContent = "Rendering frames " + pct + "%"; });
+      if (!imgs.length) throw new Error("no frames captured");
+
+      const canvas = document.getElementById("capture-canvas");
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d");
+
+      const mime = pickOverlayWebMMime();
+      const stream = canvas.captureStream(30);
+      const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      const chunks = [];
+      recorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+      const stopped = new Promise(res => recorder.onstop = res);
+
+      statusLine.textContent = "Recording\u2026";
+      recorder.start();
+      const loops = 3;
+      const frameDurMs = Math.max(16, effectiveDurationMs / FRAMES);
+      for (let loop = 0; loop < loops; loop++) {
+        for (let i = 0; i < imgs.length; i++) {
+          ctx.clearRect(0, 0, w, h);
+          paintExportBg(ctx, w, h);
+          ctx.drawImage(imgs[i], 0, 0, w, h);
+          await new Promise(r => setTimeout(r, frameDurMs));
+        }
+      }
+      recorder.stop();
+      await stopped;
+
+      const blob = new Blob(chunks, { type: mime || "video/webm" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = asset.id + ".webm";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      statusLine.textContent = "WebM clip downloaded";
+      renderAssetInto(stage, asset);
+    } catch (e) {
+      statusLine.textContent = "WebM export failed";
+    } finally {
+      btn.disabled = false;
+      setTimeout(() => statusLine.textContent = "", 3500);
+    }
+  }
+
+  /* =========================================================
+     INIT
+     ========================================================= */
+  navigate();
+})();
+</script>
+<script src="../../assets/menu.js"></script>
+</body>
+</html>

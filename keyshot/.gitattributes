@@ -1,0 +1,3 @@
+# Raster outputs (renders, bench captures, texture maps) are NOT committed to
+# this public repo -- policy since 2026-08-07, enforced by the root .gitignore.
+# The old LFS rules that invited them in are gone on purpose; do not re-add.

@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>KeyShot Scripts — RENKON</title>
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap"></noscript>
+<style>
+  :root {
+    --bg: #0C141D;
+    --panel-bg: #14202C;
+    --panel-bg-raised: #182635;
+    --line: #22303E;
+    --text: #ECF2F6;
+    --muted: #6E7E8C;
+
+    --c-structural: #002F67;
+    --c-fluid: #4FD1D9;
+    --c-accent: #F08A3C;
+
+    --font-display: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "Space Mono", ui-monospace, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh; display: flex; flex-direction: column;
+  }
+  a { color: inherit; text-decoration: none; }
+  :focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
+
+  header {
+    display: flex; align-items: center; flex-wrap: wrap; row-gap: 6px;
+    padding: 14px 28px; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; background: var(--bg); z-index: 10;
+  }
+  header .brand { display: flex; align-items: center; gap: 11px; margin-right: auto; color: var(--text); }
+  header .brand .mark { width: 26px; height: 26px; flex: none; color: var(--c-accent); }
+  header .brand .mark svg { display: block; width: 100%; height: 100%; }
+  header .wordmark { font-family: var(--font-display); font-size: 14px; letter-spacing: 0.28em; font-weight: 700; flex: none; }
+  header .wordmark b { color: var(--c-accent); font-weight: 700; }
+  header .wordmark:hover { color: var(--text); }
+  header .meta { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+  @media (max-width: 600px) {
+    header { padding: 12px 16px; }
+  }
+
+  main { flex: 1; padding: 32px 28px 56px; max-width: 1000px; margin: 0 auto; width: 100%; }
+
+  .up-link {
+    font-family: var(--font-mono);
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--c-accent); font-size: 10px; letter-spacing: 0.06em;
+    text-transform: uppercase; margin-bottom: 18px;
+  }
+  .up-link:hover { text-decoration: underline; }
+
+  .page-head { margin-bottom: 24px; }
+  .page-head h1 {
+    font-family: var(--font-display);
+    font-size: 17px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text); margin: 0 0 8px 0; font-weight: 700;
+  }
+  .page-head p { color: var(--muted); font-size: 12px; margin: 0; max-width: 68ch; line-height: 1.7; }
+
+  section { margin-bottom: 36px; }
+  section > h2 {
+    font-family: var(--font-display);
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 14px; font-weight: 700;
+    display: flex; align-items: center; gap: 10px;
+  }
+  section > h2 .rule { flex: 1; height: 1px; background: var(--line); }
+
+  /* ---- view switch (segmented) ---- */
+  .switch-bar {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 14px;
+    margin-bottom: 22px;
+  }
+  .switch {
+    display: inline-flex; border: 1px solid var(--line); background: var(--panel-bg);
+  }
+  .switch button {
+    -webkit-appearance: none; appearance: none; cursor: pointer;
+    background: transparent; color: var(--muted); border: none;
+    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 9px 16px; transition: color 0.12s ease, background 0.12s ease;
+    border-left: 1px solid var(--line);
+  }
+  .switch button:first-child { border-left: none; }
+  .switch button:hover { color: var(--text); }
+  .switch button.active { color: var(--c-accent); background: var(--panel-bg-raised); }
+  .switch-hint { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 0.04em; }
+  .switch-hint b { color: var(--c-fluid); font-weight: 700; }
+
+  .view[hidden] { display: none; }
+
+  /* ---- zone (a titled group of scripts) ---- */
+  .zone {
+    border: 1px solid var(--line); background: var(--panel-bg); margin-bottom: 18px;
+  }
+  .zone-head {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap; row-gap: 4px;
+    padding: 13px 18px; border-bottom: 1px solid var(--line);
+    background: var(--panel-bg-raised);
+  }
+  .zone-code {
+    font-family: var(--font-mono);
+    font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--c-accent); border: 1px solid var(--c-accent);
+    padding: 3px 9px; white-space: nowrap; flex: none;
+  }
+  .zone-code.support { color: var(--c-fluid); border-color: var(--c-fluid); }
+  .zone-code.muted { color: var(--muted); border-color: var(--line); }
+  .zone-title { font-family: var(--font-display); font-size: 12px; letter-spacing: 0.09em; text-transform: uppercase; font-weight: 700; color: var(--text); flex: none; }
+  .zone-blurb { font-size: 11px; color: var(--muted); line-height: 1.5; flex: 1 1 220px; min-width: 160px; }
+  .zone-count {
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--c-fluid); white-space: nowrap; flex: none;
+  }
+  .zone-body > .empty-note {
+    padding: 14px 18px; font-size: 11px; color: var(--muted); font-style: italic;
+  }
+
+  /* stage sub-label inside the main-pipeline zone (by-type view) */
+  .substage {
+    font-family: var(--font-mono);
+    padding: 9px 18px 5px; font-size: 9.5px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted); border-top: 1px solid var(--line);
+  }
+  .substage:first-child { border-top: none; }
+
+  /* ---- script row ---- */
+  .row {
+    display: grid; grid-template-columns: 66px 1fr auto; gap: 14px;
+    padding: 13px 18px; border-top: 1px solid var(--line); align-items: start;
+  }
+  .row.first { border-top: none; }
+  .row:hover { background: var(--panel-bg-raised); }
+
+  /* collapsed row for "in work" scripts — heading only, no note/updated */
+  .row-compact { padding: 8px 18px; grid-template-columns: 66px 1fr auto; }
+  .row-compact .name { font-size: 11.5px; color: var(--text); }
+  .row-compact .name a { color: var(--c-accent); }
+  .row-compact .name a:hover { text-decoration: underline; }
+  .row-compact .status { align-self: center; }
+
+  .row .tag {
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--c-fluid); white-space: nowrap; padding-top: 2px;
+  }
+  .row .tag .area { display: block; color: var(--muted); margin-top: 2px; }
+
+  .row .name { font-size: 12.5px; color: var(--text); word-break: break-word; }
+  .row .name a { color: var(--c-accent); }
+  .row .name a:hover { text-decoration: underline; }
+  /* ---- what-it-does disclosure (replaced the paragraph notes) ---------- *
+     The summary line IS the control, so opening one costs no extra chrome and
+     a closed page is a clean scannable list of names and one-liners.          */
+  .what { margin-top: 4px; max-width: 66ch; }
+  .what > summary {
+    font-size: 12px; color: var(--muted); line-height: 1.6;
+    cursor: pointer; list-style: none; display: flex; gap: 7px; align-items: baseline;
+  }
+  .what > summary::-webkit-details-marker { display: none; }
+  .what > summary::before {
+    content: '+'; font-family: var(--font-mono); font-size: 11px;
+    color: var(--c-accent); flex: none; width: 9px; line-height: 1.5;
+  }
+  .what[open] > summary::before { content: '\2212'; }        /* minus */
+  .what > summary:hover { color: var(--text); }
+  .what[open] > summary { color: var(--text); }
+  .what ul {
+    margin: 8px 0 2px; padding: 0 0 0 16px; list-style: none;
+    border-left: 1px solid var(--line);
+  }
+  .what li {
+    position: relative; font-size: 12px; color: var(--muted);
+    line-height: 1.65; margin-bottom: 5px; padding-left: 12px;
+  }
+  .what li::before {
+    content: ''; position: absolute; left: 0; top: 8px;
+    width: 4px; height: 1px; background: var(--c-fluid);
+  }
+  .what li:last-child { margin-bottom: 0; }
+  .what code { color: var(--c-fluid); }
+  .what b { color: var(--text); font-weight: 700; }
+  .what-flat { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.6; max-width: 66ch; }
+  .what-flat code { color: var(--c-fluid); }
+
+  /* the compact in-work row now carries a disclosure too, so it needs the
+     breathing room the heading-only version did not */
+  .row-compact { padding-top: 10px; padding-bottom: 10px; }
+
+  .status {
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 8px; border: 1px solid var(--line); white-space: nowrap; height: fit-content;
+  }
+  .status.current { color: var(--c-fluid); border-color: var(--c-fluid); }
+  .status.archive { color: var(--muted); text-decoration: line-through; }
+  .status.locked { color: var(--muted); border-style: dashed; }
+  .status.unfiled { color: var(--c-accent); border-color: var(--c-accent); border-style: dashed; }
+  .status.inwork { color: var(--muted); border-style: dotted; }
+
+  /* ---- get-it controls (the KeyShot machine has no git: raw download) ---- */
+  .getit { display: flex; gap: 5px; align-items: center; }
+  .getit a, .getit button {
+    font-family: var(--font-mono);
+    font-size: 9.5px; letter-spacing: 0.07em; text-transform: uppercase;
+    padding: 3px 7px; border: 1px solid var(--line); background: none;
+    color: var(--muted); cursor: pointer; white-space: nowrap;
+    text-decoration: none; line-height: 1.5;
+  }
+  .getit a:hover, .getit button:hover { color: var(--c-accent); border-color: var(--c-accent); }
+  .getit button.ok { color: var(--c-fluid); border-color: var(--c-fluid); }
+
+  /* status + last-updated stack, right-aligned in the third column */
+  .status-col { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+  .updated {
+    font-family: var(--font-mono);
+    font-size: 9.5px; letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--c-fluid); white-space: nowrap;
+  }
+
+  /* supporting non-script item */
+  .item {
+    display: grid; grid-template-columns: 1fr auto; gap: 14px;
+    padding: 12px 18px; border-top: 1px solid var(--line); align-items: start;
+  }
+  .item.first { border-top: none; }
+  .item:hover { background: var(--panel-bg-raised); }
+  .item .name { font-size: 12.5px; color: var(--text); }
+  .item .name a { color: var(--c-accent); }
+  .item .name a:hover { text-decoration: underline; }
+  .item .note { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.6; max-width: 64ch; }
+  .item .note code { color: var(--c-fluid); }
+  .item .kind {
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--muted); border: 1px solid var(--line); padding: 3px 8px; white-space: nowrap; height: fit-content;
+  }
+
+  .notes {
+    border: 1px solid var(--line); background: var(--panel-bg);
+    padding: 22px 24px;
+  }
+  .notes h3 {
+    font-family: var(--font-display);
+    font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text); margin: 0 0 14px; font-weight: 700;
+  }
+  .notes ul { margin: 0; padding: 0; list-style: none; }
+  .notes li {
+    font-size: 11px; color: var(--muted); line-height: 1.6;
+    padding: 8px 0 8px 18px; position: relative; border-top: 1px solid var(--line);
+  }
+  .notes li:first-child { border-top: none; }
+  .notes li::before { content: "\203A"; position: absolute; left: 2px; color: var(--c-accent); }
+  .notes code { color: var(--c-fluid); }
+
+  footer { padding: 20px 28px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; letter-spacing: 0.04em; }
+  footer a { color: var(--c-accent); }
+  footer a:hover { text-decoration: underline; }
+</style>
+<script src="../assets/theme.js"></script>
+<script src="../assets/reveal.js"></script>
+</head>
+<body>
+  <header>
+    <a class="brand" href="../index.html" aria-label="RENKON home">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round">
+          <circle cx="50" cy="50" r="44"/>
+          <g transform="rotate(0 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(72 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(144 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(216 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(288 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <circle cx="50" cy="50" r="8.5"/>
+        </svg>
+      </span>
+      <span class="wordmark">RENK<b>O</b>N</span>
+    </a>
+    <div class="meta">KeyShot &middot; Scripts</div>
+  </header>
+
+  <main>
+    <a class="up-link" href="index.html"><span aria-hidden="true">&larr;</span> Back to KeyShot</a>
+
+    <div class="page-head">
+      <h1>Scripts</h1>
+      <p>Creo to KeyShot automation in the <code
+         style="color:var(--c-fluid)">lux</code> / <code style="color:var(--c-fluid)">luxmath</code>
+         API: batch views, turntables, and reveal animations. Headless where noted.</p>
+      <p style="margin-top:10px">Every row carries <strong style="color:var(--text)">Raw</strong>
+         &mdash; the exact file on <code style="color:var(--c-fluid)">main</code>, for the KeyShot
+         machine, which has no git. Open it, save as <code style="color:var(--c-fluid)">.py</code>
+         (browsers sometimes swap in <code style="color:var(--c-fluid)">.txt</code>), or hit
+         <strong style="color:var(--text)">Copy</strong> for the URL. Filenames carry a
+         <code style="color:var(--c-fluid)">_REV</code> that steps on every push, so the name
+         below is always the one to run &mdash; and after running, the console's
+         <code style="color:var(--c-fluid)">Loading script:</code> line is what proves which
+         rev actually loaded.</p>
+    </div>
+
+    <section>
+      <h2>Inventory<span class="rule"></span></h2>
+
+      <div class="switch-bar">
+        <div class="switch" role="group" aria-label="Group scripts by">
+          <button type="button" data-view="stage" class="active">By stage 0&ndash;4</button>
+          <button type="button" data-view="type">By pipeline &amp; support</button>
+        </div>
+        <span class="switch-hint" id="switch-hint"></span>
+      </div>
+
+      <div class="view" id="view-stage"></div>
+      <div class="view" id="view-type" hidden></div>
+    </section>
+
+    <script>
+    /* ------------------------------------------------------------------ *
+     * Single source of truth. Both groupings (by stage, by pipeline/type)
+     * render from these arrays — edit here, never in two places.
+     * script: [stage, area, status, file, hasLink, noteHTML]
+     *   status: current | inwork | archive | locked | unfiled
+     *   current = approved, runs in the Main pipeline zone.
+     *   inwork  = not yet render-confirmed; renders collapsed (heading only).
+     * ------------------------------------------------------------------ */
+    var SCRIPTS = [
+      ['0','VAL','inwork','0_VAL_STEP_PREFLIGHT_AA02.py',true,
+        'Checks the STEP file before KeyShot ever opens it', [
+          'Runs on the STEP file itself, outside KeyShot',
+          'Checks the file declares its units and scale',
+          'Flags filename problems and duplicate part names',
+          'Matches material names against the <code>1_HLP_MAT_LOOKUP</code> map',
+          'Unit and scale mismatch is the most reported KeyShot import complaint',
+        ]],
+      ['0','VAL','inwork','0_VAL_IMPORT_HEALTH_AA02.py',true,
+        'Trial import, reports what came in wrong. No render', [
+          'Imports once and reports, rather than rendering',
+          'Flags outright import failures',
+          'Flags bounding-box anomalies, which usually mean the wrong scale',
+          'Catches an assembly that arrived as a single object',
+          'Flags parts with no Studio and no camera',
+        ]],
+      ['0','VAL','inwork','0_VAL_ORIENTATION_CHECK_AA02.py',true,
+        'Spots parts that came in on the wrong face', [
+          'Takes each part footprint ratio from its bounding box',
+          'Compares across the whole batch and flags the outliers',
+          'Deliberately a review flag, not a fixer: it never rotates anything',
+        ]],
+      ['0','CHK','inwork','0_CHK_MASKED_WEAR_PROBE_AA03.py',true,
+        'Can wear be masked to edges and crevices at all?', [
+          'One-off diagnostic for targeted wear, not a pipeline stage',
+          'Settles which node classes a bump input will accept',
+          'Tests four candidate routes: mask inside the texture, masked roughness, Bump Add, masked displacement',
+          'Five of the six probes need no render',
+          'Its finding: a bump input takes texture nodes and refuses every colour utility, so the mask has to live inside the texture',
+        ]],
+      ['0','CHK','inwork','0_CHK_LUX_API_INTROSPECT_AA02.py',true,
+        'Reads the lux API instead of guessing at it', [
+          'Calls <code>dir()</code> on the lux module and on live graph, node and parameter objects',
+          'Dumps real parameter names, types and pure flags',
+          'Written after three "this is absent" verdicts turned out to be guessed names',
+          'Hunts three things: a method that names enum options (Center On, Blend Mode), the real material-apply call, and the real bounding-box call',
+          'Enforces the standing rule here: read the dump, do not reason about the name',
+        ]],
+      ['0','CHK','inwork','0_CHK_MATGRAPH_PROBE_AB01.py',true,
+        'What does the material graph actually support?', [
+          'Builds a throwaway material and probes it, PASS or FAIL per capability',
+          'Verifies each edge actually landed rather than assuming it did',
+          'Full parameter census of every node the generator uses',
+          'AA01 ran on real KeyShot 2026-07-28; AB01 fixes two mis-targeted probes',
+          'Delete the probe material afterwards',
+        ]],
+      ['0','CHK','current','0_CHK_LABEL_STACK_AA18.py',true,
+        'The gate: does a scripted label actually render?', [
+          'KeyShot has no material-blend node, so layering is done with <b>labels</b>',
+          'Five modes, six flat maximally distinct colours, nothing tuned for looks, so a phone photo answers it',
+          'Mode 1, a plain label: came back GREEN on 3724 objects, so labels render',
+          'Mode 2, curvature into label opacity: green with red on every edge, rim and bolt hole',
+          'Mode 4, three stacked labels: 3 of 3 attached, so a primer/topcoat/grime stack is scriptable',
+          'Modes 3 and 5 were fallbacks for a mode 2 failure and are not needed',
+        ]],
+      ['0','CHK','current','0_CHK_MASK_VIEWER_AA25.py',true,
+        'Look at the mask itself instead of inferring it', [
+          'Builds a material whose base colour <em>is</em> one chosen node, then stops',
+          'A render then reads that node directly: white is 1.0, black is 0.0',
+          'Modes for curvature, occlusion, the raw patterns, the masked-texture route and a composite gate test',
+          '<b>Mode 7</b> renders the composed wear mask, so it can be judged before either generator is wired to it',
+          '<b>Mode 8</b> writes a known value so you can read the panel back and settle a unit',
+          '<b>Mode 9</b> is the flat-colour null test (ladder R1): one node, magenta, no masks at all &mdash; does the material reach the geometry you are judging?',
+          'Built because three revs had been debugged by inferring backwards from the colour of a six-node chain',
+          'Its first run found the Radius In Pixels bug that had been blacking out every mask',
+        ]],
+      ['0','VAL','current','0_VAL_WEAR_MASK_HARNESS_AA02.py',true,
+        'Proves the composed wear mask without KeyShot', [
+          'Plain Python against a stub graph: no scene, no render, runs at home',
+          'Nine assertions about how the mask is actually wired',
+          'Grunge at 0 leaves <b>pure curvature, not black</b>, so it is genuinely no longer an intersection',
+          'Occlusion reaches the mix <b>only through an inverter</b>, so AO removes wear from crevices',
+          'A build missing Color Invert or Color Adjust degrades to a plainer mask, never a black one and never a crash',
+          '<b>Mutation-tested:</b> restoring the intersection fails 5 assertions, wiring AO un-inverted fails 2',
+          'Leaves mode 7 only the question a stub cannot answer: does it land on the edges of a real part',
+        ]],
+      ['0','VAL','current','0_VAL_SAFE_EDGE_HARNESS_AA05.py',true,
+        'Proves the wire reporting before it reaches the bench', [
+          'Plain Python against a stub lux, no KeyShot needed',
+          'Seven cases: read-back present and absent, a call that raises, a call accepted with no edge behind it, and the scalar-target note',
+          'Reads the CORE BLOCK out of the shipping generator, so it cannot test a stale copy',
+          'Finds the generator by prefix, so a REV bump needs no edit here',
+          'Caught two bugs in the very change it was written for',
+        ]],
+      ['0','VAL','inwork','0_VAL_LOAD_SAFETY_AA09.py',true,
+        'Dev gate: will these scripts even load in KeyShot?', [
+          'Runs in normal Python, not KeyShot',
+          'Fails any script with an f-string or a non-ASCII character, the two load blockers',
+          'Parses every page inline JS with <code>node --check</code>',
+          'Imports each script against a stub lux, which is what catches a name used before it is defined',
+          'Checks every <code>lux.&lt;name&gt;</code> against a harvested dump of the real module',
+          'Compares the CORE BLOCK across generators byte for byte',
+          'AA08: fails any script that redefines a CORE BLOCK name, which is how a shared function became dead code in one file',
+          'Checks filename, header and banner REV all agree, and that nothing was edited in place',
+        ]],
+      ['1','HLP','inwork','1_HLP_MAT_PREFLIGHT_AA02.py',true,
+        'Which parts has the template got no material for?', [
+          'Applies a template and reports which objects did not change',
+          'An object that did not change means the template has no entry for its material',
+          'No render. Run it before committing a folder to a batch',
+        ]],
+      ['1','HLP','inwork','1_HLP_MAT_LOOKUP_AA02.py',true,
+        'Maps Creo material names onto KeyShot materials', [
+          'Maps native appearance names to KeyShot templates',
+          'Applies them across a batch import',
+          'Feeds the material-name hints in the STEP preflight',
+          'Per-object apply is unconfirmed on this build',
+        ]],
+      ['1','HLP','current','1_HLP_PAINT_GENERATOR_AA24.py',true,
+        'A painted surface is a stack, not a colour', [
+          'Four coats: substrate, primer, topcoat, grime',
+          '<b>Scuffs</b> cut the topcoat back to primer; <b>chips</b> cut deeper, through to bare metal',
+          'Both are biased to the edges, which is where paint actually wears',
+          'The same masks drive <b>roughness</b>, which is where most of the perceived depth comes from',
+          'Low-amplitude bump on chips because paint has thickness, plus orange peel for a sprayed finish',
+          '8 paint systems across 4 conditions',
+          'Honest compromise, recorded in the header: bare-metal chips are faked on a dielectric BRDF, because one BRDF cannot be both metal and paint',
+          'Shares the locked CORE BLOCK with the material generator',
+        ]],
+      ['1','HLP','current','1_HLP_MAT_GENERATOR_AB33.py',true,
+        'Procedural materials with wear that sits on the edges', [
+          'Builds a base shader plus wear layers, driven by curvature and occlusion masks',
+          'Wear lands on edges and in crevices rather than spread evenly over the part',
+          'Radii are entered in <b>millimetres</b> and converted, never written as scene units',
+          'The distinction that took a week to settle: a texture <em>scale</em> is a fraction of the part, a <em>radius</em> is a real-world size',
+          'Both are dialog fields, so a bench run can sweep them without re-downloading',
+          'Shares the locked CORE BLOCK with the paint generator',
+        ]],
+      ['2a','BAT','inwork','2a_BAT_STD_VIEW_AA02.py',true,
+        'Batch render: every Studio, every part in a folder', [
+          'Imports every part in a folder and applies an optional template',
+          'Renders every Studio per part, falling back to cameras if there are none',
+          'Studios first, on purpose: a Studio carries the lighting and the framing together',
+          'Logs a CSV manifest, which the stage 4 audit later cross-checks against disk',
+        ]],
+      ['2a','BAT','inwork','2a_BAT_TURNTABLE_AA02.py',true,
+        'Batch render: a 360 turntable per part', [
+          'Spins each part through a full rotation and encodes an mp4',
+          'A continuous spin on purpose',
+          'The fade-between-fixed-angles version is a separate stage 3 script',
+        ]],
+      ['2b','ANI','inwork','2b_ANI_HERO_REVEAL_AA02.py',true,
+        'One hero shot: a zoom into the framing', [
+          'A single zoom into a camera or Studio framing',
+          'Optional crane move, HDRI rotation, brightness ramp and Model Set playback',
+          'Ground-setter and animation API both probed on this build',
+        ]],
+      ['2b','ANI','inwork','2b_ANI_CUTAWAY_REVEAL_AA02.py',true,
+        'Sweeps a clip plane through an assembly', [
+          'Camera stays static while a clip plane sweeps the assembly bounding box',
+          'Clip-plane and bounding-box APIs are unconfirmed on this build',
+          'Degrades to an unclipped render with a warning rather than failing',
+        ]],
+      ['2b','ANI','inwork','2b_ANI_ASSEMBLY_PROCEDURAL_AA02.py',true,
+        'Parts fly together into their final positions', [
+          'Camera static, parts converge into place',
+          'Four modes: scatter, staggered build, spiral, ghost fade',
+          'Grouped sub-assembly convergence is a follow-on, with the extension point already marked in the code',
+        ]],
+      ['3','PRC','inwork','3_PRC_CONTACT_SHEET_AA02.py',true,
+        'One HTML contact sheet from a batch output', [
+          'Standalone plain Python, runs after the batch, nothing to do with KeyShot',
+          'Scans a render folder for stills and turntable videos',
+          'Groups them by part and writes a single <code>contact_sheet.html</code>',
+        ]],
+      ['3','PRC','inwork','3_PRC_FADE_REEL_AA02.py',true,
+        'A turntable feel from fixed stills, no spin', [
+          'Crossfades between fixed angles instead of rendering a rotation',
+          'Writes one self-contained HTML per part',
+          'Pure CSS crossfade, so no ffmpeg and no encode step',
+        ]],
+      ['4','CHK','inwork','4_CHK_AUDIT_AA02.py',true,
+        'Did the batch actually produce what it claims?', [
+          'Checks every output filename against the naming convention',
+          'Cross-checks each <code>*_manifest.csv</code> path against what is really on disk',
+          'Flags missing files and failed statuses',
+        ]],
+      ['2a','BAT','archive','batch_turntable_r1.py',true,
+        'Superseded by <code>2a_BAT_TURNTABLE</code>', [
+          'Raw-camera-only predecessor: no Studio support',
+          'Kept for reference only',
+        ]],
+      ['2a','BAT','archive','batch_import_and_render_all_views_r1.py',true,
+        'Superseded by <code>2a_BAT_STD_VIEW</code>', [
+          'Raw-camera-only predecessor: no Studio support',
+          'Kept for reference only',
+        ]],
+      ['2b','ANI','locked','2ANI_SCATTERANIMATION_AQ.py',false,
+        'Scatter reference for the planned particle script', [
+          'Technique reference, not part of this pipeline',
+          'Lives elsewhere, not in this repo',
+        ]],
+    ];
+
+    /* Last-touched date + time, from git (last commit that changed each file).
+       Regenerate from the repo root with:
+         for f in keyshot/scripts/*.py keyshot/scripts/archive/*.py; do \
+           echo "'$(basename "$f")': '$(git log -1 --format=%cd \
+             --date=format:'%Y-%m-%d %H:%M' -- "$f")',"; done
+       Update whenever a script changes (or paste a fresh run of the above). */
+    var UPDATED = {
+      '0_VAL_STEP_PREFLIGHT_AA02.py': '2026-07-11 09:29',
+      '0_VAL_IMPORT_HEALTH_AA02.py': '2026-07-11 09:29',
+      '0_VAL_ORIENTATION_CHECK_AA02.py': '2026-07-11 09:29',
+      '0_CHK_MATGRAPH_PROBE_AB01.py': '2026-07-28 08:22',
+      '0_CHK_LUX_API_INTROSPECT_AA02.py': '2026-07-28 09:54',
+      '0_CHK_MASKED_WEAR_PROBE_AA03.py': '2026-07-29 16:40',
+      '0_VAL_LOAD_SAFETY_AA09.py': '2026-07-15 18:54',
+      '0_VAL_SAFE_EDGE_HARNESS_AA05.py': '2026-08-04 00:00',
+      '0_VAL_WEAR_MASK_HARNESS_AA02.py': '2026-08-04 00:00',
+      '1_HLP_MAT_PREFLIGHT_AA02.py': '2026-07-11 02:12',
+      '1_HLP_MAT_LOOKUP_AA02.py': '2026-07-11 02:20',
+      '1_HLP_MAT_GENERATOR_AB33.py': '2026-08-06 00:00',
+      '0_CHK_LABEL_STACK_AA18.py': '2026-08-06 00:00',
+      '0_CHK_MASK_VIEWER_AA25.py': '2026-08-06 00:00',
+      '1_HLP_PAINT_GENERATOR_AA24.py': '2026-08-06 00:00',
+      '2a_BAT_STD_VIEW_AA02.py': '2026-07-15 18:54',
+      '2a_BAT_TURNTABLE_AA02.py': '2026-07-15 18:54',
+      '2b_ANI_HERO_REVEAL_AA02.py': '2026-07-15 18:54',
+      '2b_ANI_CUTAWAY_REVEAL_AA02.py': '2026-07-15 18:54',
+      '2b_ANI_ASSEMBLY_PROCEDURAL_AA02.py': '2026-07-15 18:54',
+      '3_PRC_CONTACT_SHEET_AA02.py': '2026-07-11 02:12',
+      '3_PRC_FADE_REEL_AA02.py': '2026-07-11 02:31',
+      '4_CHK_AUDIT_AA02.py': '2026-07-11 02:31',
+      'batch_turntable_r1.py': '2026-07-11 02:12',
+      'batch_import_and_render_all_views_r1.py': '2026-07-11 02:12'
+    };
+
+    /* stage metadata for the "by stage" zones and the pipeline sub-headers */
+    var STAGE_ORDER = ['0','1','2a','2b','3','4'];
+    var STAGE = {
+      '0':  { title: 'Pre-check',    blurb: 'Validate geometry, units &amp; orientation before anything hits KeyShot.' },
+      '1':  { title: 'Helper',       blurb: 'Material and scene prep ahead of a full render pass.' },
+      '2a': { title: 'Batch render', blurb: 'Studios-first stills across a whole folder of parts.' },
+      '2b': { title: 'Animation',    blurb: 'Camera moves and assembly-reveal motion.' },
+      '3':  { title: 'Post-process', blurb: 'Turn rendered output into deliverables.' },
+      '4':  { title: 'Post-check',   blurb: 'Audit a finished batch for completeness and naming.' }
+    };
+
+    /* supporting layer — backs the pipeline rather than running in it */
+    var SUPPORT = [
+      { code: 'DOC', title: 'Docs', blurb: 'Process docs, research, and the bench pages live in the private lab repo.', items: [
+        ['RENKON_LAB (private repo)', false, 'Pickup notes, inventory and backlog, research docs, the test ladder and the bench sheet. Not part of the public tool-set.']
+      ]},
+      { code: 'WEB', title: 'Pages', blurb: 'Pages for humans, not used by any script.', items: [
+        ['index.html', true, 'KeyShot hub: tile grid of areas, Scripts is the first live one.'],
+        ['scripts.html', false, 'This page: the filterable script inventory, backlog and conventions.']
+      ]},
+      { code: 'ARC', title: 'Archive', blurb: 'Superseded scripts kept for reference, out of the active pipeline.', items: [
+        ['scripts/archive/batch_turntable_r1.py', true, 'Raw-camera predecessor of <code>2a_BAT_TURNTABLE</code>.'],
+        ['scripts/archive/batch_import_and_render_all_views_r1.py', true, 'Raw-camera predecessor of <code>2a_BAT_STD_VIEW</code>.']
+      ]},
+      { code: 'REF', title: 'Referenced elsewhere', blurb: 'Scripts named in the inventory but living outside this repo.', items: [
+        ['2ANI_SCATTERANIMATION_AQ.py', false, 'Scatter tech reference for the planned particle script.']
+      ]},
+      { code: 'DISC', title: 'Discipline', blurb: 'Conventions the whole pipeline follows; see the panel below.', items: [
+        ['{PREFIX}_{AREA}_{NAME}_{REV}.py', false, 'The filename convention every script obeys: stage prefix, 3-letter area, short name, revision.'],
+        ['Confirmed vs. experimental', false, 'Every script\'s header states what\'s verified against KeyShot\'s scripting reference vs. probed defensively on this build.']
+      ]}
+    ];
+
+    /* ---- raw-download helpers ----
+     * The KeyShot machine has no git: scripts are hand-downloaded as raw files
+     * into a flat folder. So this page IS the delivery surface, not just an
+     * inventory of one -- every row carries a link to the exact file on main.
+     * Keep RAW_BASE pointing at the default branch; a REV bump changes the
+     * filename, so the link follows automatically off the SCRIPTS table. */
+    var RAW_BASE = 'https://raw.githubusercontent.com/technicallytechnicaldesign/RENKON/main/keyshot/';
+
+    function rawURL(s) {
+      var path = scriptPath(s);
+      return path ? RAW_BASE + path : null;
+    }
+
+    /* Cross-origin downloads ignore the `download` attribute, so "Raw" opens the
+     * file as text (Ctrl+S, and make sure the browser keeps the .py extension).
+     * "Copy" puts the URL on the clipboard for anyone who'd rather curl it. */
+    function getItHTML(s) {
+      var url = rawURL(s);
+      if (!url) return '';
+      return '<div class="getit">' +
+        '<a href="' + url + '" target="_blank" rel="noopener" ' +
+          'title="Open the raw file on GitHub, then save it as .py">Raw</a>' +
+        '<button type="button" data-url="' + url + '" ' +
+          'title="Copy the raw URL to the clipboard">Copy</button>' +
+      '</div>';
+    }
+
+    /* One delegated listener rather than a handler per row. */
+    document.addEventListener('click', function (ev) {
+      var btn = ev.target.closest ? ev.target.closest('.getit button') : null;
+      if (!btn) return;
+      var url = btn.getAttribute('data-url');
+      var done = function () {
+        var prev = btn.textContent;
+        btn.textContent = 'Copied';
+        btn.className = 'ok';
+        setTimeout(function () { btn.textContent = prev; btn.className = ''; }, 1400);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done, function () { window.prompt('Copy this URL:', url); });
+      } else {
+        window.prompt('Copy this URL:', url);
+      }
+    });
+
+    /* ---- render helpers ---- */
+    function scriptPath(s) {
+      var status = s[2], file = s[3], hasLink = s[4];
+      if (!hasLink) return null;
+      if (status === 'archive') return 'scripts/archive/' + file;
+      if (status === 'unfiled') return 'tobeprocessed/' + file;
+      return 'scripts/' + file;
+    }
+    function statusLabel(st) {
+      return st === 'current' ? 'Approved' : st === 'inwork' ? 'In work'
+        : st === 'archive' ? 'Archive' : st === 'locked' ? 'Elsewhere' : 'Unfiled';
+    }
+    function rowHTML(s, first) {
+      var stage = s[0], area = s[1], status = s[2], file = s[3];
+      var path = scriptPath(s), summary = s[5], bullets = s[6] || [];
+      var nameHTML = path ? '<a href="' + path + '">' + file + '</a>' : file;
+
+      /* The long paragraphs are gone. Each script now carries a one-line
+         summary, which IS the disclosure control, and a bullet list of what it
+         is and does, collapsed by default. Nothing is truncated and nothing is
+         a wall: the page scans in one pass, and detail is one click away.
+         In-work rows get the same treatment -- they used to hide their note
+         entirely, so their detail was unreachable rather than merely folded. */
+      var details = bullets.length
+        ? '<details class="what"><summary>' + summary + '</summary><ul>' +
+            bullets.map(function (b) { return '<li>' + b + '</li>'; }).join('') +
+          '</ul></details>'
+        : '<div class="what-flat">' + summary + '</div>';
+
+      if (status === 'inwork') {
+        return '<div class="row row-compact' + (first ? ' first' : '') + '" data-stage="' + stage + '">' +
+          '<div class="tag">' + stage.toUpperCase() + '<span class="area">' + area + '</span></div>' +
+          '<div><div class="name">' + nameHTML + '</div>' + details + '</div>' +
+          '<div class="status-col"><div class="status inwork">' + statusLabel(status) + '</div>' +
+            getItHTML(s) + '</div>' +
+        '</div>';
+      }
+      var updated = UPDATED[file] || '';
+      var updatedHTML = updated
+        ? '<div class="updated" title="Last touched (git commit date)">updated ' + updated + '</div>' : '';
+      return '<div class="row' + (first ? ' first' : '') + '" data-stage="' + stage + '">' +
+        '<div class="tag">' + stage.toUpperCase() + '<span class="area">' + area + '</span></div>' +
+        '<div><div class="name">' + nameHTML + '</div>' + details + '</div>' +
+        '<div class="status-col"><div class="status ' + status + '">' + statusLabel(status) + '</div>' +
+          updatedHTML + getItHTML(s) + '</div>' +
+      '</div>';
+    }
+    function zone(codeHTML, codeClass, title, blurb, countHTML, bodyHTML) {
+      return '<div class="zone card">' +
+        '<div class="zone-head">' +
+          '<span class="zone-code ' + codeClass + '">' + codeHTML + '</span>' +
+          '<span class="zone-title">' + title + '</span>' +
+          '<span class="zone-blurb">' + blurb + '</span>' +
+          (countHTML ? '<span class="zone-count">' + countHTML + '</span>' : '') +
+        '</div><div class="zone-body">' + bodyHTML + '</div></div>';
+    }
+
+    /* ---- VIEW A: by pipeline stage (current + inwork + unfiled shown; ref/archive live in the type view) ---- */
+    (function renderStage() {
+      var host = document.getElementById('view-stage');
+      var html = '';
+      STAGE_ORDER.forEach(function (st) {
+        var rows = SCRIPTS.filter(function (s) {
+          return s[0] === st && (s[2] === 'current' || s[2] === 'inwork' || s[2] === 'unfiled');
+        });
+        var meta = STAGE[st];
+        var body = rows.length
+          ? rows.map(function (s, i) { return rowHTML(s, i === 0); }).join('')
+          : '<div class="empty-note">No scripts at this stage yet.</div>';
+        var count = rows.length ? rows.length + ' script' + (rows.length > 1 ? 's' : '') : '';
+        html += zone('Stage ' + st, '', meta.title, meta.blurb, count, body);
+      });
+      host.innerHTML = html;
+    })();
+
+    /* ---- VIEW B: main pipeline (stage-ordered) vs. supporting ---- */
+    (function renderType() {
+      var host = document.getElementById('view-type');
+      var html = '';
+
+      // Main pipeline zone — approved scripts only, sub-grouped by stage.
+      var pipeBody = '', total = 0;
+      STAGE_ORDER.forEach(function (st) {
+        var rows = SCRIPTS.filter(function (s) { return s[0] === st && s[2] === 'current'; });
+        if (!rows.length) return;
+        total += rows.length;
+        pipeBody += '<div class="substage">Stage ' + st + ' &middot; ' + STAGE[st].title + '</div>';
+        pipeBody += rows.map(function (s) { return rowHTML(s, false); }).join('');
+      });
+      html += zone('Main pipeline', '', 'Approved only', 'Stage-ordered <code>0</code>&rarr;<code>4</code>, approved scripts only. This is what actually runs against a batch.', total + ' script' + (total > 1 ? 's' : ''), pipeBody);
+
+      // In-work zone — everything else, collapsed to a heading until promoted.
+      var workBody = '', workTotal = 0;
+      STAGE_ORDER.forEach(function (st) {
+        var rows = SCRIPTS.filter(function (s) { return s[0] === st && s[2] === 'inwork'; });
+        if (!rows.length) return;
+        workTotal += rows.length;
+        workBody += '<div class="substage">Stage ' + st + ' &middot; ' + STAGE[st].title + '</div>';
+        workBody += rows.map(function (s) { return rowHTML(s, false); }).join('');
+      });
+      if (workTotal) {
+        html += zone('In work', '', 'Not yet promoted', 'Runs, but not yet render-confirmed. Collapsed until moved into the main pipeline.', workTotal + ' scripts', workBody);
+      }
+
+      // Supporting groups.
+      SUPPORT.forEach(function (g) {
+        var body = g.items.map(function (it, i) {
+          // linkify real file paths (it[1] === true); leave convention tokens as text
+          var name = it[1] ? '<a href="' + it[0] + '">' + it[0] + '</a>' : it[0];
+          return '<div class="item' + (i === 0 ? ' first' : '') + '">' +
+            '<div><div class="name">' + name + '</div><div class="note">' + it[2] + '</div></div>' +
+            '<div class="kind">' + g.code + '</div></div>';
+        }).join('');
+        html += zone(g.code, 'support', g.title, g.blurb, '', body);
+      });
+
+      host.innerHTML = html;
+    })();
+
+    /* ---- view switch ---- */
+    (function () {
+      var btns = document.querySelectorAll('.switch button');
+      var views = { stage: document.getElementById('view-stage'), type: document.getElementById('view-type') };
+      var hint = document.getElementById('switch-hint');
+      var HINTS = {
+        stage: 'Six zones, one per pipeline phase, in run order.',
+        type:  'The runnable <b>pipeline</b> vs. the <b>docs, pages, archive &amp; discipline</b> that back it.'
+      };
+      function set(view) {
+        btns.forEach(function (b) { b.classList.toggle('active', b.dataset.view === view); });
+        views.stage.hidden = view !== 'stage';
+        views.type.hidden = view !== 'type';
+        hint.innerHTML = HINTS[view];
+      }
+      btns.forEach(function (b) { b.addEventListener('click', function () { set(b.dataset.view); }); });
+      set('stage');
+    })();
+    </script>
+
+    <div class="notes">
+      <h3>Conventions</h3>
+      <ul>
+        <li>Filename: <code>{PREFIX}_{AREA}_{NAME}_{REV}.py</code></li>
+        <li>PREFIX: <code>0_</code> pre-check &middot; <code>1_</code> pre-render/helper &middot;
+          <code>2a_</code> batch render &middot; <code>2b_</code> animation &middot;
+          <code>3_</code> post-process &middot; <code>4_</code> post-check</li>
+        <li>AREA: 3-letter code: <code>BAT</code>, <code>ANI</code>, <code>HLP</code>,
+          <code>PRC</code>, <code>VAL</code>, <code>CHK</code>&hellip;</li>
+        <li>REV: <code>XX01</code>: letter steps for a breaking change, number steps for a routine one</li>
+        <li>Python 3.10+, <code>lux</code> / <code>luxmath</code> modules</li>
+        <li>Headless CLI runs anything marked <code>HEADLESS COMPLIANT</code>; still needs a machine with a licensed KeyShot install</li>
+        <li>Studios (camera + environment + image style) preferred over raw Cameras</li>
+        <li>Binary scene files (<code>.bip</code>, <code>.ksp</code>&hellip;) tracked via Git LFS</li>
+      </ul>
+    </div>
+  </main>
+
+  <footer>
+    RENKON &middot; <a href="https://github.com/technicallytechnicaldesign/RENKON">github.com/technicallytechnicaldesign/RENKON</a>
+  </footer>
+  <script src="../assets/menu.js"></script>
+</body>
+</html>
