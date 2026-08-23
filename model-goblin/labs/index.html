@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Model Goblin Labs — RENKON</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap"></noscript>
+<style>
+  :root {
+    --bg: #0C141D;
+    --panel-bg: #14202C;
+    --panel-bg-raised: #182635;
+    --line: #22303E;
+    --text: #ECF2F6;
+    --muted: #6E7E8C;
+    --c-accent: #F08A3C;
+    --font-display: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "Space Mono", ui-monospace, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh; display: flex; flex-direction: column;
+  }
+  a { color: inherit; text-decoration: none; }
+  :focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
+
+  header {
+    display: flex; align-items: center; flex-wrap: wrap; row-gap: 6px;
+    padding: 14px 28px; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; background: var(--bg); z-index: 10;
+  }
+  header .brand { display: flex; align-items: center; gap: 11px; margin-right: auto; color: var(--text); }
+  header .brand .mark { width: 26px; height: 26px; flex: none; color: var(--c-accent); }
+  header .brand .mark svg { display: block; width: 100%; height: 100%; }
+  header .wordmark { font-family: var(--font-display); font-size: 14px; letter-spacing: 0.28em; font-weight: 700; flex: none; }
+  header .wordmark b { color: var(--c-accent); font-weight: 700; }
+  header .meta { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+
+  main { flex: 1; padding: 40px 28px 56px; max-width: 900px; margin: 0 auto; width: 100%; }
+
+  .up-link {
+    font-family: var(--font-mono);
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--c-accent); font-size: 10px; letter-spacing: 0.06em;
+    text-transform: uppercase; margin-bottom: 18px;
+  }
+  .up-link:hover { text-decoration: underline; }
+
+  .page-head { margin-bottom: 32px; }
+  .page-head h1 {
+    font-size: 17px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text); margin: 0 0 8px 0; font-weight: 700;
+  }
+  .page-head p { color: var(--muted); font-size: 12px; margin: 0; max-width: 64ch; line-height: 1.7; }
+
+  .list { display: flex; flex-direction: column; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+  .row {
+    background: var(--panel-bg); padding: 18px 22px; display: flex; align-items: center;
+    gap: 16px; position: relative; border-left: 2px solid transparent;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .row:hover, .row:focus-visible { background: var(--panel-bg-raised); border-left-color: var(--c-accent); }
+  .row h2 { font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; margin: 0 0 4px; font-weight: 700; }
+  .row p { font-size: 12px; color: var(--muted); margin: 0; line-height: 1.6; }
+  .row .ver { font-family: var(--font-mono); font-size: 10px; color: var(--c-accent); flex: none; }
+
+  footer { padding: 20px 28px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; letter-spacing: 0.04em; }
+  footer a { color: var(--c-accent); }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <header>
+    <a class="brand" href="../../index.html" aria-label="RENKON home">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round">
+          <circle cx="50" cy="50" r="44"/>
+          <g transform="rotate(0 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(72 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(144 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(216 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <g transform="rotate(288 50 50)"><circle cx="50" cy="24" r="9"/></g>
+          <circle cx="50" cy="50" r="8.5"/>
+        </svg>
+      </span>
+      <span class="wordmark">RENK<b>O</b>N</span>
+    </a>
+    <div class="meta">Model Goblin / Labs</div>
+  </header>
+
+  <main>
+    <a class="up-link" href="../index.html"><span aria-hidden="true">&larr;</span> Back to Model Goblin</a>
+
+    <div class="page-head">
+      <h1>Labs</h1>
+      <p>Standalone development labs behind the Author/Exporter bridge — each one
+         isolates a single step of the KeyShot-to-browser handoff for testing.</p>
+    </div>
+
+    <div class="list">
+      <a class="row" href="Model_Goblin_Bridge_Lab_v0_1.html">
+        <div style="flex:1">
+          <h2>Bridge Lab</h2>
+          <p>Isolated test bed for the AA01 KeyShot animation bridge — drop the sampled JSON in and inspect it raw.</p>
+        </div>
+        <span class="ver">v0.1</span>
+      </a>
+      <a class="row" href="Model_Goblin_Salvage_Lab_v0_3.html">
+        <div style="flex:1">
+          <h2>Salvage Lab</h2>
+          <p>Tests the AA03 animation-salvage path against real recovered motion data before it reaches the Author.</p>
+        </div>
+        <span class="ver">v0.3</span>
+      </a>
+      <a class="row" href="Model_Goblin_Visual_Modes_Lab_v0_5.html">
+        <div style="flex:1">
+          <h2>Visual Modes Lab</h2>
+          <p>Probes material and visual-mode rendering (AA04 evidence) ahead of Author integration.</p>
+        </div>
+        <span class="ver">v0.5</span>
+      </a>
+    </div>
+  </main>
+
+  <footer>
+    RENKON &middot; <a href="https://github.com/technicallytechnicaldesign/RENKON">github.com/technicallytechnicaldesign/RENKON</a>
+  </footer>
+</body>
+</html>

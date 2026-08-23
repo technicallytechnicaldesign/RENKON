@@ -15,6 +15,12 @@ and scripts only — terse, impersonal, shippable.
   filterable script inventory (`scripts.html`), backplate-creator.
 - **`mockup-studio/`**, **`calculators/`** — render post-processing and
   render-domain calculators.
+- **`model-goblin/`** — Model Goblin: zero-install browser toolkit for
+  recovering KeyShot animation/material evidence and publishing it as an
+  interactive 3D presentation (`author/` Author+Exporter and Published Viewer
+  Template, `labs/` standalone bridge/salvage/visual-mode test labs). Folded
+  in from its own workspace project 2026-08-23; workspace-side history lives
+  in `PROJECTS/RENKON/PROJECT.md`.
 - **`assets/`** — shared layer: theme, menus, overlay-engine (69-asset SVG
   library + rasterizer), fluid-engine, favicon.
 - **`blender/fluid-cache-gen/`** — Blender-side fluid cache generators.
