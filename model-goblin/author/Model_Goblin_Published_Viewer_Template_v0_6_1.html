@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Model Goblin Presentation</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0d1117;
+      --panel: rgba(17, 24, 34, 0.84);
+      --line: rgba(255, 255, 255, 0.13);
+      --text: #edf3f7;
+      --muted: #9eabb7;
+      --accent: #73f7b5;
+      --accent-2: #5fc3ff;
+      --danger: #ff7d7d;
+    }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--bg); font-family: Inter, Segoe UI, Arial, sans-serif; color: var(--text); }
+    body { position: relative; }
+    #viewport { position: absolute; inset: 0; }
+    canvas { display: block; width: 100%; height: 100%; }
+    #header {
+      position: fixed; left: 26px; top: 24px; z-index: 5; max-width: min(620px, calc(100vw - 52px));
+      pointer-events: none; text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+    }
+    #title { margin: 0; font-size: clamp(24px, 3vw, 46px); font-weight: 680; line-height: 1.02; letter-spacing: -0.035em; }
+    #subtitle { margin: 8px 0 0; color: var(--muted); font-size: clamp(13px, 1.3vw, 17px); line-height: 1.4; }
+    #status {
+      position: fixed; top: 22px; right: 22px; z-index: 7; max-width: min(420px, calc(100vw - 44px));
+      padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel);
+      color: var(--muted); font-size: 12px; backdrop-filter: blur(16px); transition: opacity .25s ease;
+    }
+    #status.error { color: #ffd3d3; border-color: rgba(255, 125, 125, .45); }
+    #selection {
+      display: none; position: fixed; left: 50%; top: 22px; transform: translateX(-50%); z-index: 8;
+      padding: 8px 12px; border: 1px solid rgba(115, 247, 181, .32); border-radius: 999px;
+      background: rgba(10, 18, 23, .86); color: var(--accent); font-size: 12px; backdrop-filter: blur(16px);
+    }
+    #dock {
+      position: fixed; left: 50%; bottom: 22px; z-index: 10; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 8px; width: min(940px, calc(100vw - 32px)); padding: 10px;
+      border: 1px solid var(--line); border-radius: 15px; background: var(--panel); box-shadow: 0 16px 50px rgba(0, 0, 0, .28);
+      backdrop-filter: blur(18px);
+    }
+    button, select, input { font: inherit; }
+    button, select {
+      min-height: 36px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255,255,255,.055); color: var(--text);
+      padding: 0 12px; cursor: pointer; white-space: nowrap;
+    }
+    button:hover, select:hover { border-color: rgba(115, 247, 181, .48); background: rgba(115,247,181,.08); }
+    button:disabled { opacity: .38; cursor: default; }
+    button.active { color: #07120d; background: var(--accent); border-color: var(--accent); }
+    select { padding-right: 28px; }
+    #timeline { flex: 1; min-width: 90px; accent-color: var(--accent); }
+    #time { min-width: 78px; color: var(--muted); text-align: center; font-variant-numeric: tabular-nums; font-size: 12px; }
+    .divider { width: 1px; height: 25px; background: var(--line); flex: 0 0 auto; }
+    #inspectNote {
+      display: none; position: fixed; right: 22px; bottom: 86px; z-index: 6; max-width: 280px; padding: 10px 12px;
+      border: 1px solid rgba(95,195,255,.34); border-radius: 10px; background: rgba(12,22,30,.88); color: #b9ddf2; font-size: 12px;
+    }
+    @media (max-width: 720px) {
+      #header { left: 18px; top: 18px; }
+      #status { top: auto; right: 16px; bottom: 84px; }
+      #dock { bottom: 14px; width: calc(100vw - 20px); overflow-x: auto; justify-content: flex-start; }
+      #time, .divider { display: none; }
+      #timeline { min-width: 140px; }
+    }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="viewport"></div>
+  <header id="header">
+    <h1 id="title">Model Goblin Presentation</h1>
+    <p id="subtitle"></p>
+  </header>
+  <div id="status">Loading presentation...</div>
+  <div id="selection"></div>
+  <div id="inspectNote">Inspect mode: orbit, pan, and zoom are unlocked. Playback is paused.</div>
+  <div id="dock">
+    <button id="play">Play</button>
+    <button id="restart">Restart</button>
+    <input id="timeline" type="range" min="0" max="1" value="0" step="0.001" aria-label="Timeline">
+    <span id="time">0.00 / 0.00</span>
+    <select id="speed" aria-label="Playback speed">
+      <option value="0.25">0.25x</option>
+      <option value="0.5">0.50x</option>
+      <option value="1" selected>1.00x</option>
+      <option value="1.5">1.50x</option>
+      <option value="2">2.00x</option>
+      <option value="3">3.00x</option>
+    </select>
+    <span class="divider"></span>
+    <select id="visualMode" aria-label="Visual mode">
+      <option value="proxy">Proxy</option>
+      <option value="original">Original GLB</option>
+      <option value="technical">Technical</option>
+      <option value="xray">X-ray</option>
+      <option value="toon">Toon</option>
+      <option value="ids">Material IDs</option>
+    </select>
+    <button id="inspect">Inspect</button>
+    <button id="fullscreen">Fullscreen</button>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+
+    const EMBEDDED_GLB = '%%GOBLIN_GLB_BASE64%%';
+    const EMBEDDED_SALVAGE = '%%GOBLIN_SALVAGE_BASE64%%';
+    const EMBEDDED_MATERIALS = '%%GOBLIN_MATERIALS_BASE64%%';
+    const EMBEDDED_CONFIG = '%%GOBLIN_CONFIG_BASE64%%';
+
+    const defaults = {
+      title: 'Model Goblin Presentation', subtitle: '', background: '#0d1117', autoPlay: true, loop: true,
+      speed: 1, showTimeline: true, allowVisualModes: true, allowInspect: true, allowSelection: true,
+      allowFullscreen: true, useCapturedCamera: true, initialVisualMode: 'proxy', ground: false,
+      translationGain: 1, turntableDirection: 1, turntableDegrees: 360,
+      visual: { proxyStrength: 1, technicalScheme: 'light', edgeContrast: 0.7, shellOpacity: 0.16, keepSelectedSolid: true, toonBands: 3, outlineContrast: 0.75 }
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const dom = { viewport: $('viewport'), status: $('status'), title: $('title'), subtitle: $('subtitle'), dock: $('dock'),
+      play: $('play'), restart: $('restart'), timeline: $('timeline'), time: $('time'), speed: $('speed'), visualMode: $('visualMode'),
+      inspect: $('inspect'), fullscreen: $('fullscreen'), selection: $('selection'), inspectNote: $('inspectNote') };
+
+    function bytesFromBase64(value) {
+      const raw = atob(value);
+      const bytes = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i += 1) bytes[i] = raw.charCodeAt(i);
+      return bytes;
+    }
+    function jsonFromBase64(value, fallback) {
+      if (!value || value.startsWith('%%GOBLIN_')) return fallback;
+      return JSON.parse(new TextDecoder('utf-8').decode(bytesFromBase64(value)));
+    }
+    function mergeDeep(base, extra) {
+      const output = { ...base };
+      for (const [key, value] of Object.entries(extra || {})) {
+        output[key] = value && typeof value === 'object' && !Array.isArray(value) ? mergeDeep(base[key] || {}, value) : value;
+      }
+      return output;
+    }
+    function setStatus(message, isError = false, linger = true) {
+      dom.status.textContent = message;
+      dom.status.classList.toggle('error', isError);
+      dom.status.style.opacity = '1';
+      if (!linger && !isError) setTimeout(() => { dom.status.style.opacity = '.15'; }, 1800);
+    }
+    function clamp(value, lo, hi) { return Math.min(hi, Math.max(lo, value)); }
+    function normalize(value) { return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+    function lastSegment(path) { return String(path || '').split('/').filter(Boolean).pop() || ''; }
+    function formatTime(value) { return Number.isFinite(value) ? value.toFixed(2) : '0.00'; }
+
+    let config;
+    let salvage;
+    let materials;
+    try {
+      config = mergeDeep(defaults, jsonFromBase64(EMBEDDED_CONFIG, {}));
+      salvage = jsonFromBase64(EMBEDDED_SALVAGE, null);
+      materials = jsonFromBase64(EMBEDDED_MATERIALS, null);
+    } catch (error) {
+      setStatus('Presentation data is invalid: ' + error.message, true);
+      throw error;
+    }
+
+    document.title = config.title || defaults.title;
+    dom.title.textContent = config.title || defaults.title;
+    dom.subtitle.textContent = config.subtitle || '';
+    dom.subtitle.style.display = config.subtitle ? '' : 'none';
+    document.documentElement.style.setProperty('--bg', config.background || defaults.background);
+    dom.visualMode.style.display = config.allowVisualModes ? '' : 'none';
+    dom.inspect.style.display = config.allowInspect ? '' : 'none';
+    dom.fullscreen.style.display = config.allowFullscreen ? '' : 'none';
+    dom.timeline.style.display = config.showTimeline ? '' : 'none';
+    dom.time.style.display = config.showTimeline ? '' : 'none';
+    dom.visualMode.value = config.initialVisualMode;
+    dom.speed.value = String(config.speed);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(config.background);
+    const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.001, 100000);
+    camera.position.set(3, 2, 5);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+    dom.viewport.appendChild(renderer.domElement);
+
+    scene.add(new THREE.HemisphereLight(0xeef7ff, 0x20232b, 2.2));
+    const key = new THREE.DirectionalLight(0xffffff, 3.2); key.position.set(5, 8, 6); scene.add(key);
+    const rim = new THREE.DirectionalLight(0x87cfff, 1.6); rim.position.set(-5, 3, -4); scene.add(rim);
+    const modelRoot = new THREE.Group(); modelRoot.name = 'ModelGoblinRoot'; scene.add(modelRoot);
+    const grid = new THREE.GridHelper(10, 20, 0x40515d, 0x25313a); grid.visible = Boolean(config.ground); scene.add(grid);
+    const controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.enabled = false;
+
+    const state = {
+      model: null, modelBox: null, modelCenter: new THREE.Vector3(), sourceCenter: new THREE.Vector3(), unitScale: 1,
+      duration: Number(salvage?.duration || 0), time: 0, playing: false, lastTick: performance.now(), inspect: false,
+      rigs: [], selected: null, originalMaterials: new Map(), generatedMaterials: [], edgeObjects: [],
+      mode: config.initialVisualMode, cameraTarget: new THREE.Vector3(), gradientTextures: new Map()
+    };
+
+    function sourceBounds() {
+      const box = salvage?.source?.sceneBounds;
+      if (!box?.min || !box?.max) return null;
+      return { min: new THREE.Vector3(...box.min), max: new THREE.Vector3(...box.max) };
+    }
+    function calculateAlignment() {
+      state.modelBox = new THREE.Box3().setFromObject(modelRoot);
+      state.modelBox.getCenter(state.modelCenter);
+      const source = sourceBounds();
+      if (!source) { state.sourceCenter.set(0, 0, 0); state.unitScale = 1; return; }
+      state.sourceCenter.copy(source.min).add(source.max).multiplyScalar(0.5);
+      const sourceSize = source.max.clone().sub(source.min).length();
+      const modelSize = state.modelBox.getSize(new THREE.Vector3()).length();
+      state.unitScale = sourceSize > 1e-12 ? modelSize / sourceSize : 1;
+    }
+    function mapPoint(value) {
+      const point = new THREE.Vector3(...(value || [0, 0, 0]));
+      return point.sub(state.sourceCenter).multiplyScalar(state.unitScale).add(state.modelCenter);
+    }
+    function mapDelta(value) { return new THREE.Vector3(...(value || [0, 0, 0])).multiplyScalar(state.unitScale * Number(config.translationGain || 1)); }
+
+    function collectObjects() {
+      const list = [];
+      modelRoot.traverse((object) => { if (object !== modelRoot) list.push(object); });
+      return list;
+    }
+    function objectPath(object) {
+      const names = [];
+      let current = object;
+      while (current && current !== modelRoot) { if (current.name) names.push(current.name); current = current.parent; }
+      return names.reverse().join('/');
+    }
+    function findTarget(target) {
+      const objects = collectObjects();
+      const wantedName = normalize(target?.name || lastSegment(target?.path));
+      const wantedPath = normalize(target?.path);
+      let best = null;
+      let score = -1;
+      for (const object of objects) {
+        const name = normalize(object.name);
+        const path = normalize(objectPath(object));
+        let next = 0;
+        if (name && name === wantedName) next += 20;
+        if (path && wantedPath.endsWith(path)) next += 40 + Math.min(path.length, 20);
+        if (path && wantedPath.includes(path)) next += 10;
+        if (next > score) { best = object; score = next; }
+      }
+      return score > 0 ? best : null;
+    }
+
+    function interpolateSamples(samples, time, field = 'value') {
+      if (!samples?.length) return null;
+      if (time <= samples[0].time) return samples[0][field];
+      if (time >= samples[samples.length - 1].time) return samples[samples.length - 1][field];
+      let lo = 0, hi = samples.length - 1;
+      while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (samples[mid].time <= time) lo = mid; else hi = mid; }
+      const a = samples[lo], b = samples[hi];
+      const alpha = (time - a.time) / Math.max(1e-12, b.time - a.time);
+      const av = a[field], bv = b[field];
+      if (Array.isArray(av) && Array.isArray(bv)) return av.map((value, i) => value + (bv[i] - value) * alpha);
+      return alpha < .5 ? av : bv;
+    }
+
+    function buildRigs() {
+      state.rigs = [];
+      for (const track of salvage?.tracks || []) {
+        const target = findTarget(track.target);
+        if (!target) continue;
+        target.updateWorldMatrix(true, false);
+        const pivotWorld = new THREE.Box3().setFromObject(target).getCenter(new THREE.Vector3());
+        const pivotLocal = modelRoot.worldToLocal(pivotWorld.clone());
+        const carrier = new THREE.Group();
+        carrier.name = 'GoblinMotion_' + (target.name || 'part');
+        carrier.position.copy(pivotLocal);
+        modelRoot.add(carrier);
+        carrier.attach(target);
+        const translationSamples = track.translation?.samples || [];
+        const baseTranslation = translationSamples.length ? translationSamples[0].value : [0, 0, 0];
+        state.rigs.push({ track, target, carrier, basePivot: pivotLocal, baseTranslation });
+      }
+    }
+
+    function applyRigs(time) {
+      for (const rig of state.rigs) {
+        const { track, carrier, basePivot, baseTranslation, target } = rig;
+        carrier.position.copy(basePivot);
+        carrier.rotation.set(0, 0, 0);
+        if (track.translation?.enabled) {
+          const value = interpolateSamples(track.translation.samples, time, 'value');
+          if (value) carrier.position.add(mapDelta(value.map((v, i) => v - (baseTranslation?.[i] || 0))));
+        }
+        if (track.turntable?.enabled && state.duration > 0) {
+          const direction = Number(config.turntableDirection ?? track.turntable.direction ?? 1);
+          const degrees = Number(config.turntableDegrees ?? track.turntable.degrees ?? 360);
+          const angle = THREE.MathUtils.degToRad(degrees) * (time / state.duration) * direction;
+          const axis = track.turntable.axis || 'y';
+          carrier.rotation[axis] = angle;
+        }
+        if (track.visibility?.enabled) {
+          const hidden = interpolateSamples(track.visibility.samples, time, 'hidden');
+          target.visible = !hidden;
+        }
+      }
+    }
+
+    function cameraSampleAt(time) {
+      const samples = salvage?.camera?.samples;
+      if (!samples?.length) return null;
+      if (samples.length === 1 || time <= samples[0].time) return samples[0];
+      if (time >= samples[samples.length - 1].time) return samples[samples.length - 1];
+      let lo = 0, hi = samples.length - 1;
+      while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (samples[mid].time <= time) lo = mid; else hi = mid; }
+      const a = samples[lo], b = samples[hi], alpha = (time - a.time) / Math.max(1e-12, b.time - a.time);
+      const mix = (field) => a[field]?.map((v, i) => v + ((b[field]?.[i] ?? v) - v) * alpha);
+      return { position: mix('position'), target: mix('target'), up: mix('up'), fov: (a.fov ?? 42) + ((b.fov ?? a.fov ?? 42) - (a.fov ?? 42)) * alpha };
+    }
+    function applyCapturedCamera(time) {
+      if (!config.useCapturedCamera || state.inspect) return;
+      const sample = cameraSampleAt(time);
+      if (!sample?.position || !sample?.target) return;
+      camera.position.copy(mapPoint(sample.position));
+      state.cameraTarget.copy(mapPoint(sample.target));
+      controls.target.copy(state.cameraTarget);
+      if (sample.up) camera.up.set(...sample.up).normalize();
+      let fov = Number(sample.fov || 42); if (fov > 0 && fov < 3.2) fov = THREE.MathUtils.radToDeg(fov);
+      camera.fov = clamp(fov, 5, 120);
+      const radius = Math.max(0.001, state.modelBox?.getSize(new THREE.Vector3()).length() || 1);
+      const distance = camera.position.distanceTo(state.cameraTarget);
+      camera.near = Math.max(radius / 10000, distance / 10000, 0.0001);
+      camera.far = Math.max(radius * 1000, distance * 100 + radius);
+      camera.updateProjectionMatrix();
+      camera.lookAt(state.cameraTarget);
+    }
+
+    function fitModel() {
+      const box = new THREE.Box3().setFromObject(modelRoot);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = Math.max(...box.getSize(new THREE.Vector3()).toArray(), 0.001);
+      const distance = size / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5))) * 1.5;
+      camera.position.copy(center).add(new THREE.Vector3(distance * .75, distance * .48, distance));
+      camera.near = Math.max(size / 10000, 0.0001); camera.far = size * 1000; camera.updateProjectionMatrix();
+      controls.target.copy(center); controls.update(); state.cameraTarget.copy(center);
+      grid.scale.setScalar(Math.max(size / 5, .1)); grid.position.y = box.min.y;
+    }
+
+    function assignmentFor(mesh) {
+      const assignments = materials?.assignments || [];
+      const meshName = normalize(mesh.name);
+      const path = normalize(objectPath(mesh));
+      let best = null, score = -1;
+      for (const item of assignments) {
+        let next = 0;
+        if (meshName && meshName === normalize(item.objectName)) next += 20;
+        const wanted = normalize(item.objectPath);
+        if (path && wanted.endsWith(path)) next += 40 + Math.min(path.length, 20);
+        if (next > score) { best = item; score = next; }
+      }
+      return score > 0 ? best : null;
+    }
+    function stableColor(text) {
+      let hash = 2166136261;
+      for (const char of String(text || 'material')) { hash ^= char.charCodeAt(0); hash = Math.imul(hash, 16777619); }
+      const hue = ((hash >>> 0) % 360) / 360;
+      return new THREE.Color().setHSL(hue, .62, .54);
+    }
+    const familyColors = { metal: 0x81909d, paint: 0x376a9c, plastic: 0x5d7890, rubber: 0x242a30, fabric: 0x6b6273,
+      glass: 0x9ee7f7, liquid: 0x35a6d8, wood: 0x8a542e, emissive: 0xffb34f, generic: 0x77838d };
+    function colorFromArray(value, fallback = 0x78838d) { return Array.isArray(value) ? new THREE.Color(value[0], value[1], value[2]) : new THREE.Color(fallback); }
+
+    function prepareMaterials() {
+      modelRoot.traverse((object) => {
+        if (!object.isMesh) return;
+        state.originalMaterials.set(object.uuid, object.material);
+        const assignment = assignmentFor(object);
+        const materialName = assignment?.material || object.material?.name || object.name || 'Unassigned';
+        const record = materials?.materials?.[materialName];
+        object.userData.goblin = { materialName, record, family: record?.proxy?.family || 'generic' };
+      });
+    }
+    function clearGenerated() {
+      for (const edge of state.edgeObjects) { edge.parent?.remove(edge); edge.geometry?.dispose(); edge.material?.dispose(); }
+      state.edgeObjects.length = 0;
+      for (const material of state.generatedMaterials) material.dispose?.();
+      state.generatedMaterials.length = 0;
+    }
+    function remember(material) { state.generatedMaterials.push(material); return material; }
+    function gradientTexture(bands) {
+      const key = clamp(Math.round(bands), 2, 5);
+      if (state.gradientTextures.has(key)) return state.gradientTextures.get(key);
+      const data = new Uint8Array(key); for (let i = 0; i < key; i += 1) data[i] = Math.round(i / (key - 1) * 255);
+      const texture = new THREE.DataTexture(data, key, 1, THREE.RedFormat); texture.minFilter = THREE.NearestFilter; texture.magFilter = THREE.NearestFilter; texture.needsUpdate = true;
+      state.gradientTextures.set(key, texture); return texture;
+    }
+    function addEdges(mesh, color, opacity) {
+      if (!mesh.geometry?.attributes?.position) return;
+      const geometry = new THREE.EdgesGeometry(mesh.geometry, 28);
+      const material = new THREE.LineBasicMaterial({ color, transparent: opacity < 1, opacity, depthTest: true });
+      const lines = new THREE.LineSegments(geometry, material); lines.userData.goblinOverlay = true; lines.raycast = () => {};
+      mesh.add(lines); state.edgeObjects.push(lines);
+    }
+    function proxyMaterial(mesh) {
+      const proxy = mesh.userData.goblin?.record?.proxy || materials?.fallback || {};
+      const strength = Number(config.visual.proxyStrength ?? 1);
+      const opacity = Number(proxy.opacity ?? 1);
+      return remember(new THREE.MeshPhysicalMaterial({
+        name: 'Goblin Proxy', color: colorFromArray(proxy.baseColor), roughness: clamp(Number(proxy.roughness ?? .48), .02, 1),
+        metalness: clamp(Number(proxy.metalness ?? 0) * strength, 0, 1), clearcoat: clamp(Number(proxy.clearcoat ?? 0) * strength, 0, 1),
+        sheen: clamp(Number(proxy.sheen ?? 0) * strength, 0, 1), transmission: clamp(Number(proxy.transmission ?? 0) * strength, 0, 1),
+        ior: clamp(Number(proxy.ior ?? 1.5), 1, 3), opacity, transparent: opacity < .999 || Number(proxy.transmission || 0) > 0,
+        depthWrite: opacity >= .999, emissive: colorFromArray(proxy.emissive, 0x000000), emissiveIntensity: Number(proxy.emissiveIntensity ?? 0)
+      }));
+    }
+    function technicalMaterial(mesh) {
+      const scheme = config.visual.technicalScheme || 'light';
+      let color = 0xd7dee3;
+      if (scheme === 'dark') color = 0x34414c;
+      if (scheme === 'family') color = familyColors[mesh.userData.goblin?.family] || familyColors.generic;
+      return remember(new THREE.MeshStandardMaterial({ color, roughness: .82, metalness: 0, flatShading: false }));
+    }
+    function applyVisualMode(mode = state.mode) {
+      state.mode = mode; dom.visualMode.value = mode; clearGenerated();
+      modelRoot.traverse((mesh) => {
+        if (!mesh.isMesh) return;
+        if (mode === 'original') mesh.material = state.originalMaterials.get(mesh.uuid) || mesh.material;
+        if (mode === 'proxy') mesh.material = proxyMaterial(mesh);
+        if (mode === 'technical') {
+          mesh.material = technicalMaterial(mesh);
+          addEdges(mesh, config.visual.technicalScheme === 'dark' ? 0x9db1c0 : 0x26343e, clamp(Number(config.visual.edgeContrast ?? .7), .1, 1));
+        }
+        if (mode === 'xray') {
+          const selected = config.visual.keepSelectedSolid && state.selected === mesh;
+          mesh.material = selected
+            ? remember(new THREE.MeshStandardMaterial({ color: 0x64ffd0, roughness: .28, emissive: 0x0b3b2d, emissiveIntensity: .7 }))
+            : remember(new THREE.MeshPhysicalMaterial({ color: 0x61b8d6, transparent: true, opacity: clamp(Number(config.visual.shellOpacity ?? .16), .03, .8), depthWrite: false, side: THREE.DoubleSide, roughness: .18, metalness: .08 }));
+          addEdges(mesh, selected ? 0x8affd8 : 0x79d5f4, selected ? .95 : .4);
+        }
+        if (mode === 'toon') {
+          const base = familyColors[mesh.userData.goblin?.family] || familyColors.generic;
+          mesh.material = remember(new THREE.MeshToonMaterial({ color: base, gradientMap: gradientTexture(config.visual.toonBands || 3) }));
+          addEdges(mesh, 0x11171d, clamp(Number(config.visual.outlineContrast ?? .75), .1, 1));
+        }
+        if (mode === 'ids') {
+          const recordColor = mesh.userData.goblin?.record?.diagnosticColor;
+          mesh.material = remember(new THREE.MeshBasicMaterial({ color: recordColor ? colorFromArray(recordColor) : stableColor(mesh.userData.goblin?.materialName) }));
+        }
+      });
+    }
+
+    function setTime(value) {
+      state.time = clamp(Number(value) || 0, 0, Math.max(0, state.duration));
+      applyRigs(state.time); applyCapturedCamera(state.time);
+      dom.timeline.value = state.duration > 0 ? state.time / state.duration : 0;
+      dom.time.textContent = `${formatTime(state.time)} / ${formatTime(state.duration)}`;
+    }
+    function setPlaying(value) {
+      state.playing = Boolean(value && state.duration > 0 && !state.inspect);
+      state.lastTick = performance.now();
+      dom.play.textContent = state.playing ? 'Pause' : 'Play';
+      dom.play.classList.toggle('active', state.playing);
+    }
+    function toggleInspect(force) {
+      if (!config.allowInspect) return;
+      state.inspect = typeof force === 'boolean' ? force : !state.inspect;
+      if (state.inspect) { setPlaying(false); controls.enabled = true; controls.target.copy(state.cameraTarget); controls.update(); }
+      else { controls.enabled = false; applyCapturedCamera(state.time); }
+      dom.inspect.classList.toggle('active', state.inspect); dom.inspect.textContent = state.inspect ? 'Return' : 'Inspect';
+      dom.inspectNote.style.display = state.inspect ? 'block' : 'none';
+      dom.play.disabled = state.inspect || state.duration <= 0; dom.timeline.disabled = state.inspect || state.duration <= 0;
+    }
+
+    const raycaster = new THREE.Raycaster(); const pointer = new THREE.Vector2();
+    renderer.domElement.addEventListener('pointerdown', (event) => {
+      if (!config.allowSelection || event.button !== 0) return;
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1; pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      const hit = raycaster.intersectObject(modelRoot, true).find((item) => item.object.isMesh && !item.object.userData.goblinOverlay);
+      state.selected = hit?.object || null;
+      dom.selection.style.display = state.selected ? 'block' : 'none';
+      dom.selection.textContent = state.selected ? (state.selected.name || state.selected.userData.goblin?.materialName || 'Selected part') : '';
+      if (state.mode === 'xray') applyVisualMode('xray');
+    });
+
+    dom.play.addEventListener('click', () => { if (state.time >= state.duration && !state.playing) setTime(0); setPlaying(!state.playing); });
+    dom.restart.addEventListener('click', () => { setPlaying(false); setTime(0); });
+    dom.timeline.addEventListener('input', () => { setPlaying(false); setTime(Number(dom.timeline.value) * state.duration); });
+    dom.speed.addEventListener('change', () => { config.speed = Number(dom.speed.value); });
+    dom.visualMode.addEventListener('change', () => applyVisualMode(dom.visualMode.value));
+    dom.inspect.addEventListener('click', () => toggleInspect());
+    dom.fullscreen.addEventListener('click', async () => { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen(); });
+    addEventListener('keydown', (event) => {
+      if (event.code === 'Space') { event.preventDefault(); dom.play.click(); }
+      if (event.key.toLowerCase() === 'r') dom.restart.click();
+      if (event.key.toLowerCase() === 'i') toggleInspect();
+      if (event.key.toLowerCase() === 'f' && config.allowFullscreen) dom.fullscreen.click();
+      if (event.key === 'Escape' && state.inspect) toggleInspect(false);
+    });
+    addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+      if (state.playing) {
+        const dt = Math.min(.1, Math.max(0, (now - state.lastTick) / 1000));
+        state.time += dt * Number(config.speed || 1);
+        if (state.time >= state.duration) {
+          if (config.loop && state.duration > 0) state.time %= state.duration;
+          else { state.time = state.duration; setPlaying(false); }
+        }
+        setTime(state.time);
+      }
+      state.lastTick = now;
+      if (state.inspect) controls.update();
+      renderer.render(scene, camera);
+    }
+    requestAnimationFrame(animate);
+
+    async function loadPresentation() {
+      if (!EMBEDDED_GLB || EMBEDDED_GLB.startsWith('%%GOBLIN_')) {
+        throw new Error('This is the unfilled viewer template. Export a presentation from the Author + Exporter.');
+      }
+      const draco = new DRACOLoader(); draco.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/libs/draco/');
+      const loader = new GLTFLoader(); loader.setDRACOLoader(draco);
+      const glb = bytesFromBase64(EMBEDDED_GLB).buffer;
+      const gltf = await new Promise((resolve, reject) => loader.parse(glb, '', resolve, reject));
+      state.model = gltf.scene; modelRoot.add(state.model); state.model.updateMatrixWorld(true);
+      calculateAlignment(); prepareMaterials(); buildRigs(); calculateAlignment(); fitModel();
+      applyVisualMode(config.initialVisualMode); setTime(0);
+      const hasAnimation = state.duration > 0 && ((salvage?.tracks?.length || 0) > 0 || (salvage?.camera?.samples?.length || 0) > 1);
+      dom.play.disabled = !hasAnimation; dom.restart.disabled = !hasAnimation; dom.timeline.disabled = !hasAnimation;
+      if (!hasAnimation) { dom.play.style.display = 'none'; dom.restart.style.display = 'none'; dom.timeline.style.display = 'none'; dom.time.style.display = 'none'; dom.speed.style.display = 'none'; }
+      if (config.autoPlay && hasAnimation) setPlaying(true);
+      const readyMessage = `Ready - ${state.rigs.length} motion track${state.rigs.length === 1 ? '' : 's'}`;
+      setStatus(readyMessage, false, false);
+      if (window.parent !== window) window.parent.postMessage({ type:'model-goblin-ready', message:readyMessage }, '*');
+    }
+
+    loadPresentation().catch((error) => {
+      console.error(error);
+      setStatus(error.message || String(error), true);
+      dom.play.disabled = true; dom.restart.disabled = true; dom.timeline.disabled = true;
+      if (window.parent !== window) window.parent.postMessage({ type:'model-goblin-error', message:error.message || String(error) }, '*');
+    });
+  </script>
+</body>
+</html>
