@@ -10,6 +10,7 @@
     html, body { margin:0; width:100%; height:100%; overflow:hidden; background:var(--bg); color:var(--text); font-family:Inter,Segoe UI,Arial,sans-serif; }
     body { display:grid; grid-template-columns:390px minmax(0,1fr); }
     #panel { display:flex; flex-direction:column; gap:12px; width:390px; min-width:0; height:100vh; padding:16px; overflow-y:auto; border-right:1px solid var(--line); background:linear-gradient(180deg,#111923,#0e141c); }
+    #panel > * { flex-shrink:0; }
     .header { display:flex; flex-direction:column; gap:4px; }
     h1 { margin:0; font-size:22px; line-height:1.1; letter-spacing:-.02em; }
     .header p { margin:0; color:var(--muted); font-size:12px; line-height:1.45; }
