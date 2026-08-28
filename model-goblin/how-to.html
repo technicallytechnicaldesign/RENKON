@@ -162,7 +162,7 @@
         <span class="chip">Full bridge</span>
         <h3>GLB plus Goblin evidence</h3>
         <p>Use the AA03 and AA04 outputs when you need rigid animation, captured camera behavior, or material-aware proxy modes.</p>
-          <p><a href="keyshot/KeyShot_Goblin_Animation_Salvage_AA03.py" download>Download the multi-body AA03 KeyShot runner</a>, then load it from KeyShot's Scripting Console. It registers geometry-bearing bodies beneath animated groups and ignores camera targets when geometry bounds are unavailable.</p>
+          <p><a href="keyshot/KeyShot_Goblin_Animation_Salvage_AA03.py" download>Download the multi-body AA03 KeyShot runner</a>, then load it from KeyShot's Scripting Console. It keeps duplicate-named bodies distinct beneath animated groups and ignores camera targets when geometry bounds are unavailable.</p>
         <div class="file-list">
           <div class="file"><b>REQ</b><span><code>keyshotbridge.glb</code></span></div>
           <div class="file"><b>AA03</b><span><code>keyshotbridge.goblinsalvage.json</code></span></div>
@@ -294,7 +294,7 @@
           <li>Material or environment animation</li>
           <li>Motion blur, volumetrics, and renderer effects</li>
           <li>Guaranteed pixel matching with KeyShot</li>
-          <li>Reliable mapping from duplicate or meaningless part names</li>
+          <li>Reliable mapping from meaningless names when the GLB hierarchy differs from KeyShot</li>
         </ul>
       </article>
     </div>
