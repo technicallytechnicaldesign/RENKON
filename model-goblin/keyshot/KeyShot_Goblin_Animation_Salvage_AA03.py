@@ -1,7 +1,8 @@
 """Model Goblin AA03 - working KeyShot rigid-animation salvage bridge.
 
-The bridge samples evaluated local bounding boxes to recover translation curves,
-records camera motion, detects turntables, and exports a frame-zero GLB.
+The bridge registers geometry-bearing bodies beneath each animated scene target,
+samples evaluated bounding boxes to recover translation curves, records camera
+motion, detects turntables, and exports a frame-zero GLB.
 Run inside KeyShot 2024.x via Window > Scripting.
 """
 
@@ -103,6 +104,20 @@ def walk(node):
             yield nested
 
 
+def geometry_leaves(node):
+    """Return geometry-bearing leaves below a scene target, excluding animations."""
+    child_leaves = []
+    for child in safe_call(lambda: node.getChildren(), []) or []:
+        if bool(safe_call(lambda n=child: n.isAnimation(), False)):
+            continue
+        child_leaves.extend(geometry_leaves(child))
+    if child_leaves:
+        return child_leaves
+    if bbox(node, False) is not None or bbox(node, True) is not None:
+        return [node]
+    return []
+
+
 def differs(values):
     values = [v for v in values if v is not None]
     if len(values) < 2:
@@ -189,14 +204,14 @@ try:
     all_nodes = list(walk(root))
     animation_nodes = [n for n in all_nodes if bool(safe_call(lambda n=n: n.isAnimation(), False))]
     log("Animation nodes found: %d" % len(animation_nodes))
-    targets = {}
+    animation_sources = {}
     for anim in animation_nodes:
         parent = safe_call(lambda n=anim: n.getParent(), None)
         if parent is None:
             continue
         path = node_path(parent)
         kind = animation_kind(safe_call(lambda n=anim: n.getName(), ""))
-        entry = targets.setdefault(path, {"node": parent, "animations": []})
+        entry = animation_sources.setdefault(path, {"node": parent, "animations": []})
         entry["animations"].append({
             "name": safe_call(lambda n=anim: n.getName(), ""),
             "path": node_path(anim),
@@ -204,6 +219,25 @@ try:
             "dump": safe_call(lambda n=anim: n.dump(), str(anim)),
         })
         log("Animation: %s -> %s (%s)" % (node_path(anim), path, kind))
+
+    targets = {}
+    for source_path, source in animation_sources.items():
+        leaves = geometry_leaves(source["node"])
+        if not leaves:
+            log("No geometry bodies below animation target: %s" % source_path)
+            continue
+        log("Animation target %s registered %d geometry body/bodies." % (source_path, len(leaves)))
+        for leaf in leaves:
+            leaf_path = node_path(leaf)
+            target = targets.setdefault(leaf_path, {"node": leaf, "animations": [], "sourcePaths": []})
+            if source_path not in target["sourcePaths"]:
+                target["sourcePaths"].append(source_path)
+            known_animation_paths = set(a["path"] for a in target["animations"])
+            for animation in source["animations"]:
+                if animation["path"] not in known_animation_paths:
+                    target["animations"].append(animation)
+                    known_animation_paths.add(animation["path"])
+    log("Geometry bodies registered for sampling: %d" % len(targets))
 
     root_world_bounds = bbox(root, True)
     log("Sampling %d timeline positions at %.6g fps." % (sample_count, effective_fps))
@@ -252,6 +286,7 @@ try:
                 "name": safe_call(lambda n=target["node"]: n.getName(), ""),
                 "path": path,
                 "id": clean(safe_call(lambda n=target["node"]: n.getID())),
+                "animationSourcePaths": target["sourcePaths"],
             },
             "animations": target["animations"],
             "changes": changes,
