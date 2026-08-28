@@ -124,6 +124,7 @@
       <p class="lede">Load a GLB, decide what the audience can do, preview the result, then export one HTML file containing the model and presentation settings.</p>
       <div class="actions">
         <a class="button primary" href="author/Model_Goblin_Author_Exporter_v0_6_1.html">Open Author + Exporter</a>
+        <a class="button" href="keyshot/KeyShot_Goblin_Animation_Salvage_AA03.py" download>Download AA03 runner</a>
         <a class="button" href="#steps">Follow the six steps</a>
       </div>
     </div>
@@ -161,6 +162,7 @@
         <span class="chip">Full bridge</span>
         <h3>GLB plus Goblin evidence</h3>
         <p>Use the AA03 and AA04 outputs when you need rigid animation, captured camera behavior, or material-aware proxy modes.</p>
+        <p><a href="keyshot/KeyShot_Goblin_Animation_Salvage_AA03.py" download>Download the guarded AA03 KeyShot runner</a>, then load it from KeyShot's Scripting Console. It ignores camera and other non-geometry targets when geometry bounds are unavailable.</p>
         <div class="file-list">
           <div class="file"><b>REQ</b><span><code>keyshotbridge.glb</code></span></div>
           <div class="file"><b>AA03</b><span><code>keyshotbridge.goblinsalvage.json</code></span></div>
@@ -255,6 +257,7 @@
           <tr><td>Play does nothing</td><td>No useful AA03 tracks or camera samples, or an older export.</td><td>Check the salvage JSON, then export again from v0.6.1.</td></tr>
           <tr><td>Playback controls are hidden</td><td>The viewer detected no useful animation.</td><td>Use the static presentation intentionally, or rerun AA03 and inspect its duration, tracks, and camera samples.</td></tr>
           <tr><td>Motion is tiny or enormous</td><td>KeyShot scene bounds and GLB bounds disagree.</td><td>Remove unrelated hidden geometry or isolate the intended model before running AA03.</td></tr>
+          <tr><td>AA03 reports a NoneType bounding-box failure</td><td>An older runner tried to sample a camera or another non-geometry target as geometry.</td><td>Download the guarded runner above and rerun it. Missing bounds are skipped while camera samples remain captured.</td></tr>
           <tr><td>Model looks wrong while orbiting</td><td>Recovered motion and captured camera share the KeyShot frame.</td><td>Use Presentation for playback. Inspect pauses motion before allowing orbit.</td></tr>
           <tr><td>Proxy materials map incorrectly</td><td>Duplicate names or unmatched KeyShot and GLB paths.</td><td>Switch to Material IDs, rename ambiguous parts, rerun AA04, and reload the JSON.</td></tr>
           <tr><td>Viewer never appears</td><td>Corrupt or truncated HTML, or WebAssembly disabled.</td><td>Compare file size, re-download or re-export, then read the browser console.</td></tr>
