@@ -118,6 +118,32 @@ def geometry_leaves(node):
     return []
 
 
+def register_geometry_target(targets, targets_by_id, leaf):
+    """Register one scene body without collapsing duplicate readable paths."""
+    leaf_path = node_path(leaf)
+    leaf_id = clean(safe_call(lambda n=leaf: n.getID(), None))
+    id_key = str(leaf_id) if leaf_id is not None else None
+    target = targets_by_id.get(id_key) if id_key is not None else None
+    if target is None and id_key is None:
+        for candidate in targets:
+            if candidate["node"] is leaf:
+                target = candidate
+                break
+    if target is None:
+        target = {
+            "node": leaf,
+            "nodeId": leaf_id,
+            "path": leaf_path,
+            "sampleKey": "target-%d" % len(targets),
+            "animations": [],
+            "sourcePaths": [],
+        }
+        targets.append(target)
+        if id_key is not None:
+            targets_by_id[id_key] = target
+    return target
+
+
 def differs(values):
     values = [v for v in values if v is not None]
     if len(values) < 2:
@@ -220,7 +246,8 @@ try:
         })
         log("Animation: %s -> %s (%s)" % (node_path(anim), path, kind))
 
-    targets = {}
+    targets = []
+    targets_by_id = {}
     for source_path, source in animation_sources.items():
         leaves = geometry_leaves(source["node"])
         if not leaves:
@@ -228,8 +255,7 @@ try:
             continue
         log("Animation target %s registered %d geometry body/bodies." % (source_path, len(leaves)))
         for leaf in leaves:
-            leaf_path = node_path(leaf)
-            target = targets.setdefault(leaf_path, {"node": leaf, "animations": [], "sourcePaths": []})
+            target = register_geometry_target(targets, targets_by_id, leaf)
             if source_path not in target["sourcePaths"]:
                 target["sourcePaths"].append(source_path)
             known_animation_paths = set(a["path"] for a in target["animations"])
@@ -237,12 +263,22 @@ try:
                 if animation["path"] not in known_animation_paths:
                     target["animations"].append(animation)
                     known_animation_paths.add(animation["path"])
+    path_occurrences = {}
+    for target_index, target in enumerate(targets):
+        target["pathOccurrence"] = path_occurrences.get(target["path"], 0)
+        path_occurrences[target["path"]] = target["pathOccurrence"] + 1
+        log("Geometry body %d: %s [occurrence %d, id %s]" % (
+            target_index + 1,
+            target["path"],
+            target["pathOccurrence"],
+            target["nodeId"],
+        ))
     log("Geometry bodies registered for sampling: %d" % len(targets))
 
     root_world_bounds = bbox(root, True)
     log("Sampling %d timeline positions at %.6g fps." % (sample_count, effective_fps))
     camera_samples = []
-    raw_samples = {path: [] for path in targets}
+    raw_samples = {target["sampleKey"]: [] for target in targets}
     for frame in range(sample_count):
         t = min(duration, frame / effective_fps) if duration > 0 else 0.0
         lux.setAnimationTime(t)
@@ -250,11 +286,11 @@ try:
         time.sleep(SETTLE_SECONDS)
         if CAPTURE_CAMERA:
             camera_samples.append(camera_sample(t))
-        for path, target in targets.items():
+        for target in targets:
             node = target["node"]
             local_box = bbox(node, False)
             world_box = bbox(node, True)
-            raw_samples[path].append({
+            raw_samples[target["sampleKey"]].append({
                 "time": t,
                 "localCenter": local_box["center"] if local_box else None,
                 "localSize": local_box["size"] if local_box else None,
@@ -268,8 +304,8 @@ try:
             log("Sample %d/%d" % (frame + 1, sample_count))
 
     tracks = []
-    for path, target in targets.items():
-        samples = raw_samples[path]
+    for target in targets:
+        samples = raw_samples[target["sampleKey"]]
         changes = {
             "local_center": differs([s["localCenter"] for s in samples]),
             "local_size": differs([s["localSize"] for s in samples]),
@@ -284,8 +320,9 @@ try:
         track = {
             "target": {
                 "name": safe_call(lambda n=target["node"]: n.getName(), ""),
-                "path": path,
-                "id": clean(safe_call(lambda n=target["node"]: n.getID())),
+                "path": target["path"],
+                "pathOccurrence": target["pathOccurrence"],
+                "id": target["nodeId"],
                 "animationSourcePaths": target["sourcePaths"],
             },
             "animations": target["animations"],

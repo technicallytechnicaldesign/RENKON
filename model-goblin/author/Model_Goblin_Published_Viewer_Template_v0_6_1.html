@@ -259,13 +259,13 @@
       while (current && current !== modelRoot) { if (current.name) names.push(current.name); current = current.parent; }
       return names.reverse().join('/');
     }
-    function findTarget(target) {
-      const objects = collectObjects();
+    function findTarget(target, objects, claimed) {
       const wantedName = normalize(target?.name || lastSegment(target?.path));
       const wantedPath = normalize(target?.path);
       let best = null;
       let score = -1;
       for (const object of objects) {
+        if (claimed.has(object)) continue;
         const name = normalize(object.name);
         const path = normalize(objectPath(object));
         let next = 0;
@@ -292,9 +292,12 @@
 
     function buildRigs() {
       state.rigs = [];
+      const candidates = collectObjects();
+      const claimed = new Set();
       for (const track of salvage?.tracks || []) {
-        const target = findTarget(track.target);
+        const target = findTarget(track.target, candidates, claimed);
         if (!target) continue;
+        claimed.add(target);
         target.updateWorldMatrix(true, false);
         const pivotWorld = new THREE.Box3().setFromObject(target).getCenter(new THREE.Vector3());
         const pivotLocal = modelRoot.worldToLocal(pivotWorld.clone());
