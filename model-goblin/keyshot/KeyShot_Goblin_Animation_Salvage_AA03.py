@@ -1,8 +1,8 @@
-"""Model Goblin AA03 - working KeyShot rigid-animation salvage bridge.
+"""Model Goblin AA03 - versioned KeyShot rigid-animation salvage bridge.
 
 The bridge registers geometry-bearing bodies beneath each animated scene target,
-samples evaluated bounding boxes to recover translation curves, records camera
-motion, detects turntables, and exports a frame-zero GLB.
+samples evaluated bounding boxes to recover translation and group rotation,
+records camera motion, and exports an identity-labelled frame-zero GLB.
 Run inside KeyShot 2024.x via Window > Scripting.
 """
 
@@ -16,6 +16,8 @@ import lux
 
 
 FPS = 30
+BRIDGE_VERSION = "0.6.5"
+BUILD_ID = "2026-08-29.1"
 OUTPUT_BASENAME = "keyshotbridge"
 OUTPUT_DIR = os.path.join(os.path.expanduser("~"), "Desktop", "KeyShot_Goblin_Animation_Salvage_AA03")
 EXPORT_GLB = True
@@ -158,6 +160,68 @@ def differs(values):
     return False
 
 
+def rigid_quaternion(reference_points, current_points):
+    """Fit a relative rigid rotation with Horn's quaternion method."""
+    pairs = [(a, b) for a, b in zip(reference_points, current_points) if a is not None and b is not None]
+    if len(pairs) < 2:
+        return None
+    ref_center = [sum(pair[0][axis] for pair in pairs) / len(pairs) for axis in range(3)]
+    cur_center = [sum(pair[1][axis] for pair in pairs) / len(pairs) for axis in range(3)]
+    ref = [[point[axis] - ref_center[axis] for axis in range(3)] for point, _ in pairs]
+    cur = [[point[axis] - cur_center[axis] for axis in range(3)] for _, point in pairs]
+    spread = sum(sum(value * value for value in point) for point in ref)
+    if spread <= CHANGE_EPSILON:
+        return None
+    s = [[sum(a[row] * b[col] for a, b in zip(ref, cur)) for col in range(3)] for row in range(3)]
+    sxx, sxy, sxz = s[0]
+    syx, syy, syz = s[1]
+    szx, szy, szz = s[2]
+    trace = sxx + syy + szz
+    horn = [
+        [trace, syz - szy, szx - sxz, sxy - syx],
+        [syz - szy, sxx - syy - szz, sxy + syx, szx + sxz],
+        [szx - sxz, sxy + syx, -sxx + syy - szz, syz + szy],
+        [sxy - syx, szx + sxz, syz + szy, -sxx - syy + szz],
+    ]
+    shift = sum(abs(value) for row in horn for value in row) + 1.0
+    shifted = [[horn[row][col] + (shift if row == col else 0.0) for col in range(4)] for row in range(4)]
+    quat = [1.0, 0.0, 0.0, 0.0]
+    for _ in range(48):
+        next_quat = [sum(shifted[row][col] * quat[col] for col in range(4)) for row in range(4)]
+        length = math.sqrt(sum(value * value for value in next_quat))
+        if length <= CHANGE_EPSILON:
+            return None
+        quat = [value / length for value in next_quat]
+    if quat[0] < 0:
+        quat = [-value for value in quat]
+    return [quat[1], quat[2], quat[3], quat[0]]
+
+
+def fitted_rotation_samples(members, raw_samples):
+    """Recover one evaluated group rotation from descendant center motion."""
+    if len(members) < 2:
+        return []
+    member_samples = [raw_samples[target["sampleKey"]] for target in members]
+    if not member_samples or not member_samples[0]:
+        return []
+    field = "localCenter"
+    if any(samples[0].get(field) is None for samples in member_samples):
+        field = "worldCenter"
+    reference = [samples[0].get(field) for samples in member_samples]
+    output = []
+    previous = None
+    for frame_index in range(len(member_samples[0])):
+        current = [samples[frame_index].get(field) for samples in member_samples]
+        quat = rigid_quaternion(reference, current)
+        if quat is None:
+            return []
+        if previous is not None and sum(a * b for a, b in zip(previous, quat)) < 0:
+            quat = [-value for value in quat]
+        previous = quat
+        output.append({"time": member_samples[0][frame_index]["time"], "value": quat})
+    return output
+
+
 def camera_sample(t):
     return {
         "time": t,
@@ -210,7 +274,7 @@ original_time = safe_call(lux.getAnimationTime, 0.0)
 was_paused = bool(safe_call(lux.isPaused, False))
 
 try:
-    log("Starting AA03 salvage bridge.")
+    log("Starting AA03 salvage bridge v%s [build %s]." % (BRIDGE_VERSION, BUILD_ID))
     log("KeyShot version: %s" % clean(safe_call(lux.getKeyShotVersion)))
     info = clean(safe_call(lux.getAnimationInfo, {})) or {}
     duration = float(info.get("duration", 0.0) if isinstance(info, dict) else 0.0)
@@ -237,14 +301,16 @@ try:
             continue
         path = node_path(parent)
         kind = animation_kind(safe_call(lambda n=anim: n.getName(), ""))
+        animation_dump = clean(safe_call(lambda n=anim: n.dump(), str(anim)))
         entry = animation_sources.setdefault(path, {"node": parent, "animations": []})
         entry["animations"].append({
             "name": safe_call(lambda n=anim: n.getName(), ""),
             "path": node_path(anim),
             "kind": kind,
-            "dump": safe_call(lambda n=anim: n.dump(), str(anim)),
+            "dump": animation_dump,
         })
         log("Animation: %s -> %s (%s)" % (node_path(anim), path, kind))
+        log("Animation evidence: %s" % str(animation_dump)[:600])
 
     targets = []
     targets_by_id = {}
@@ -265,13 +331,16 @@ try:
                     known_animation_paths.add(animation["path"])
     path_occurrences = {}
     for target_index, target in enumerate(targets):
+        target["originalName"] = str(safe_call(lambda n=target["node"]: n.getName(), ""))
+        target["exportName"] = "MG_AA03_%04d" % (target_index + 1)
         target["pathOccurrence"] = path_occurrences.get(target["path"], 0)
         path_occurrences[target["path"]] = target["pathOccurrence"] + 1
-        log("Geometry body %d: %s [occurrence %d, id %s]" % (
+        log("Geometry body %d: %s [occurrence %d, id %s, export %s]" % (
             target_index + 1,
             target["path"],
             target["pathOccurrence"],
             target["nodeId"],
+            target["exportName"],
         ))
     log("Geometry bodies registered for sampling: %d" % len(targets))
 
@@ -303,6 +372,21 @@ try:
         if frame % max(1, sample_count // 10) == 0:
             log("Sample %d/%d" % (frame + 1, sample_count))
 
+    rotation_by_source = {}
+    for source_path, source in animation_sources.items():
+        if not any(animation["kind"] == "rotation" for animation in source["animations"]):
+            continue
+        members = [target for target in targets if source_path in target["sourcePaths"]]
+        clean_members = [target for target in members if len(target["sourcePaths"]) == 1]
+        fit_members = clean_members if len(clean_members) >= 2 else members
+        rotation_samples = fitted_rotation_samples(fit_members, raw_samples)
+        changed = differs([sample["value"] for sample in rotation_samples])
+        if rotation_samples and changed:
+            rotation_by_source[source_path] = rotation_samples
+            log("Rotation source %s fitted from %d body traces." % (source_path, len(fit_members)))
+        else:
+            log("Rotation source %s could not be fitted from %d body traces." % (source_path, len(fit_members)))
+
     tracks = []
     for target in targets:
         samples = raw_samples[target["sampleKey"]]
@@ -316,10 +400,12 @@ try:
             "world_matrix": differs([s["worldMatrix"] for s in samples]),
         }
         kinds = [a["kind"] for a in target["animations"]]
-        log("Target changes: %s" % changes)
+        rotation_source = next((path for path in target["sourcePaths"] if path in rotation_by_source), None)
+        log("Target changes for %s: %s" % (target["exportName"], changes))
         track = {
             "target": {
-                "name": safe_call(lambda n=target["node"]: n.getName(), ""),
+                "name": target["originalName"],
+                "exportName": target["exportName"],
                 "path": target["path"],
                 "pathOccurrence": target["pathOccurrence"],
                 "id": target["nodeId"],
@@ -336,6 +422,12 @@ try:
                 "enabled": changes["hidden"],
                 "samples": [{"time": s["time"], "hidden": s["hidden"]} for s in samples],
             },
+            "rotation": {
+                "enabled": rotation_source is not None,
+                "method": "descendant-center-rigid-fit" if rotation_source is not None else None,
+                "sourcePath": rotation_source,
+                "samples": rotation_by_source.get(rotation_source, []),
+            },
             "turntable": {
                 "enabled": "turntable" in kinds,
                 "axis": "y",
@@ -345,12 +437,14 @@ try:
             },
             "forensics": {"samples": samples},
         }
-        if track["translation"]["enabled"] or track["visibility"]["enabled"] or track["turntable"]["enabled"]:
+        if track["translation"]["enabled"] or track["rotation"]["enabled"] or track["visibility"]["enabled"] or track["turntable"]["enabled"]:
             tracks.append(track)
 
     payload = {
         "schema": "model-goblin-salvage-aa03",
-        "version": 3,
+        "version": 4,
+        "bridgeVersion": BRIDGE_VERSION,
+        "buildId": BUILD_ID,
         "source": {
             "keyshotVersion": clean(safe_call(lux.getKeyShotVersion)),
             "sceneInfo": clean(safe_call(lux.getSceneInfo, {})),
@@ -364,20 +458,48 @@ try:
         "camera": {"enabled": CAPTURE_CAMERA and bool(camera_samples), "samples": camera_samples},
         "defaults": {"turntableDirection": 1, "turntableDegrees": 360.0, "translationGain": 1.0},
     }
-    with open(json_path, "w", encoding="utf-8") as handle:
-        json.dump(payload, handle, ensure_ascii=False, indent=2)
-    log("Salvage JSON written: " + json_path)
     log("Tracks written: %d" % len(tracks))
     log("BBox-motion tracks: %d" % sum(1 for t in tracks if t["translation"]["enabled"]))
+    log("Fitted rotation tracks: %d" % sum(1 for t in tracks if t["rotation"]["enabled"]))
     log("Procedural turntables: %d" % sum(1 for t in tracks if t["turntable"]["enabled"]))
+    for track in tracks:
+        log("TRACK %s: translation=%s rotation=%s visibility=%s animations=%s" % (
+            track["target"]["exportName"],
+            track["translation"]["enabled"],
+            track["rotation"]["enabled"],
+            track["visibility"]["enabled"],
+            [animation["name"] for animation in track["animations"]],
+        ))
 
+    identity_labels_applied = 0
     if EXPORT_GLB:
         lux.setAnimationTime(0.0)
         safe_call(lux.sync)
-        log("Exporting static GLB at time zero: " + glb_path)
-        result = export_glb(glb_path)
-        log("GLB export returned: %s" % result)
-    log("AA03 salvage complete.")
+        renamed_nodes = []
+        try:
+            for target in targets:
+                changed_name = bool(safe_call(lambda n=target["node"], name=target["exportName"]: (n.setName(name), True)[1], False))
+                verified_name = safe_call(lambda n=target["node"]: n.getName(), None) == target["exportName"]
+                if changed_name:
+                    renamed_nodes.append(target)
+                if verified_name:
+                    identity_labels_applied += 1
+                else:
+                    log("IDENTITY LABEL FAILED: %s -> %s" % (target["path"], target["exportName"]))
+            log("Identity labels applied for GLB export: %d/%d" % (identity_labels_applied, len(targets)))
+            log("Exporting static GLB at time zero: " + glb_path)
+            result = export_glb(glb_path)
+            log("GLB export returned: %s" % result)
+        finally:
+            for target in reversed(renamed_nodes):
+                safe_call(lambda n=target["node"], name=target["originalName"]: n.setName(name))
+            log("Restored %d temporary scene labels." % len(renamed_nodes))
+
+    payload["identityLabelsApplied"] = identity_labels_applied
+    with open(json_path, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, ensure_ascii=False, indent=2)
+    log("Salvage JSON written: " + json_path)
+    log("AA03 v%s build %s salvage complete." % (BRIDGE_VERSION, BUILD_ID))
 except Exception:
     log("FAILED\n" + traceback.format_exc())
 finally:

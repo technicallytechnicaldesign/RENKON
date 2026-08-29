@@ -260,6 +260,7 @@
       return names.reverse().join('/');
     }
     function findTarget(target, objects, claimed) {
+      const wantedExportName = normalize(target?.exportName);
       const wantedName = normalize(target?.name || lastSegment(target?.path));
       const wantedPath = normalize(target?.path);
       let best = null;
@@ -269,6 +270,7 @@
         const name = normalize(object.name);
         const path = normalize(objectPath(object));
         let next = 0;
+        if (wantedExportName && name === wantedExportName) next += 1000;
         if (name && name === wantedName) next += 20;
         if (path && wantedPath.endsWith(path)) next += 40 + Math.min(path.length, 20);
         if (path && wantedPath.includes(path)) next += 10;
@@ -288,6 +290,18 @@
       const av = a[field], bv = b[field];
       if (Array.isArray(av) && Array.isArray(bv)) return av.map((value, i) => value + (bv[i] - value) * alpha);
       return alpha < .5 ? av : bv;
+    }
+
+    function interpolateQuaternionSamples(samples, time) {
+      if (!samples?.length) return null;
+      const make = (value) => new THREE.Quaternion(value?.[0] || 0, value?.[1] || 0, value?.[2] || 0, value?.[3] ?? 1).normalize();
+      if (samples.length === 1 || time <= samples[0].time) return make(samples[0].value);
+      if (time >= samples[samples.length - 1].time) return make(samples[samples.length - 1].value);
+      let lo = 0, hi = samples.length - 1;
+      while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (samples[mid].time <= time) lo = mid; else hi = mid; }
+      const a = samples[lo], b = samples[hi];
+      const alpha = (time - a.time) / Math.max(1e-12, b.time - a.time);
+      return make(a.value).slerp(make(b.value), alpha);
     }
 
     function buildRigs() {
@@ -321,7 +335,11 @@
           const value = interpolateSamples(track.translation.samples, time, 'value');
           if (value) carrier.position.add(mapDelta(value.map((v, i) => v - (baseTranslation?.[i] || 0))));
         }
-        if (track.turntable?.enabled && state.duration > 0) {
+        if (track.rotation?.enabled) {
+          const rotation = interpolateQuaternionSamples(track.rotation.samples, time);
+          if (rotation) carrier.quaternion.copy(rotation);
+        }
+        if (track.turntable?.enabled && !track.rotation?.enabled && state.duration > 0) {
           const direction = Number(config.turntableDirection ?? track.turntable.direction ?? 1);
           const degrees = Number(config.turntableDegrees ?? track.turntable.degrees ?? 360);
           const angle = THREE.MathUtils.degToRad(degrees) * (time / state.duration) * direction;
@@ -561,7 +579,8 @@
       dom.play.disabled = !hasAnimation; dom.restart.disabled = !hasAnimation; dom.timeline.disabled = !hasAnimation;
       if (!hasAnimation) { dom.play.style.display = 'none'; dom.restart.style.display = 'none'; dom.timeline.style.display = 'none'; dom.time.style.display = 'none'; dom.speed.style.display = 'none'; }
       if (config.autoPlay && hasAnimation) setPlaying(true);
-      const readyMessage = `Ready - ${state.rigs.length} motion track${state.rigs.length === 1 ? '' : 's'}`;
+      const bridgeStamp = salvage?.bridgeVersion ? ` | AA03 v${salvage.bridgeVersion} build ${salvage.buildId || '?'}` : '';
+      const readyMessage = `Ready - ${state.rigs.length} motion track${state.rigs.length === 1 ? '' : 's'}${bridgeStamp}`;
       setStatus(readyMessage, false, false);
       if (window.parent !== window) window.parent.postMessage({ type:'model-goblin-ready', message:readyMessage }, '*');
     }
