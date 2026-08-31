@@ -873,17 +873,27 @@
     ctx.save();
     ctx.translate(f.cx, f.cy); ctx.rotate(f.rot);
 
+    // feathered erosion: destination-out with a radial gradient (opaque center,
+    // fading to nothing at the rim) instead of a flat-alpha hard circle, so a
+    // bite thins into the material instead of reading as a clean punched hole.
     ctx.globalCompositeOperation = "destination-out";
     f.notches.forEach(nt => {
       if (nt.r <= 0) return;
       const pt = signagePerimeterPoint(f.shape, f.boxW, f.boxH, nt.t);
+      const grad = ctx.createRadialGradient(pt[0], pt[1], 0, pt[0], pt[1], nt.r);
+      grad.addColorStop(0, "rgba(0,0,0," + nt.a + ")");
+      grad.addColorStop(1, "rgba(0,0,0,0)");
       ctx.beginPath(); ctx.arc(pt[0], pt[1], nt.r, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(0,0,0," + nt.a + ")"; ctx.fill();
+      ctx.fillStyle = grad; ctx.fill();
     });
     if (f.peel && f.peel.r > 0) {
       const pt = signagePerimeterPoint(f.shape, f.boxW, f.boxH, f.peel.t);
+      const grad = ctx.createRadialGradient(pt[0], pt[1], 0, pt[0], pt[1], f.peel.r);
+      grad.addColorStop(0, "rgba(0,0,0," + f.peel.a + ")");
+      grad.addColorStop(0.7, "rgba(0,0,0," + (f.peel.a * 0.55) + ")");
+      grad.addColorStop(1, "rgba(0,0,0,0)");
       ctx.beginPath(); ctx.arc(pt[0], pt[1], f.peel.r, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(0,0,0," + f.peel.a + ")"; ctx.fill();
+      ctx.fillStyle = grad; ctx.fill();
     }
     ctx.globalCompositeOperation = "source-over";
 
@@ -963,15 +973,18 @@
       boxW = Math.max(4, boxW); boxH = Math.max(4, boxH);
       const radius = shape === "Rounded Rect" ? Math.min(boxW, boxH) * 0.5 * clamp01(p.radius) * 0.6 : 0;
 
+      // torn-edge nibbles: small, soft-edged bites so many overlapping ones read
+      // as a ragged edge, not the punched-clean-through holes a bigger/harder
+      // circle at full alpha produces ("swiss cheese").
       const weather = clamp01(p.weather);
-      const nNotch = Math.round(2 + 10 * weather);
+      const nNotch = Math.round(3 + 6 * weather);
       const notches = [];
       for (let i = 0; i < nNotch; i++) {
-        notches.push({ t: r(), r: size * (0.006 + 0.024 * r()) * (0.3 + weather), a: 0.5 + 0.5 * r() });
+        notches.push({ t: r(), r: size * (0.004 + 0.010 * r()) * (0.3 + weather), a: 0.35 + 0.35 * r() });
       }
       let peel = null;
       if (weather > 0.15) {
-        peel = { t: r(), r: size * (0.02 + 0.05 * weather) * (0.7 + r() * 0.6), a: 0.6 + 0.3 * r() };
+        peel = { t: r(), r: size * (0.010 + 0.018 * weather) * (0.7 + r() * 0.5), a: 0.45 + 0.25 * r() };
       }
       const nScuff = Math.round(weather * 6);
       const scuffs = [];
