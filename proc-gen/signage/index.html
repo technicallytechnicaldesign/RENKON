@@ -449,6 +449,15 @@
     "Safety":    { field: "#1E7A46", ink: "#FFFFFF" },
     "Text Only": { field: "#F2F2EC", ink: "#1A1A1A" }
   };
+  // Curated system-font pairings for the Signage text settings (no Google
+  // Fonts here — signage body copy needs to stay zero-latency/zero-dependency,
+  // unlike the sanctioned Space Grotesk/Mono UI chrome font).
+  const SIGNAGE_FONT_STACKS = {
+    "Industrial": { header: '"Arial Black", Impact, system-ui, sans-serif', headerWeight: 900, body: 'system-ui, Arial, sans-serif' },
+    "Condensed":  { header: '"Arial Narrow", "Segoe UI", sans-serif',       headerWeight: 800, body: '"Arial Narrow", "Segoe UI", sans-serif' },
+    "Monospace":  { header: 'ui-monospace, "Courier New", monospace',       headerWeight: 700, body: 'ui-monospace, "Courier New", monospace' },
+    "Serif":      { header: 'Georgia, "Times New Roman", serif',            headerWeight: 700, body: 'Georgia, "Times New Roman", serif' }
+  };
   function traceSignagePath(ctx, shape, bw, bh, radius) {
     ctx.beginPath();
     if (shape === "Circle") {
@@ -807,7 +816,20 @@
     const hasHeader = !!header, hasBody = !!body;
 
     ctx.fillStyle = C.ink;
-    ctx.textAlign = "center";
+
+    // Text settings: font pairing, alignment, a manual size-scale override on
+    // top of the auto-fit ceiling, and an X/Y nudge applied to the whole
+    // icon+header+body block (so the pictogram and its text stay paired).
+    const FONT = SIGNAGE_FONT_STACKS[p.textFont] || SIGNAGE_FONT_STACKS.Industrial;
+    const align = p.textAlign || "Center";
+    const textScale = p.textScale != null ? p.textScale : 1;
+    const offX = (p.textOffsetX || 0) * inner.w;
+    const offY = (p.textOffsetY || 0) * inner.h;
+    const textX = align === "Left" ? inner.x : align === "Right" ? inner.x + inner.w : 0;
+    ctx.textAlign = align === "Left" ? "left" : align === "Right" ? "right" : "center";
+
+    ctx.save();
+    ctx.translate(offX, offY);
 
     // Vertical layout: a dedicated body zone at the bottom (so body text is
     // never squeezed out), with the icon + header stacked and centered in the
@@ -823,9 +845,9 @@
     let headerPx = 0;
     if (hasHeader) {
       const headerAvailH = Math.max(8, topZoneH - (hasIcon ? iconSize * 1.05 : 0));
-      const maxHeaderPx = Math.max(9, Math.min(headerAvailH * 0.82, inner.w * 0.5, size * 0.12));
+      const maxHeaderPx = Math.max(9, Math.min(headerAvailH * 0.82, inner.w * 0.5, size * 0.12) * textScale);
       headerPx = signageFitFontSize(ctx, header, inner.w * 0.94, maxHeaderPx, 8,
-        sz => '900 ' + sz + 'px "Arial Black", Impact, system-ui, sans-serif');
+        sz => FONT.headerWeight + ' ' + sz + 'px ' + FONT.header);
     }
     // center the icon+header stack in the top zone
     const stackH = (hasIcon ? iconSize * 1.05 : 0) + (hasHeader ? headerPx * 1.1 : 0);
@@ -835,9 +857,9 @@
       cy += iconSize * 1.05;
     }
     if (hasHeader) {
-      ctx.font = '900 ' + headerPx + 'px "Arial Black", Impact, system-ui, sans-serif';
+      ctx.font = FONT.headerWeight + ' ' + headerPx + 'px ' + FONT.header;
       ctx.textBaseline = "top";
-      ctx.fillText(header, 0, cy);
+      ctx.fillText(header, textX, cy);
       cy += headerPx * 1.1;
     }
 
@@ -846,20 +868,21 @@
     if (hasBody) {
       const bodyPad = bodyZoneH * 0.12;
       const usableH = Math.max(6, bodyZoneH - bodyPad * 2);
-      let bodyPx = Math.max(7, Math.min(size * 0.05, usableH * 0.46, inner.w * 0.12));
-      ctx.font = bodyPx + 'px system-ui, Arial, sans-serif';
+      let bodyPx = Math.max(7, Math.min(size * 0.05, usableH * 0.46, inner.w * 0.12) * textScale);
+      ctx.font = bodyPx + 'px ' + FONT.body;
       let lines = signageWrapText(ctx, body, inner.w * 0.96, 3);
       // shrink until the wrapped block fits the usable body height
       while (bodyPx > 7 && lines.length * bodyPx * 1.25 > usableH) {
         bodyPx -= 1;
-        ctx.font = bodyPx + 'px system-ui, Arial, sans-serif';
+        ctx.font = bodyPx + 'px ' + FONT.body;
         lines = signageWrapText(ctx, body, inner.w * 0.96, 3);
       }
       ctx.textBaseline = "top";
       const blockH = lines.length * bodyPx * 1.25;
       const by = bodyZoneY + bodyPad + Math.max(0, (usableH - blockH) / 2);
-      lines.forEach((ln, i) => ctx.fillText(ln, 0, by + i * bodyPx * 1.25));
+      lines.forEach((ln, i) => ctx.fillText(ln, textX, by + i * bodyPx * 1.25));
     }
+    ctx.restore(); // text offset translate
 
     if (p.border > 0.01) paintSignageBorder(ctx, f, p, C, size);
 
@@ -955,6 +978,13 @@
       { key: "radius",   label: "Radius",   min: 0,    max: 1,  step: 0.01, default: 0.4 },
       { key: "coverage", label: "Coverage", min: 0.2,  max: 1,  step: 0.01, default: 0.55 },
       { key: "rotation", label: "Rotation", min: -30,  max: 30, step: 1,    default: 0 },
+      { key: "textFont",  label: "Font",  type: "select", default: "Industrial",
+        options: ["Industrial", "Condensed", "Monospace", "Serif"] },
+      { key: "textAlign", label: "Align", type: "select", default: "Center",
+        options: ["Left", "Center", "Right"] },
+      { key: "textScale",   label: "Text Size", min: 0.6,  max: 1.6,  step: 0.02, default: 1 },
+      { key: "textOffsetX", label: "Text X",    min: -0.3, max: 0.3,  step: 0.01, default: 0 },
+      { key: "textOffsetY", label: "Text Y",    min: -0.3, max: 0.3,  step: 0.01, default: 0 },
       { key: "weather",  label: "Weather",  min: 0,    max: 1,  step: 0.01, default: 0.25 },
       { key: "emboss",   label: "Emboss",   min: 0,    max: 1,  step: 0.01, default: 0.4 },
       { key: "gloss",    label: "Gloss",    min: 0,    max: 1,  step: 0.01, default: 0.5 }
@@ -3013,6 +3043,7 @@
   const SECTION_DEFS = [
     { name: "Design",       keys: ["style", "metal", "contents", "shape", "symbol", "pictogram", "centerMark", "edge", "direction", "header", "subhead", "body", "model", "serial", "topText", "bottomText", "centerText", "label", "sublabel"] },
     { name: "Layout",       keys: ["rows", "screws", "stars", "fields", "ring", "arrow", "bandHeight", "stripes", "border", "radius", "coverage", "rotation", "hole", "holeRing"] },
+    { name: "Text",         keys: ["textFont", "textAlign", "textScale", "textOffsetX", "textOffsetY"] },
     { name: "Finish & Wear", keys: ["weather", "emboss", "gloss"] }
   ];
   // Bucket a generator's params into the sections above (preserving param
