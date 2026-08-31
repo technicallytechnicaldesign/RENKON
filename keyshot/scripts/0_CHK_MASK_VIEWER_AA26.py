@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # AUTHOR claude-subagent
-# REV AA18
+# REV AA26
 #
-# Label-stack probe: tests whether scripted labels render, stack, and accept curvature-driven opacity masks.
+# Diagnostic viewer: renders one material-graph node per mode to isolate mask, radius, scale, and composition issues.
 #
 # CONSTRAINTS: ASCII only, no f-strings, no walrus operators.
 # Single-file delivery via raw GitHub URL (no imports from local modules).
@@ -312,8 +312,8 @@ BBOX_METHODS = ["getBoundingBox", "getWorldBounds", "getBounds"]
 # getBoundingBox() returns luxmath.Vectors in SCENE units, and the scene unit is
 # NOT mm. AB06 labelled the raw number "mm" and fed it straight into the scale
 # fractions. AB10: there is no scene-unit constant to have, so there is none
-# here. The operator's scene put one unit at about 74.6 mm -- that is the model's
-# import scale, not a unit of length, and no constant can know it. Texture Scale
+# here. Any apparent mm-per-unit figure for a scene is an import-scale artefact,
+# not a unit of length, and no constant can know it (RNK-0255 struck the old 74.6). Texture Scale
 # is in SCENE units, so the fractions below are applied straight to the MEASURED
 # extent and nothing is converted, which is correct at any import scale. AB05
 # through AB09 multiplied a millimetre figure into a scene-unit parameter, which
@@ -395,7 +395,22 @@ def measure_part_size(name_filter):
     collection, _collect_descendants) and compute the max part extent (mm) across
     matched nodes, trying the UNPROBED lux bounding-box APIs per node. Returns a
     float, or None if nothing worked -- non-fatal, the caller falls back. Logs
-    which method (if any) succeeded so a future rev can lock the API name."""
+    which method (if any) succeeded so a future rev can lock the API name.
+
+    REFUSES to measure with no name_filter (RNK-0298). The dialog's own default
+    is the ALL sentinel, which resolve_filter turns into None, and an unfiltered
+    walk includes every Group/assembly node the scene has; taking max() extent
+    across all of them measured 301,814,039 scene units for a part entered as
+    220 mm, a factor of 1976 off -- the walk was finding the top of the tree,
+    not the part. Refusing routes the caller to the entered-mm fallback instead,
+    which is the existing, already-warned path."""
+    if not name_filter:
+        print("  [warn] part measure: no name filter set -- an unfiltered walk "
+              "measures the largest node in the scene, almost always a "
+              "Group/assembly and not the part (RNK-0298). Refusing to guess; "
+              "type the part's name into 'Apply to parts matching' to measure "
+              "it.")
+        return None
     try:
         root = lux.getSceneTree()
     except Exception as e:
@@ -405,8 +420,7 @@ def measure_part_size(name_filter):
         nodes = _collect_descendants(root)
     except Exception:
         nodes = []
-    if name_filter:
-        nodes = [n for n in nodes if _name_matches(n, name_filter)]
+    nodes = [n for n in nodes if _name_matches(n, name_filter)]
     if not nodes:
         print("  [info] part measure: no geometry nodes found to measure")
         return None
@@ -2621,75 +2635,131 @@ def mm_to_scene(mm, units_to_mm, extent, fraction, what):
 
 # ===== END CORE BLOCK v1 ======================================================
 
-PROBE_REV = "AA18"
+VIEWER_REV = "AA26"
 
-# Maximally distinct, so the answer survives a phone photo of the viewport.
-COLOUR_ROOT = (0.85, 0.06, 0.06)    # RED   -- the base material
-COLOUR_LABEL_1 = (0.05, 0.75, 0.15)  # GREEN -- the first label
-COLOUR_LABEL_2 = (0.08, 0.25, 0.90)  # BLUE  -- the second, for the stack test
-COLOUR_LABEL_3 = (0.95, 0.80, 0.05)  # AMBER -- the third, for the stack test
+# RNK-0296: the viewer's job is showing what a value does, including one that
+# is too big. The clamp reports what it WOULD do but uses the asked-for radius.
+CLAMP_REPORT_ONLY[0] = True
 
-MODE_PLAIN = 1
-MODE_MASKED = 2
-MODE_VIA_NUMBER = 3
-MODE_THREE = 4
-MODE_OPACITY_MODE = 5
+MODE_CURVATURE = "1 curvature (edge mask)"
+MODE_OCCLUSION = "2 occlusion (cavity mask)"
+MODE_SCRATCHES = "3 scratches (raw pattern)"
+MODE_SPOTS = "4 spots (raw pattern)"
+MODE_MASKED = "5 masked texture (curvature -> scratch colour)"
+MODE_COMPOSITE = "6 composite gate (RED source / GREEN background / curvature mask)"
+MODE_WEAR = "7 composed wear mask (curvature primary, grunge weighted, AO suppressing)"
+MODE_CALIBRATE = "8 CALIBRATE this scene (write 1.0 to both, read both panels)"
+MODE_FLAT = "9 FLAT COLOUR null test (no nodes at all -- ladder R1)"
 
-MODE_NAMES = {
-    MODE_PLAIN: "1 plain label (does a label render AT ALL)",
-    MODE_MASKED: "2 curvature -> label opacity, direct",
-    MODE_VIA_NUMBER: "3 curvature -> Color To Number -> label opacity",
-    MODE_THREE: "4 three stacked labels (does a STACK build)",
-    MODE_OPACITY_MODE: "5 masked label with opacitymap_mode swept",
-}
+# AA23: append-only. The flat test is conceptually the FIRST rung and sits last
+# in this list on purpose, because every bench note, the ladder page and the
+# bench sheet name modes by number, and renumbering would invalidate all of them
+# without changing a single line they could see.
+MODE_ORDER = [MODE_CURVATURE, MODE_OCCLUSION, MODE_SCRATCHES, MODE_SPOTS,
+              MODE_MASKED, MODE_COMPOSITE, MODE_WEAR, MODE_CALIBRATE,
+              MODE_FLAT]
+
+# Mode 9's colour. Magenta because nothing in this workstream's renders is
+# magenta: charcoal, brown, grey, orange and black have all turned up as real
+# results, and every one of them has at some point been mistaken for a failure.
+# A colour that cannot be confused with a plausible material is the whole point
+# of a null test.
+FLAT_TEST_COLOUR = (1.0, 0.0, 1.0)
+
+# The readout colours for mode 6. Deliberately maximally distinct: if you cannot
+# instantly tell which one you are looking at, the composite is mixing them.
+GATE_SOURCE_COLOUR = (1.0, 0.0, 0.0)
+GATE_BACKGROUND_COLOUR = (0.0, 1.0, 0.0)
 
 DEFAULT_OPTIONS = {
     "mode_int": 1,
     "part_size_mm": 0.0,
     "radius_mm": 1.5,
-    "opacity_mode_int": 0,
+    "texture_scale_fraction": 0.05,
+    "scale_factor": 0.001,
+    "center_on_int": 2,
+    "cutoff": -1.0,
+    # Both default to 0 so mode 7 out of the box shows the PRIMARY
+    # SIGNAL ALONE: curvature, through the composition, with nothing
+    # modulating it. Dial them up one at a time from a picture you
+    # already understand. Starting at 0.5 means the first frame mixes
+    # three unknowns, which is how 2026-08-03 produced "scratches or
+    # black, no bright edges" and no way to tell which stage was at fault.
+    "grunge_amount": 0.0,
+    "ao_amount": 0.0,
+    "wear_contrast": 0.0,
+    # MEASURED-DEFAULT CHANGE 2026-08-03: was True, which silently ran
+    # every curvature radius in SCREEN PIXELS at radius_px. On a large
+    # render a 4-pixel band is a hairline, and multiplied by anything it
+    # disappears -- which is exactly what mode 7 looked like. Pixels mode
+    # is also resolution and camera dependent, so it can never be the
+    # default for a mask you intend to judge. Millimetres now.
+    "radius_in_pixels": False,
+    "radius_px": 4.0,
     "radius_display_factor": RADIUS_DISPLAY_FACTOR,
     "name_filter": "all",
 }
 
+# AB08's lesson, relearned: an empty default string makes lux.getInputDialog
+# raise before it ever appears. Anything in this set means "no filter".
 NO_FILTER_WORDS = ("all", "none", "-", "")
 
-# The label material's own shader. Paint is what the rebuild will use; the
-# fallbacks exist so a build missing it still answers the question.
-LABEL_SHADER_CANDIDATES = ["SHADER_TYPE_PAINT", "SHADER_TYPE_PLASTIC",
-                           "SHADER_TYPE_DIFFUSE", "SHADER_TYPE_FLAT"]
-ROOT_SHADER_CANDIDATES = ["SHADER_TYPE_PAINT", "SHADER_TYPE_PLASTIC",
-                          "SHADER_TYPE_DIFFUSE", "SHADER_TYPE_FLAT"]
+RADIUS_FALLBACK_FRACTION = 0.008
+
 
 
 def read_options():
-    """Dialog, non-fatal. AB08's lesson, three dialog failures ago: a dialog
-    must never cost the run."""
+    """Dialog, non-fatal (AB08's lesson: a dialog that raises must not cost the
+    run). Falls back to DEFAULT_OPTIONS and says so."""
     try:
         values = [
             ("mode_int", lux.DIALOG_INTEGER,
-             "WHAT TO TEST -- 1 plain label, 2 masked, 3 via Color To Number, "
-             "4 three stacked, 5 opacity-mode sweep:",
-             DEFAULT_OPTIONS["mode_int"], (1, 5)),
+             "WHAT TO LOOK AT -- 1 curvature, 2 occlusion, 3 scratches, "
+             "4 spots, 5 masked texture, 6 composite gate, 7 composed wear "
+             "mask, 8 CALIBRATE this scene, 9 FLAT COLOUR null test:",
+             DEFAULT_OPTIONS["mode_int"], (1, 9)),
             ("part_size_mm", lux.DIALOG_DOUBLE,
-             "Real part size in mm (0 = measure it):",
+             "Real part size in mm (needed to convert the radius):",
              DEFAULT_OPTIONS["part_size_mm"], (0.0, 100000.0)),
             ("radius_mm", lux.DIALOG_DOUBLE,
-             "Curvature radius in REAL mm (modes 2, 3, 5):",
+             "Radius in REAL mm (sweep THIS -- modes 1, 2, 5, 6):",
              DEFAULT_OPTIONS["radius_mm"], (0.001, 10000.0)),
-            ("opacity_mode_int", lux.DIALOG_INTEGER,
-             "opacitymap_mode int (mode 5 -- sweep this):",
-             DEFAULT_OPTIONS["opacity_mode_int"], (0, 8)),
+            ("grunge_amount", lux.DIALOG_DOUBLE,
+             "Mode 7 grunge amount (0 = pure curvature, no pattern):",
+             DEFAULT_OPTIONS["grunge_amount"], (0.0, 1.0)),
+            ("ao_amount", lux.DIALOG_DOUBLE,
+             "Mode 7 AO suppression amount (0 = no occlusion in the mask):",
+             DEFAULT_OPTIONS["ao_amount"], (0.0, 1.0)),
+            ("wear_contrast", lux.DIALOG_DOUBLE,
+             "Mode 7 wear contrast (0 = off):",
+             DEFAULT_OPTIONS["wear_contrast"], (0.0, 10.0)),
+            ("cutoff", lux.DIALOG_DOUBLE,
+             "Curvature Cutoff (-1 = default of 1, the WORKING value; 0 = white everywhere):",
+             DEFAULT_OPTIONS["cutoff"], (-1.0, 1.0)),
+            ("texture_scale_fraction", lux.DIALOG_DOUBLE,
+             "Texture scale, as a fraction of the part (modes 3, 4, 5):",
+             DEFAULT_OPTIONS["texture_scale_fraction"], (0.0001, 2.0)),
+            ("scale_factor", lux.DIALOG_DOUBLE,
+             "Texture scale factor (0.001 observed on 13.2):",
+             DEFAULT_OPTIONS["scale_factor"], (0.0000001, 1000.0)),
+            ("center_on_int", lux.DIALOG_INTEGER,
+             "Center On int (2 = Part):",
+             DEFAULT_OPTIONS["center_on_int"], (0, 8)),
+            ("radius_in_pixels", lux.DIALOG_CHECK,
+             "Radius in PIXELS (off = scene units -- THE question)",
+             DEFAULT_OPTIONS["radius_in_pixels"]),
+            ("radius_px", lux.DIALOG_DOUBLE,
+             "Radius in pixels (used when the box above is ON):",
+             DEFAULT_OPTIONS["radius_px"], (0.1, 500.0)),
             ("radius_display_factor", lux.DIALOG_DOUBLE,
-             "Radius display factor (1350 measured on the 220 mm part):",
+             "Radius display factor (1350 observed -- panel mm / value written):",
              DEFAULT_OPTIONS["radius_display_factor"], (0.0001, 100000.0)),
             ("name_filter", lux.DIALOG_TEXT,
              "Only parts whose name contains ('all' = no filter):",
              DEFAULT_OPTIONS["name_filter"]),
         ]
-        got = lux.getInputDialog(title="Label Stack Probe " + PROBE_REV,
-                                 desc="Does a SCRIPTED label render? Six flat "
-                                      "colours and one mask.",
+        got = lux.getInputDialog(title="Mask Viewer " + VIEWER_REV,
+                                 desc="Look at ONE node. White = 1.0, black = 0.0.",
                                  values=values)
         if not got:
             print("[info] dialog cancelled -- using defaults")
@@ -2703,139 +2773,121 @@ def read_options():
         return dict(DEFAULT_OPTIONS)
 
 
-def make_shader(graph, candidates, colour, label):
-    """A flat-coloured material node, on the first shader this build has."""
-    for attr in candidates:
-        shader = getattr(lux, attr, None)
-        if shader is None:
-            continue
-        node = try_new_node(graph, attr, label)
+def make_readout_base(graph):
+    """A base shader whose colour we can drive and which does as little as
+    possible to what it is shown. Diffuse first, then flat, then plastic."""
+    for attr in ("SHADER_TYPE_DIFFUSE", "SHADER_TYPE_FLAT", "SHADER_TYPE_PLASTIC",
+                 "SHADER_TYPE_PAINT"):
+        node = try_new_node(graph, attr, "Readout base")
         if node is not None:
-            # NOT ptype=PT_COLOR: a BRDF's `color` is type 14 while the
-            # constant is 13, so the filter matched nothing and the colour
-            # was silently never set on the 2026-07-31 run. find_param now
-            # falls back and says so, and this call no longer asks for it.
-            set_display(node, ["color", "colour", "diffuse"], colour)
-            print("  {0}: built on {1}, colour {2}".format(label, attr, colour))
+            print("  readout base: {0}".format(attr))
             return node, attr
-    print("  [error] {0}: none of {1} exist on this build".format(label, candidates))
     return None, None
 
 
-def describe_labels_param(root):
-    """Print what the root's `labels` slot actually is. Probe P1 read it as type
-    65538, pure -- which is PARAMETER_TYPE_SHADERLABEL, and pure means it takes a
-    connection and nothing else."""
-    p = find_param(root, ["labels", "label"])
-    if p is None:
-        print("  [error] the root has NO 'labels' parameter on this build. The "
-              "whole label architecture is unavailable and the rebuild is off.")
+def build_pattern(graph, shader_attr, label, scale):
+    """Build a pattern node at `scale`, or refuse.
+
+    AA22 / RNK-0292: `scale is None` used to mean "leave the Scale alone". It now
+    means REFUSED upstream, and a refused scale does not get a node: a texture at
+    Scale 0 renders as a plausible frame that means nothing, which is what
+    happened to both mode 7 frames on 2026-08-04. Mode 8 was the one caller
+    relying on the old meaning (it writes 1.0 itself, for calibration) and it now
+    passes 1.0 in here instead, which is the same write one step earlier."""
+    if scale is None or scale <= 0.0:
+        print("  [REFUSED] {0} not built: no usable texture Scale. Everything "
+              "downstream of it is missing from this frame by design, so do not "
+              "read the frame as a result.".format(label))
         return None
-    try:
-        print("  root labels slot: name='{0}' display='{1}' type={2} pure={3}".format(
-            p.getName(), p.getDisplayName(), p.getType(), p.isPure()))
-    except Exception as e:
-        print("  [warn] could not describe the labels slot ({0})".format(e))
-    expected = getattr(lux, "PARAMETER_TYPE_SHADERLABEL", None)
-    if expected is not None:
-        print("  (this build's PARAMETER_TYPE_SHADERLABEL = {0})".format(expected))
-    return p
-
-
-def attach_label(graph, root, label_node, which):
-    """Wire one label material into the root's labels slot, and READ IT BACK.
-
-    A landed edge is not a rendered label, which is the entire point of this
-    probe -- but an edge that did not land is worth knowing about before anyone
-    goes looking at a frame."""
-    p = find_param(root, ["labels", "label"])
-    if p is None:
-        return False
-    ok = safe_edge(graph, source=label_node, target=root, param=p.getName(),
-                   label="label {0} -> root.{1}".format(which, p.getName()))
-    print("  label {0} -> root.labels: {1}".format(
-        which, "EDGE ACCEPTED" if ok else "REFUSED"))
-    return ok
-
-
-def set_label_opacity(graph, label_node, driver, opacity_mode=None):
-    """Drive a label's opacity from a mask chain.
-
-    On the probed Paint dump `opacitymap` is type 14 and pure=True, so it takes
-    a connection and only a connection. `opacitymap_mode` is a type-2 int enum
-    whose meaning is UNKNOWN -- it is mode 5's whole job."""
-    p = find_param(label_node, ["opacitymap", "opacity"])
-    if p is None:
-        print("  [error] this label shader has no opacity input")
-        return False
-    try:
-        print("  label opacity slot: name='{0}' display='{1}' type={2} pure={3}".format(
-            p.getName(), p.getDisplayName(), p.getType(), p.isPure()))
-    except Exception:
-        pass
-    ok = safe_edge(graph, source=driver, target=label_node, param=p.getName(),
-                   label="mask -> label.{0}".format(p.getName()))
-    print("  mask -> label opacity: {0}".format("EDGE ACCEPTED" if ok else "REFUSED"))
-    if opacity_mode is not None:
-        mp = find_param(label_node, ["opacitymap_mode", "opacity map mode"])
-        if mp is None:
-            print("  [info] no 'opacitymap_mode' on this shader")
-        else:
-            try:
-                print("  [probe] opacitymap_mode was {0}".format(mp.getValue()))
-            except Exception:
-                pass
-            set_display(label_node, ["opacitymap_mode", "opacity map mode"],
-                        int(opacity_mode))
-            print("  opacitymap_mode set to {0}".format(int(opacity_mode)))
-    return ok
-
-
-def make_colour_to_number(graph, driver):
-    """The utility KeyShot's own worn-paint tutorial puts between a curvature
-    texture and an opacity input. Confirmed present in the harvested API surface
-    as SHADER_TYPE_COLOR_TO_NUMBER; never used by this repo."""
-    node = try_new_node(graph, "SHADER_TYPE_COLOR_TO_NUMBER", "Color To Number")
+    node = try_new_node(graph, shader_attr, label)
     if node is None:
-        print("  [error] SHADER_TYPE_COLOR_TO_NUMBER could not be created")
         return None
-    dump_node(node, "Color To Number")
-    target = find_param(node, ["color", "input", "colour"])
-    if target is None:
-        print("  [error] no colour input on Color To Number -- cannot chain it")
-        return None
-    if not safe_edge(graph, source=driver, target=node, param=target.getName(),
-                     label="curvature -> colortonumber.{0}".format(target.getName())):
-        print("  [error] the curvature could not reach Color To Number")
-        return None
+    set_display(node, ["scale"], scale)
+    set_center_on_part(node)
     return node
+
+
+def resolve_mode(opts):
+    """Turn whatever the dialog handed back into one of MODE_ORDER, without ever
+    raising. AA02 died here: a DIALOG_ITEM came back as a list and `.split()`
+    was called on it. Ints, floats, lists, strings and nonsense all resolve or
+    fall back, loudly."""
+    raw = opts.get("mode_int", 1)
+    if isinstance(raw, (list, tuple)):
+        raw = raw[0] if raw else 1
+    try:
+        idx = int(float(raw))
+    except (TypeError, ValueError):
+        print("[warn] mode {0!r} not understood -- using mode 1".format(raw))
+        idx = 1
+    if not (1 <= idx <= len(MODE_ORDER)):
+        print("[warn] mode {0} out of range -- using mode 1".format(idx))
+        idx = 1
+    return MODE_ORDER[idx - 1]
 
 
 def run():
     perf_on = check_performance_mode()
     opts = read_options()
-    mode = int(as_float(opts.get("mode_int"), 1))
-    if mode not in MODE_NAMES:
-        mode = MODE_PLAIN
-    name_filter = resolve_filter(opts.get("name_filter"), NO_FILTER_WORDS)
-    radius_mm = as_float(opts.get("radius_mm"), 1.5)
-    fac = as_float(opts.get("radius_display_factor"), RADIUS_DISPLAY_FACTOR)
-    RADIUS_DISPLAY_FACTOR_LIVE[0] = fac if fac > 0.0 else RADIUS_DISPLAY_FACTOR
+    mode = resolve_mode(opts)
+    raw_filter = opts.get("name_filter")
+    if isinstance(raw_filter, str) and raw_filter.strip().lower() in NO_FILTER_WORDS:
+        raw_filter = ""
+    name_filter = resolve_filter(raw_filter)
 
     print("")
-    print("LABEL STACK PROBE " + PROBE_REV + " -- " + MODE_NAMES[mode])
-    print("")
+    print("=== MASK VIEWER {0} -- {1} ===".format(VIEWER_REV, mode))
 
     extent, source, units_to_mm = resolve_part_size(opts, name_filter)
-    scale_info = {"part_extent_scene": extent,
-                  "part_size_mm": as_float(opts.get("part_size_mm"), 0.0),
-                  "units_to_mm": units_to_mm}
     SCENE_MM_PER_UNIT_LIVE[0] = units_to_mm
-    PART_MM_LIVE[0] = resolve_part_mm(scale_info)
-    print("  part extent {0} scene units ({1}), {2} mm real".format(
-        extent, source, round(PART_MM_LIVE[0], 4)))
+    if extent <= 0.0:
+        extent = 100.0
+    # AA05: a radius is millimetres, full stop. The panel is in mm, so it does
+    # not depend on the part's scene-unit scale and mm_to_scene has no part here.
+    radius_mm = as_float(opts.get("radius_mm"), 1.5)
+    # AA22 / RNK-0293, ladder W7: the viewer never set this, so its own radius
+    # clamp read None and returned early on every run, silently, in the one script
+    # whose job is diagnosing mask failures. A 150 mm radius went onto a 220 mm
+    # part unwarned on 2026-08-04. The two generators had been setting it since
+    # AB17 / AA07; the viewer was the odd one out.
+    PART_MM_LIVE[0] = resolve_part_mm({
+        "part_size_mm": opts.get("part_size_mm"),
+        "part_extent_scene": extent,
+        "units_to_mm": units_to_mm,
+    })
+    if PART_MM_LIVE[0] > 0.0:
+        print("  part measures {0} mm -- radii are checked against it".format(
+            round(PART_MM_LIVE[0], 4)))
+    # AA22 / RNK-0292, ladder W1: the dialog declares a minimum for this field and
+    # does not enforce it, and 0.0 got through twice on 2026-08-04.
+    factor = resolve_scale_factor(opts.get("scale_factor"))
+    frac = as_float(opts.get("texture_scale_fraction"), 0.05)
+    scale = texture_scale_or_refuse(extent, frac, factor, "mask viewer pattern")
+    set_center_on_override(opts.get("center_on_int"))
+    in_pixels = bool(opts.get("radius_in_pixels", True))
+    radius_px = as_float(opts.get("radius_px"), 4.0)
+    fac = as_float(opts.get("radius_display_factor"), RADIUS_DISPLAY_FACTOR)
+    RADIUS_DISPLAY_FACTOR_LIVE[0] = fac if fac > 0.0 else RADIUS_DISPLAY_FACTOR
+    # A negative value in the dialog means "leave KeyShot's default alone",
+    # which is now the default behaviour: 0.0 is a real value you might want
+    # to sweep TO, so it can no longer double as "unset".
+    raw_cutoff = as_float(opts.get("cutoff"), -1.0)
+    cutoff = None if raw_cutoff < 0.0 else raw_cutoff
 
-    name = "LABELPROBE-" + str(mode) + "-" + random_suffix()
+    print("  part extent {0} scene units ({1})".format(extent, source))
+    # AA22: this line used to divide by `factor`, so when the factor was 0 the
+    # panel-should-read arithmetic degenerated exactly like the scale did and the
+    # two agreed with each other. It reads the panel factor now, which is a
+    # different number and cannot be zeroed by the same field.
+    if scale is None:
+        print("  radius {0} mm requested | texture scale REFUSED, no pattern node "
+              "will be built this run".format(radius_mm))
+    else:
+        print("  radius {0} mm requested | texture scale {1} (panel should read "
+              "{2} mm)".format(radius_mm, scale,
+                               round(texture_scale_to_mm(scale), 5)))
+
+    name = "MASKVIEW-" + str(mode)[:1] + "-" + random_suffix()
     try:
         lux.createSceneMaterial(name)
     except Exception as e:
@@ -2851,84 +2903,301 @@ def run():
         print("[error] no graph root ({0}) -- cannot continue".format(e))
         return
 
-    dump_node(root, "Root")
-    if describe_labels_param(root) is None:
-        return
-
-    base, base_attr = make_shader(graph, ROOT_SHADER_CANDIDATES, COLOUR_ROOT,
-                                  "Root material (RED)")
+    base, base_attr = make_readout_base(graph)
     if base is None:
+        print("[error] could not create any readout shader -- cannot continue")
         return
     surface = find_param(root, ["surface"])
     if surface is not None:
         safe_edge(graph, source=base, target=root, param=surface.getName(),
-                  label="base -> root.surface")
+                  label="readout base -> root.surface")
 
-    label_1, label_attr = make_shader(graph, LABEL_SHADER_CANDIDATES,
-                                      COLOUR_LABEL_1, "Label 1 (GREEN)")
-    if label_1 is None:
+    driver = None
+
+    if mode == MODE_CURVATURE:
+        driver = add_curvature_mask(graph, radius_mm, in_pixels, radius_px)
+        if driver is not None:
+            if cutoff is not None:
+                set_display(driver, ["cutoff"], cutoff)
+        dump_node(driver, "Curvature")
+
+    elif mode == MODE_OCCLUSION:
+        driver = add_occlusion_mask(graph, radius_mm, in_pixels, radius_px)
+        dump_node(driver, "Occlusion")
+
+    elif mode == MODE_SCRATCHES:
+        driver = build_pattern(graph, "SHADER_TYPE_SCRATCHES", "Scratches", scale)
+        if driver is not None:
+            set_display(driver, ["inside_color", "color"], (1.0, 1.0, 1.0),
+                        ptype=PT_COLOR)
+            set_display(driver, ["outside_color", "background"], (0.0, 0.0, 0.0),
+                        ptype=PT_COLOR)
+        dump_node(driver, "Scratches")
+
+    elif mode == MODE_SPOTS:
+        driver = build_pattern(graph, "SHADER_TYPE_SPOTS", "Spots", scale)
+        if driver is not None:
+            set_display(driver, ["inside_color", "color"], (1.0, 1.0, 1.0),
+                        ptype=PT_COLOR)
+            set_display(driver, ["outside_color", "background"], (0.0, 0.0, 0.0),
+                        ptype=PT_COLOR)
+        dump_node(driver, "Spots")
+
+    elif mode == MODE_MASKED:
+        driver = build_pattern(graph, "SHADER_TYPE_SCRATCHES", "Scratches", scale)
+        curv = add_curvature_mask(graph, radius_mm, in_pixels, radius_px)
+        if curv is not None:
+            if cutoff is not None:
+                set_display(curv, ["cutoff"], cutoff)
+        if driver is not None and curv is not None:
+            inside = find_param(driver, ["inside_color", "color"])
+            if inside is None:
+                print("  [warn] no colour slot on Scratches -- cannot mask")
+            elif safe_edge(graph, source=curv, target=driver,
+                           param=inside.getName(),
+                           label="curvature -> scratches." + inside.getName()):
+                set_display(driver, ["outside_color", "background"],
+                            (0.0, 0.0, 0.0), ptype=PT_COLOR)
+                print("  masked texture wired: white scratches only where "
+                      "curvature is white")
+            else:
+                print("  [warn] the colour slot REFUSED the curvature edge -- "
+                      "this is the AB13 route and it did not take")
+        dump_node(driver, "Scratches (masked)")
+
+    elif mode == MODE_COMPOSITE:
+        comp = try_new_node(graph, "SHADER_TYPE_COLOR_COMPOSITE", "Gate test")
+        curv = add_curvature_mask(graph, radius_mm, in_pixels, radius_px)
+        if curv is not None:
+            if cutoff is not None:
+                set_display(curv, ["cutoff"], cutoff)
+        if comp is not None:
+            src_name, bg_name = _composite_inputs(comp)
+            print("  composite inputs resolved: source='{0}' background='{1}'".format(
+                src_name, bg_name))
+            red = _make_colour_node(graph, GATE_SOURCE_COLOUR)
+            green = _make_colour_node(graph, GATE_BACKGROUND_COLOUR)
+            if red is not None and src_name:
+                safe_edge(graph, source=red, target=comp, param=src_name,
+                          label="RED -> " + src_name)
+            if green is not None and bg_name:
+                safe_edge(graph, source=green, target=comp, param=bg_name,
+                          label="GREEN -> " + bg_name)
+            mp = find_param(comp, ["clipping_mask", "clipping mask", "mask"])
+            if mp is not None and curv is not None:
+                safe_edge(graph, source=curv, target=comp, param=mp.getName(),
+                          label="curvature -> " + mp.getName())
+            print("  READ IT LIKE THIS: red on the edges and green elsewhere means")
+            print("  the clipping mask GATES. Any uniform colour, or a blend of the")
+            print("  two, means it does NOT -- and no blend-mode int will fix that.")
+        dump_node(comp, "Composite (gate test)")
+        driver = comp
+
+    elif mode == MODE_WEAR:
+        # RNK-0276. The composed mask, so it can be LOOKED AT before either
+        # generator is wired to it. Looking at the node is what settled the
+        # radius bug after four revs of inference; the same rule applies to a
+        # new composition.
+        curv = add_curvature_mask(graph, radius_mm, in_pixels, radius_px, cutoff)
+        grunge = build_pattern(graph, "SHADER_TYPE_SCRATCHES", "Scratches (grunge)", scale)
+        if grunge is not None:
+            set_display(grunge, ["inside_color", "color"], (1.0, 1.0, 1.0), ptype=PT_COLOR)
+            set_display(grunge, ["outside_color", "background"], (0.0, 0.0, 0.0), ptype=PT_COLOR)
+        occ = add_occlusion_mask(graph, radius_mm, False, radius_px)
+        g_amt = as_float(opts.get("grunge_amount"), 0.5)
+        a_amt = as_float(opts.get("ao_amount"), 0.5)
+        contrast = opts.get("wear_contrast")
+        contrast = as_float(contrast, 0.0) if contrast is not None else 0.0
+        driver = build_wear_mask(graph, curvature=curv, grunge=grunge,
+                                 occlusion=occ, grunge_amount=g_amt,
+                                 ao_amount=a_amt,
+                                 contrast=(contrast if contrast > 0.0 else None))
+        print("")
+        print("  MODE 7 SETTINGS: radius {0} mm, pixels {1}, cutoff {2}, "
+              "grunge {3}, AO {4}, contrast {5}".format(
+                  radius_mm, in_pixels, cutoff, g_amt, a_amt, contrast))
+        if in_pixels:
+            print("  [warn] Radius In Pixels is ON, so the radius is a "
+                  "SCREEN-SPACE band at {0} px, not {1} mm. On a large "
+                  "render that is a hairline and it vanishes as soon as "
+                  "anything multiplies it. Turn it OFF to judge this "
+                  "mask.".format(radius_px, radius_mm))
+        print("")
+        print("  READ IT LIKE THIS. White is where wear will go.")
+        print("  - Edges and rims white, flats black -> the primary signal is right.")
+        print("  - Set grunge amount 0 and rerun: the mask must become CLEANER,")
+        print("    not black. Black at 0 means the composition is still an")
+        print("    intersection and this rebuild did not take.")
+        print("  - Crevices should get DARKER as AO amount rises. If they get")
+        print("    brighter the invert did not land and AO is adding wear.")
+        dump_node(driver, "Wear mask (composed)")
+
+    elif mode == MODE_CALIBRATE:
+        # RNK-0275 / RNK-0278. Both display factors are hand-measured constants
+        # from ONE scene each, and a wrong one renders black. Neither can be read
+        # back through the API: getValue returns the value written, not the value
+        # the panel shows. So the honest measurement is to write exactly 1.0 and
+        # read both panels, in ONE scene, which is what this mode sets up.
+        curv = add_curvature_mask(graph, None, False, radius_px)
+        if curv is not None:
+            pix = find_param(curv, ["radius in pixels", "adaptive_radius",
+                                    "adaptive radius"])
+            if pix is not None:
+                set_display(curv, [pix.getDisplayName()], False)
+            else:
+                print("  [info] no 'Radius In Pixels' toggle on this node")
+            set_display(curv, ["radius"], 1.0)
+        # AA22: this passed None ("leave the Scale alone") and then wrote 1.0 in
+        # the next line. build_pattern now reads None as REFUSED, so the 1.0 goes
+        # in directly. Same single write, one step earlier, and calibration is the
+        # one mode that must NOT be affected by the dialog's scale_factor at all:
+        # its whole purpose is writing a known 1.0 and reading the panel.
+        tex = build_pattern(graph, "SHADER_TYPE_SCRATCHES",
+                            "Scratches (calibration)", 1.0)
+        driver = curv if curv is not None else tex
+        occ_cal = add_occlusion_mask(graph, None, False, radius_px)
+        if occ_cal is not None:
+            set_display(occ_cal, ["radius"], 1.0)
+        print("")
+        print("  CALIBRATION. Exactly 1.0 has been written to ALL THREE:")
+        print("    the Curvature node's Radius   (Radius In Pixels OFF)")
+        print("    the Scratches node's Scale")
+        print("    the Occlusion node's Radius   (no pixels toggle on that node)")
+        print("  Open both nodes in the material graph and read the two panel")
+        print("  numbers. EACH PANEL NUMBER IS THAT FACTOR FOR THIS SCENE:")
+        print("    Radius panel reads R  ->  radius_display_factor = R")
+        print("    Scale  panel reads S  ->  texture scale factor   = 1/S")
+        print("  Enter them in this scene's dialog and everything downstream is")
+        print("  right for this scene instead of for the discharge body.")
+        print("")
+        print("  AND THE QUESTION BEHIND THE QUESTION (RNK-0275): are they two")
+        print("  constants or one conversion? This scene measures")
+        print("    mm per scene unit = {0}".format(round(units_to_mm, 6)))
+        print("    part extent       = {0} scene units ({1})".format(extent, source))
+        print("  If the Radius panel number comes back close to that mm-per-unit")
+        print("  figure, the radius was never a separate constant: it is the")
+        print("  scene's own unit conversion, both factors collapse into one")
+        print("  runtime measurement, and a whole class of error retires.")
+        print("  SETTLED 2026-08-03 for Curvature and Scale: BOTH panels read")
+        print("  1000. It is not a scene property at all -- the API takes METRES")
+        print("  and the panel shows MILLIMETRES, one convention, every scene.")
+        print("  The old 1350 was simply wrong, and cost a 0.74x error on every")
+        print("  radius written since 2026-07-30.")
+        print("")
+        # AA23: this block used to end "THE ONE STILL OPEN IS OCCLUSION ...
+        # inherited, not measured", four days after occlusion was measured at
+        # 1000 on 2026-08-03 in a second mode 8 run the same day (5b35148) and
+        # set_radius_mode started dividing by it. A console line still asking a
+        # question the code had already answered, which is AA21's bug pointing
+        # the other way. R0 read 1000 a third time on 2026-08-05.
+        print("  OCCLUSION IS SETTLED TOO, and it is now READ THREE TIMES:")
+        print("  1000 on 2026-08-03 (the run that retired the scene-units")
+        print("  reading) and 1000 again at ladder R0 on 2026-08-05. It has no")
+        print("  pixels toggle and it obeys the same metres-to-millimetres rule")
+        print("  as everything else. mm_to_scene has no part in any radius.")
+        print("")
+        print("  SO ALL THREE PANELS ARE EXPECTED TO READ 1000 HERE. This mode")
+        print("  is now a REGRESSION CHECK, not an open question: if any panel")
+        print("  comes back as something else, that is a new finding about THIS")
+        print("  scene and it outranks everything downstream of it.")
+        print("  For reference, if a factor ever did track the scene, this one")
+        print("  would read about {0}.".format(
+            "{0:.6g}".format(1.0 * (units_to_mm or 0.0))))
+        dump_node(curv, "Curvature (calibration, radius written 1.0)")
+        dump_node(tex, "Scratches (calibration, scale written 1.0)")
+        dump_node(occ_cal, "Occlusion (calibration, radius written 1.0)")
+
+    elif mode == MODE_FLAT:
+        # LADDER R1. The null test. There is deliberately NOTHING here: no
+        # curvature, no texture, no composite, no radius, no scale. Every one of
+        # those can render black for its own reasons, and a black frame from a
+        # mask is indistinguishable from a material that never arrived. This mode
+        # removes every reason for a dark frame except the one being tested.
+        #
+        # It shares the apply path with every other mode on purpose. Applying by
+        # hand in the KeyShot UI would prove that the PART can take a material,
+        # which nobody doubts; what is in question is whether
+        # `apply_material_to_parts` reaches the geometry in frame, and only the
+        # script's own path can answer that.
+        # No ptype filter, deliberately, and it is not an oversight. The readout
+        # base's colour input is type 14 (COLORALPHA) on this build, measured in
+        # R0's dump -- 13 is a colour VALUE, 14 is what a texture connects into.
+        # Asking for 13 here still finds it and still writes, but prints
+        # "has type 14, not the 13 asked for" every run, which is a line that
+        # reads like a warning on the one rung whose whole value is being
+        # unambiguous. The other caller of this param (driver -> base colour)
+        # already matches by name alone.
+        set_display(base, ["color", "colour", "diffuse"], FLAT_TEST_COLOUR)
+        dump_node(base, "Readout base (flat colour, no nodes)")
+        print("")
+        print("  FLAT COLOUR NULL TEST -- ladder R1. The graph contains ONE node")
+        print("  and no masks, no textures, no radius and no scale. Nothing here")
+        print("  can render dark for an interesting reason.")
+        print("")
+        print("  READ IT LIKE THIS:")
+        print("    The part is MAGENTA          -> the apply path reaches the")
+        print("      surface you are judging. Every later frame is at least")
+        print("      ABOUT the material, and R2 and R3 are worth running.")
+        print("    Some or all of it is NOT     -> ladder W6 is the whole story.")
+        print("      The skipped nodes are the visible ones and every frame of")
+        print("      the past week has been of geometry that never received a")
+        print("      material. Nothing above this rung means anything until it")
+        print("      is fixed.")
+        print("    PART of it is magenta        -> say WHICH part. That is the")
+        print("      most useful answer of the three, because it names the")
+        print("      geometry the apply is missing.")
+
+    if mode == MODE_FLAT:
+        # No driver, by design: the flat colour IS the readout. Skip the wiring
+        # the other modes need and go straight to applying it.
+        wire_audit(base, "readout base")
+        applied = apply_material_to_parts(name, name_filter)
+        print("  applied to {0} node(s)".format(applied))
+        print("")
+        print("NOW RENDER IT. This frame answers exactly one question: does the")
+        print("material reach the geometry you are looking at.")
+        if perf_on:
+            print("")
+            print("REMINDER: PERFORMANCE MODE WAS ON FOR THIS RUN. It does not")
+            print("void THIS rung -- a flat colour survives Performance Mode,")
+            print("which is precisely why it is the rung that runs first -- but")
+            print("turn it off before believing any mask above it.")
         return
-    dump_node(label_1, "Label 1")
 
-    attached = 0
-    if attach_label(graph, root, label_1, 1):
-        attached += 1
+    if driver is None:
+        print("[error] the node for this mode could not be created -- nothing to show")
+        return
 
-    if mode in (MODE_MASKED, MODE_VIA_NUMBER, MODE_OPACITY_MODE):
-        curv = add_curvature_mask(graph, radius_mm, False, 4.0)
-        if curv is None:
-            print("[error] no curvature node -- cannot mask")
-            return
-        dump_node(curv, "Curvature")
-        driver = curv
-        if mode == MODE_VIA_NUMBER:
-            driver = make_colour_to_number(graph, curv)
-            if driver is None:
-                return
-        opacity_mode = (int(as_float(opts.get("opacity_mode_int"), 0))
-                        if mode == MODE_OPACITY_MODE else None)
-        set_label_opacity(graph, label_1, driver, opacity_mode)
+    colour_param = find_param(base, ["color", "colour", "diffuse"])
+    if colour_param is None:
+        print("[error] no colour input on the readout base")
+        return
+    if safe_edge(graph, source=driver, target=base, param=colour_param.getName(),
+                 label="driver -> readout base colour"):
+        # AA20: the "LANDED" line that used to sit here was MISSED by the AA17
+        # sweep, and the 2026-08-04 bench log caught it: two consecutive lines
+        # about the SAME edge, the first saying CALL OK, UNVERIFIED and the
+        # second saying LANDED. The louder and more confident one was the wrong
+        # one. safe_edge above has already reported the only verdict there is.
+        pass
+    else:
+        print("[error] the driver could NOT reach base colour. On this shader "
+              "({0}) the colour input refused a texture edge -- which would also "
+              "explain the paint generator, and is the single most important "
+              "thing in this log.".format(base_attr))
+        return
 
-    if mode == MODE_THREE:
-        for colour, which, tag in ((COLOUR_LABEL_2, 2, "BLUE"),
-                                   (COLOUR_LABEL_3, 3, "AMBER")):
-            node, _ = make_shader(graph, LABEL_SHADER_CANDIDATES, colour,
-                                  "Label {0} ({1})".format(which, tag))
-            if node is None:
-                continue
-            if attach_label(graph, root, node, which):
-                attached += 1
-        print("  labels attached: {0} of 3".format(attached))
-
-    wire_audit(root, "root")
+    wire_audit(base, "readout base")
     applied = apply_material_to_parts(name, name_filter)
-    print("  applied '{0}' to {1} node(s)".format(name, applied))
+    print("  applied to {0} node(s)".format(applied))
     print("")
-    print("NOW RENDER IT.")
+    print("NOW RENDER IT. White = the node outputs 1.0 there, black = 0.0.")
     if perf_on:
         print("")
         print("REMINDER: PERFORMANCE MODE WAS ON FOR THIS RUN. Every "
               "mask above is void -- turn it off and run again.")
-    print("  " + MODE_NAMES[mode])
-    if mode == MODE_PLAIN:
-        print("  GREEN part -> a scripted label RENDERS. The rebuild is on.")
-        print("  RED part   -> it does not, whatever the API said. Rebuild is off,")
-        print("                and we fix the composite stack's mask instead.")
-        print("  PATCHY     -> labels render but need a mapping. Its own finding.")
-    elif mode in (MODE_MASKED, MODE_VIA_NUMBER, MODE_OPACITY_MODE):
-        print("  GREEN with RED edges -> masked label opacity WORKS. That is the")
-        print("                          whole rebuild, in one node.")
-        print("  all GREEN -> the opacity edge landed and does nothing.")
-        print("  all RED   -> the mask reads as transparent everywhere.")
-    elif mode == MODE_THREE:
-        print("  AMBER -> all three stacked and the last one wins.")
-        print("  BLUE  -> two attached.")
-        print("  GREEN -> only the first attached, so a stack is not scriptable.")
-        print("  RED   -> none of them rendered.")
-    print("")
-    print("Report the colour you see, the 'EDGE ACCEPTED / REFUSED' lines, and")
-    print("any [warn] DID NOT TAKE. A refused edge and a rendered-wrong result")
-    print("are different findings and they need different fixes.")
+    print("If the whole part is one flat tone, that node is not varying across")
+    print("the surface, and everything built on top of it cannot vary either.")
 
 
 run()
