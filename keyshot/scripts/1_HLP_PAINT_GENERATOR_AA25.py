@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # AUTHOR technicallytechnicaldesign
-# REV AA24
+# REV AA25
 #
 # Painted-part KeyShot material: primer/topcoat/grime stack with curvature-driven chip and scuff masks.
 #
@@ -312,8 +312,8 @@ BBOX_METHODS = ["getBoundingBox", "getWorldBounds", "getBounds"]
 # getBoundingBox() returns luxmath.Vectors in SCENE units, and the scene unit is
 # NOT mm. AB06 labelled the raw number "mm" and fed it straight into the scale
 # fractions. AB10: there is no scene-unit constant to have, so there is none
-# here. The operator's scene put one unit at about 74.6 mm -- that is the model's
-# import scale, not a unit of length, and no constant can know it. Texture Scale
+# here. Any apparent mm-per-unit figure for a scene is an import-scale artefact,
+# not a unit of length, and no constant can know it (RNK-0255 struck the old 74.6). Texture Scale
 # is in SCENE units, so the fractions below are applied straight to the MEASURED
 # extent and nothing is converted, which is correct at any import scale. AB05
 # through AB09 multiplied a millimetre figure into a scene-unit parameter, which
@@ -395,7 +395,22 @@ def measure_part_size(name_filter):
     collection, _collect_descendants) and compute the max part extent (mm) across
     matched nodes, trying the UNPROBED lux bounding-box APIs per node. Returns a
     float, or None if nothing worked -- non-fatal, the caller falls back. Logs
-    which method (if any) succeeded so a future rev can lock the API name."""
+    which method (if any) succeeded so a future rev can lock the API name.
+
+    REFUSES to measure with no name_filter (RNK-0298). The dialog's own default
+    is the ALL sentinel, which resolve_filter turns into None, and an unfiltered
+    walk includes every Group/assembly node the scene has; taking max() extent
+    across all of them measured 301,814,039 scene units for a part entered as
+    220 mm, a factor of 1976 off -- the walk was finding the top of the tree,
+    not the part. Refusing routes the caller to the entered-mm fallback instead,
+    which is the existing, already-warned path."""
+    if not name_filter:
+        print("  [warn] part measure: no name filter set -- an unfiltered walk "
+              "measures the largest node in the scene, almost always a "
+              "Group/assembly and not the part (RNK-0298). Refusing to guess; "
+              "type the part's name into 'Apply to parts matching' to measure "
+              "it.")
+        return None
     try:
         root = lux.getSceneTree()
     except Exception as e:
@@ -405,8 +420,7 @@ def measure_part_size(name_filter):
         nodes = _collect_descendants(root)
     except Exception:
         nodes = []
-    if name_filter:
-        nodes = [n for n in nodes if _name_matches(n, name_filter)]
+    nodes = [n for n in nodes if _name_matches(n, name_filter)]
     if not nodes:
         print("  [info] part measure: no geometry nodes found to measure")
         return None
@@ -2621,7 +2635,7 @@ def mm_to_scene(mm, units_to_mm, extent, fraction, what):
 
 # ===== END CORE BLOCK v1 ======================================================
 
-GENERATOR_REV = "AA24"
+GENERATOR_REV = "AA25"
 
 # --------------------------------------------------------------------------
 # Paint-specific model
