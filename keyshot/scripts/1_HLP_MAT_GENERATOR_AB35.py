@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # AUTHOR claude-subagent
-# REV AB34
+# REV AB35
 #
 # Procedural KeyShot material generator: finish presets, wear masks,
 # label channels, scripted via lux API.
@@ -2667,7 +2667,7 @@ import json
 # --------------------------------------------------------------------------
 
 
-GENERATOR_REV = "AB34"
+GENERATOR_REV = "AB35"
 
 
 # Demo spec-plate label set (03_OUTPUT/labels/spec-plate/) -- the DEFAULT_OPTIONS
@@ -3606,6 +3606,37 @@ def make_occlusion_roughness_node(graph, base_roughness, radius_mm=None):
     return n
 
 
+def make_occlusion_color_node(graph, base_color, radius_mm=None):
+    """Create an Occlusion node as a COLOUR-bus source: crevices read as a dull,
+    dark, desaturated grime tone; exposed faces keep the material's own base
+    colour untouched. Deliberately a SEPARATE node from
+    make_occlusion_roughness_node just above -- that one's occluded/unoccluded
+    slots hold grayscale roughness offsets, this one holds an actual tinted
+    colour, and one node's two colour slots can't serve both jobs at once.
+    Returns the node (not wired); None if unavailable.
+
+    BENCH 2026-09-02: masked Spots/Pitting (add_spots_bump, gated by
+    mask_spots_to_cavities) is BUMP-ONLY -- it never touched a colour slot, so
+    on its own it read as tiny bright dots catching light, not as grime. This
+    node is what actually darkens the crevices; call it ALONGSIDE the masked
+    Spots layer, not instead of it."""
+    n = try_new_node(graph, "SHADER_TYPE_OCCLUSION", "Occlusion (colour/grime source)")
+    if n is not None:
+        if radius_mm is not None:
+            set_radius_mode(n, False, radius_mm, 4.0, "occlusion colour")
+        # Duller AND darker, per the bench read: desaturate hard toward mid-grey
+        # first (kills saturation), then darken what's left. Two multipliers so
+        # each knob is legible on its own rather than one blended magic number.
+        grey = sum(base_color[:3]) / 3.0
+        desat = tuple(clamp01(c * 0.4 + grey * 0.6) for c in base_color[:3])
+        grime = tuple(clamp01(c * 0.35) for c in desat)
+        exposed = tuple(clamp01(c) for c in base_color[:3])
+        set_display(n, ["occluded"], grime, ptype=PT_COLOR)
+        set_display(n, ["unoccluded", "bright", "far", "exposed"], exposed,
+                    ptype=PT_COLOR)
+    return n
+
+
 def add_color_gradient(graph, base_node, base_color):
     """Colour bus (single driver, as AA02). Best-effort: if the gradient's stops
     aren't script-settable it is removed rather than left to drive a garbage
@@ -4371,8 +4402,22 @@ def build_material(spec):
     rough_mode = build_roughness_bus(graph, base_node, rough_sources)
     print("  Roughness bus: {0} source(s) -> mode '{1}'".format(len(rough_sources), rough_mode))
 
-    # --- COLOUR BUS: base colour + optional gradient driver (single) --------
+    # --- COLOUR BUS: base colour + crevice grime tint + optional gradient ---
+    # BENCH 2026-09-02: masked Spots ("grime") was bump-only, no colour --
+    # see make_occlusion_color_node's own note. This is the fix: darken/desat
+    # the crevices for real whenever spots are masked to cavities.
+    if masks.get("mask_spots_to_cavities"):
+        grime_node = make_occlusion_color_node(graph, base_color, cavity_radius_mm)
+        if grime_node is not None:
+            randomize_placement(grime_node, placement_rng, "grime_color")
+            wire_scalar_driver(graph, grime_node, base_node,
+                               ["color", "diffuse", "tint", "reflectance"],
+                               "grime colour")
     if features["add_color_gradient"]:
+        if masks.get("mask_spots_to_cavities"):
+            print("  [info] colour bus: grime tint and Color Gradient both "
+                  "target base.color -- only one wire survives, Color "
+                  "Gradient runs last so it wins")
         add_color_gradient(graph, base_node, base_color)
 
     # --- post-build wire audit (silent-edge-failure guard) ------------------
