@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # AUTHOR claude-subagent
-# REV AA26
+# REV AA27
 #
 # Diagnostic viewer: renders one material-graph node per mode to isolate mask, radius, scale, and composition issues.
 #
@@ -2169,8 +2169,8 @@ def build_wear_mask(graph, curvature=None, grunge=None, occlusion=None,
 
 
 def mask_bump_layer(graph, effect_node, mask_node, label):
-    """Spatially gate a bump layer by driving the EFFECT TEXTURE'S OWN COLOUR
-    SLOTS with the mask, so the effect only has contrast where the mask is white.
+    """Spatially gate a bump layer's COLOUR ONLY, by driving the effect
+    texture's inside_color/outside_color with the mask.
 
     AB13, built on probe M1/M2/M3. A bump input accepts texture-class nodes and
     REFUSES every colour utility (Curvature, Occlusion, Color Composite, Color To
@@ -2179,13 +2179,29 @@ def mask_bump_layer(graph, effect_node, mask_node, label):
     both earlier designs tried: Color Composite (Rev 1) and curvature-carries-the
     -effect (the "plan B", which P16 had already shown failing at the second hop).
 
-    Instead the mask lives INSIDE the texture. A texture used as bump is read as
-    a height field off its own output colour, so:
-        mask -> effect.inside_color     (white where wear belongs)
+    THIS ONLY EVER MASKED COLOUR, NOT BUMP, AND THAT WAS WRONG UNTIL BENCH
+    2026-09-02. AB13's own docstring assumed a texture's colour output doubles
+    as its height field when the node feeds a bump slot ("effect -> the bump
+    bus, unchanged" -- read black background, no contrast, no bump). It does
+    not: Scratches and Spots carry a SEPARATE 'Bump Height' scalar, and that
+    scalar is what a bump slot actually reads -- confirmed already, elsewhere
+    in this file (safe_edge's M5 note): a type-4 target lands and reads back on
+    a BRDF, the identical type on a TEXTURE node's bump_height does not, ever.
+    So masking inside_color/outside_color changes what the layer looks like as
+    a ROUGHNESS/colour source (which this repo's roughness bus does read) and
+    changes NOTHING about where its bump geometry appears -- confirmed at the
+    bench: masked scratches, verified WIRED and read back, still showed on the
+    flats, because the groove depth was never gated by this wire in the first
+    place.
+
+    So:
+        mask -> effect.inside_color     (drives the ROUGHNESS/colour bus only)
         effect.outside_color = black
-        effect -> the bump bus          (unchanged, a plain texture edge)
-    On the flats both colours are black: no contrast, no bump. On the edges (or
-    in the cavities) the interiors go white and the effect appears.
+    The caller decides separately whether to still add effect_node to
+    bump_sources -- current callers do NOT, once masked, because an always-on
+    uniform bump on a layer whose whole point is "only on the edges/cavities"
+    is worse than no bump at all. See RNK-0289-adjacent decision logged in
+    DECISIONS.md if a real masked-bump route ever needs revisiting.
 
     Still non-fatal: if the colour slot refuses the connection the layer is left
     unmasked and present, exactly as before, and the mask node is removed rather
@@ -2222,7 +2238,9 @@ def mask_bump_layer(graph, effect_node, mask_node, label):
         print("  [info] {0}: mask wired, but the background colour could not be "
               "set to black -- wear will still show on the flats".format(label))
     else:
-        print("  [info] {0}: masked (mask -> colour slot, background black)".format(label))
+        print("  [info] {0}: colour masked (roughness bus only -- bump_height "
+              "cannot be wired on this build, see mask_bump_layer docstring; "
+              "caller should drop this node from bump_sources)".format(label))
     return effect_node
 
 
@@ -2635,7 +2653,7 @@ def mm_to_scene(mm, units_to_mm, extent, fraction, what):
 
 # ===== END CORE BLOCK v1 ======================================================
 
-VIEWER_REV = "AA26"
+VIEWER_REV = "AA27"
 
 # RNK-0296: the viewer's job is showing what a value does, including one that
 # is too big. The clamp reports what it WOULD do but uses the asked-for radius.
