@@ -35,7 +35,8 @@ and bench sheet) lives in the private RENKON_LAB repo, not here.
 | [`0_VAL_ORIENTATION_CHECK_AA02.py`](scripts/0_VAL_ORIENTATION_CHECK_AA02.py) | 0 &middot; VAL | Orientation/up-axis sanity check — flags statistical footprint-ratio outliers |
 | [`1_HLP_MAT_PREFLIGHT_AA02.py`](scripts/1_HLP_MAT_PREFLIGHT_AA02.py) | 1 &middot; HLP | Material-template coverage QC, ahead of a full batch render |
 | [`1_HLP_MAT_LOOKUP_AA02.py`](scripts/1_HLP_MAT_LOOKUP_AA02.py) | 1 &middot; HLP | Creo &rarr; KeyShot material-name lookup table, applies templates per object |
-| [`1_HLP_MAT_GENERATOR_AA03.py`](scripts/1_HLP_MAT_GENERATOR_AA03.py) | 1 &middot; HLP | Procedural material variant generator &mdash; toggleable feature layers onto a metal/plastic base at a wear level |
+| [`1_HLP_MAT_GENERATOR_AB36.py`](scripts/1_HLP_MAT_GENERATOR_AB36.py) | 1 &middot; HLP | Procedural material generator &mdash; base shader + edge/crevice-masked wear layers, part-size-aware scaling, shared CORE BLOCK with the paint generator |
+| [`1_HLP_PAINT_GENERATOR_AA26.py`](scripts/1_HLP_PAINT_GENERATOR_AA26.py) | 1 &middot; HLP | Painted-surface generator &mdash; substrate/primer/topcoat/grime stack with edge-biased scuffs and chips |
 | [`2a_BAT_STD_VIEW_AA02.py`](scripts/2a_BAT_STD_VIEW_AA02.py) | 2a &middot; BAT | Studios-first multi-view batch render |
 | [`2a_BAT_TURNTABLE_AA02.py`](scripts/2a_BAT_TURNTABLE_AA02.py) | 2a &middot; BAT | Studios-first 360&deg; turntable batch |
 | [`2b_ANI_HERO_REVEAL_AA02.py`](scripts/2b_ANI_HERO_REVEAL_AA02.py) | 2b &middot; ANI | Zoom+crane hero reveal, synced to Model Set animation |
@@ -51,6 +52,8 @@ and bench sheet) lives in the private RENKON_LAB repo, not here.
 |---|---|
 | `batch_turntable_r1.py` | `2a_BAT_TURNTABLE_AA02.py` |
 | `batch_import_and_render_all_views_r1.py` | `2a_BAT_STD_VIEW_AA02.py` |
+| `0_CHK_MATGRAPH_PROBE_AA02.py` | `0_CHK_MATGRAPH_PROBE_AB01.py` |
+| `1_HLP_MAT_GENERATOR_AA03.py` | `1_HLP_MAT_GENERATOR_AB36.py` |
 
 ## Adjacent asset-prep (not a lux script)
 

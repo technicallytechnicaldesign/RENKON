@@ -211,6 +211,7 @@
   .status.locked { color: var(--muted); border-style: dashed; }
   .status.unfiled { color: var(--c-accent); border-color: var(--c-accent); border-style: dashed; }
   .status.inwork { color: var(--muted); border-style: dotted; }
+  .status.probe { color: var(--muted); border-style: dashed; }
 
   /* ---- get-it controls (the KeyShot machine has no git: raw download) ---- */
   .getit { display: flex; gap: 5px; align-items: center; }
@@ -333,9 +334,13 @@
      * Single source of truth. Both groupings (by stage, by pipeline/type)
      * render from these arrays — edit here, never in two places.
      * script: [stage, area, status, file, hasLink, noteHTML]
-     *   status: current | inwork | archive | locked | unfiled
+     *   status: current | inwork | probe | archive | locked | unfiled
      *   current = approved, runs in the Main pipeline zone.
      *   inwork  = not yet render-confirmed; renders collapsed (heading only).
+     *   probe   = one-off diagnostic or dev-guard harness that answered a
+     *             question and is done; not run to render or set up a scene.
+     *             Hidden from the By-stage view on purpose (2026-09-22 audit),
+     *             lives in By-pipeline & support's own "Investigation" zone.
      * ------------------------------------------------------------------ */
     var SCRIPTS = [
       ['0','VAL','inwork','0_VAL_STEP_PREFLIGHT_AA02.py',true,
@@ -360,7 +365,7 @@
           'Compares across the whole batch and flags the outliers',
           'Deliberately a review flag, not a fixer: it never rotates anything',
         ]],
-      ['0','CHK','inwork','0_CHK_MASKED_WEAR_PROBE_AA03.py',true,
+      ['0','CHK','probe','0_CHK_MASKED_WEAR_PROBE_AA03.py',true,
         'Can wear be masked to edges and crevices at all?', [
           'One-off diagnostic for targeted wear, not a pipeline stage',
           'Settles which node classes a bump input will accept',
@@ -368,7 +373,7 @@
           'Five of the six probes need no render',
           'Its finding: a bump input takes texture nodes and refuses every colour utility, so the mask has to live inside the texture',
         ]],
-      ['0','CHK','inwork','0_CHK_LUX_API_INTROSPECT_AA02.py',true,
+      ['0','CHK','probe','0_CHK_LUX_API_INTROSPECT_AA02.py',true,
         'Reads the lux API instead of guessing at it', [
           'Calls <code>dir()</code> on the lux module and on live graph, node and parameter objects',
           'Dumps real parameter names, types and pure flags',
@@ -376,7 +381,7 @@
           'Hunts three things: a method that names enum options (Center On, Blend Mode), the real material-apply call, and the real bounding-box call',
           'Enforces the standing rule here: read the dump, do not reason about the name',
         ]],
-      ['0','CHK','inwork','0_CHK_MATGRAPH_PROBE_AB01.py',true,
+      ['0','CHK','probe','0_CHK_MATGRAPH_PROBE_AB01.py',true,
         'What does the material graph actually support?', [
           'Builds a throwaway material and probes it, PASS or FAIL per capability',
           'Verifies each edge actually landed rather than assuming it did',
@@ -384,15 +389,15 @@
           'AA01 ran on real KeyShot 2026-07-28; AB01 fixes two mis-targeted probes',
           'Delete the probe material afterwards',
         ]],
-      ['0','CHK','inwork','0_CHK_TEXTURE_TRANSFORM_PROBE_AA01.py',true,
+      ['0','CHK','probe','0_CHK_TEXTURE_TRANSFORM_PROBE_AA01.py',true,
         'What shape does the Texture Transform matrix param actually want?', [
           'RNK-0072 tier b: the placement-jitter block leaves this param unset on purpose, no probe of its shape existed',
           'Reads the untouched default before writing anything, then sweeps candidate shapes (luxmath.Matrix, flat 16/9-float lists, nested rows)',
           'Census across Scratches / Noise Texture / Noise Fractal / Cellular, the four nodes RNK-0072 names as not moving',
-          'Not run on real KeyShot yet -- paste console output back to settle RNK-0072',
+          'Run on real KeyShot 2026-09-22: every candidate shape refused on every node -- structural negative, the per-part Texture Transform route is dead',
           'Delete the probe material afterwards',
         ]],
-      ['0','CHK','current','0_CHK_LABEL_STACK_AA20.py',true,
+      ['0','CHK','probe','0_CHK_LABEL_STACK_AA20.py',true,
         'The gate: does a scripted label actually render?', [
           'KeyShot has no material-blend node, so layering is done with <b>labels</b>',
           'Five modes, six flat maximally distinct colours, nothing tuned for looks, so a phone photo answers it',
@@ -401,7 +406,7 @@
           'Mode 4, three stacked labels: 3 of 3 attached, so a primer/topcoat/grime stack is scriptable',
           'Modes 3 and 5 were fallbacks for a mode 2 failure and are not needed',
         ]],
-      ['0','CHK','current','0_CHK_MASK_VIEWER_AA27.py',true,
+      ['0','CHK','probe','0_CHK_MASK_VIEWER_AA27.py',true,
         'Look at the mask itself instead of inferring it', [
           'Builds a material whose base colour <em>is</em> one chosen node, then stops',
           'A render then reads that node directly: white is 1.0, black is 0.0',
@@ -412,7 +417,7 @@
           'Built because three revs had been debugged by inferring backwards from the colour of a six-node chain',
           'Its first run found the Radius In Pixels bug that had been blacking out every mask',
         ]],
-      ['0','VAL','current','0_VAL_WEAR_MASK_HARNESS_AA02.py',true,
+      ['0','VAL','probe','0_VAL_WEAR_MASK_HARNESS_AA02.py',true,
         'Proves the composed wear mask without KeyShot', [
           'Plain Python against a stub graph: no scene, no render, runs at home',
           'Nine assertions about how the mask is actually wired',
@@ -422,7 +427,7 @@
           '<b>Mutation-tested:</b> restoring the intersection fails 5 assertions, wiring AO un-inverted fails 2',
           'Leaves mode 7 only the question a stub cannot answer: does it land on the edges of a real part',
         ]],
-      ['0','VAL','current','0_VAL_SAFE_EDGE_HARNESS_AA05.py',true,
+      ['0','VAL','probe','0_VAL_SAFE_EDGE_HARNESS_AA05.py',true,
         'Proves the wire reporting before it reaches the bench', [
           'Plain Python against a stub lux, no KeyShot needed',
           'Seven cases: read-back present and absent, a call that raises, a call accepted with no edge behind it, and the scalar-target note',
@@ -533,6 +538,18 @@
           'Raw-camera-only predecessor: no Studio support',
           'Kept for reference only',
         ]],
+      ['0','CHK','archive','0_CHK_MATGRAPH_PROBE_AA02.py',true,
+        'Superseded by <code>0_CHK_MATGRAPH_PROBE_AB01</code>', [
+          'Rev-1 probe pack, fully folded into AB01 (fixed two mis-targeted probes, added P14-P17)',
+          'Left on disk outside the registry since 2026-07-28; found and archived in the 2026-09-22 script audit',
+          'Kept for reference only',
+        ]],
+      ['1','HLP','archive','1_HLP_MAT_GENERATOR_AA03.py',true,
+        'Superseded by <code>1_HLP_MAT_GENERATOR_AB36</code>', [
+          'Pre-refactor material generator: no part-size-aware scaling, no shader families, no CORE BLOCK',
+          'SCRIPT_STOCK already recorded it as removed from the inventory 2026-07-22; the file itself was never moved',
+          'Kept for reference only',
+        ]],
       ['2b','ANI','locked','2ANI_SCATTERANIMATION_AQ.py',false,
         'Scatter reference for the planned particle script', [
           'Technique reference, not part of this pipeline',
@@ -572,7 +589,9 @@
       '3_PRC_FADE_REEL_AA02.py': '2026-07-11 02:31',
       '4_CHK_AUDIT_AA02.py': '2026-07-11 02:31',
       'batch_turntable_r1.py': '2026-07-11 02:12',
-      'batch_import_and_render_all_views_r1.py': '2026-07-11 02:12'
+      'batch_import_and_render_all_views_r1.py': '2026-07-11 02:12',
+      '0_CHK_MATGRAPH_PROBE_AA02.py': '2026-07-28 08:11',
+      '1_HLP_MAT_GENERATOR_AA03.py': '2026-08-07 20:21'
     };
 
     /* stage metadata for the "by stage" zones and the pipeline sub-headers */
@@ -597,7 +616,9 @@
       ]},
       { code: 'ARC', title: 'Archive', blurb: 'Superseded scripts kept for reference, out of the active pipeline.', items: [
         ['scripts/archive/batch_turntable_r1.py', true, 'Raw-camera predecessor of <code>2a_BAT_TURNTABLE</code>.'],
-        ['scripts/archive/batch_import_and_render_all_views_r1.py', true, 'Raw-camera predecessor of <code>2a_BAT_STD_VIEW</code>.']
+        ['scripts/archive/batch_import_and_render_all_views_r1.py', true, 'Raw-camera predecessor of <code>2a_BAT_STD_VIEW</code>.'],
+        ['scripts/archive/0_CHK_MATGRAPH_PROBE_AA02.py', true, 'Superseded by <code>0_CHK_MATGRAPH_PROBE_AB01</code>, folded in whole.'],
+        ['scripts/archive/1_HLP_MAT_GENERATOR_AA03.py', true, 'Superseded by <code>1_HLP_MAT_GENERATOR_AB36</code>, pre-refactor.']
       ]},
       { code: 'REF', title: 'Referenced elsewhere', blurb: 'Scripts named in the inventory but living outside this repo.', items: [
         ['2ANI_SCATTERANIMATION_AQ.py', false, 'Scatter tech reference for the planned particle script.']
@@ -663,6 +684,7 @@
     }
     function statusLabel(st) {
       return st === 'current' ? 'Approved' : st === 'inwork' ? 'In work'
+        : st === 'probe' ? 'Investigation'
         : st === 'archive' ? 'Archive' : st === 'locked' ? 'Elsewhere' : 'Unfiled';
     }
     function rowHTML(s, first) {
@@ -755,6 +777,22 @@
       });
       if (workTotal) {
         html += zone('In work', '', 'Not yet promoted', 'Runs, but not yet render-confirmed. Collapsed until moved into the main pipeline.', workTotal + ' scripts', workBody);
+      }
+
+      // Investigation zone -- one-off probes + dev-guard harnesses that settled
+      // a question and are done. Not run to render or set up a scene, so kept
+      // out of the By-stage view entirely; still fully downloadable here for
+      // whenever something needs re-checking. See the 2026-09-22 script audit.
+      var probeBody = '', probeTotal = 0;
+      STAGE_ORDER.forEach(function (st) {
+        var rows = SCRIPTS.filter(function (s) { return s[0] === st && s[2] === 'probe'; });
+        if (!rows.length) return;
+        probeTotal += rows.length;
+        probeBody += '<div class="substage">Stage ' + st + ' &middot; ' + STAGE[st].title + '</div>';
+        probeBody += rows.map(function (s) { return rowHTML(s, false); }).join('');
+      });
+      if (probeTotal) {
+        html += zone('INV', 'support', 'Investigation &amp; probes', 'One-off diagnostics and dev-guard harnesses that already answered their question. Not part of any render or setup routine -- kept here for the rare re-check, out of the way otherwise.', probeTotal + ' scripts', probeBody);
       }
 
       // Supporting groups.
