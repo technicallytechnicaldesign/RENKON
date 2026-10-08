@@ -1,6 +1,6 @@
 # RENKON
 
-A design + rendering hub — procedural tools, KeyShot automation, and a live
+A design + rendering hub. Hosts a random assortment of procedural tools, KeyShot automation scripts, and a live
 homepage tying them together.
 
 **Live:** https://technicallytechnicaldesign.github.io/RENKON/
