@@ -20,8 +20,3 @@ blender/fluid-cache-gen/fluid_out/
 *.gif
 !keyshot/backplate-creator/assets/*.jpg
 
-# Local agent instructions stay off the public repo.
-CLAUDE.md
-CLAUDE.local.md
-AGENTS.md
-.claude/

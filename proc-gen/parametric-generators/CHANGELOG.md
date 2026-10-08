@@ -123,7 +123,7 @@ want one file to save or share.
   not a code path exercised differently in a normal foreground tab — flagging
   explicitly rather than claiming a full end-to-end confirmation.
 
-### Added — Overlay Asset Customizer: FN/VIBE tag filter (HANDOFF_BRIEF_v3 §3, Task B)
+### Added — Overlay Asset Customizer: FN/VIBE tag filter
 Builds the two-axis function×vibe tag filter on top of the 69-asset base the
 previous entry below just landed. With 8 categories the type grid was at the
 limit the brief called out — this gives a shot-builder a second way in:
@@ -200,10 +200,9 @@ browse Fluid Flow."
   `tags.vibe` (max 3 tags per axis, per the brief's cap).
 
 ### Added — Overlay Asset Customizer: Backgrounds + Wildcards categories, 25 new assets (44 → 69)
-Ports the 25 assets that grew on the stranded `02_WORK/overlay_toolkit/toolkit.html`
-snapshot into the live manifest, per the HANDOFF_BRIEF_v3 brief (Task A, integration
-only — the §3 function×vibe filter system is a separate, not-yet-started piece
-of work). The kit goes from 44 assets / 6 categories to **69 assets / 8
+Ports the 25 assets that grew on an older toolkit snapshot into the live
+manifest (integration only; the function×vibe filter system is a separate,
+not-yet-started piece of work). The kit goes from 44 assets / 6 categories to **69 assets / 8
 categories**.
 
 - **Two new categories.** **Backgrounds** (10 assets, 640×360 16:9 full-frame
@@ -575,8 +574,7 @@ Reorg/labels/tooltips only — no generator or export logic changed.
   This was the last external dependency anywhere in the repo — everything is
   now native browser APIs (Canvas, `blob:` URLs, Web Animations API, native
   SVG time control), no CDN, no Worker, no build step. Updated the footer
-  note in `mountOverlayKit` and root `CONTRIBUTING.md`'s dependency callout to
-  match.
+  note in `mountOverlayKit` to match.
 
 ### Added — preset library (backlog #3)
 - **Save Preset / preset dropdown** next to Randomize on the Texture & Bump
@@ -595,7 +593,7 @@ Reorg/labels/tooltips only — no generator or export logic changed.
   guard that falls through to "Storage unavailable" otherwise. It's an
   environment-injected API present in whatever sandboxed host supplies it —
   not in a plain browser tab. Since this app is also opened as a plain local
-  file and served static on GitHub Pages (see root `CONTRIBUTING.md`), building the
+  file and served static on GitHub Pages, building the
   preset library on `window.storage` would ship a feature that silently does
   nothing in this app's primary deployment targets. Presets use `localStorage`
   directly instead, under the exact key-naming scheme the spec specifies:
@@ -873,9 +871,8 @@ brought in as-is and renamed:
     (noise, grid, scratches, splotches), simulated-relief preview, PNG export.
     Static output only for now.
 - Known issue carried over: **GIF export is broken** (cross-origin Worker /
-  CSP problem — see handoff brief §3). PNG export works.
+  CSP problem). PNG export works.
 
 ### Pre-import history (manual `toolkit_1..7.html` saves)
 Not reconstructed commit-by-commit — the v1→v7 evolution predates version
-control. `HANDOFF_BRIEF_v2` (lab repo) covers the design-system rationale and
-architecture as of this baseline.
+control.

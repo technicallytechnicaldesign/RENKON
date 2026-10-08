@@ -3,7 +3,7 @@
 # committed. Run `git lfs install` before adding any of these.
 #
 # NOTE: raster image formats (*.png, *.jpg, …) are deliberately NOT tracked
-# here. This repo is SVG-first (see CONTRIBUTING.md) — PNGs should be rare, and
+# here. This repo is SVG-first — PNGs should be rare, and
 # tracking them repo-wide would sweep up stray web assets. Raster *render
 # outputs* are scoped to keyshot/.gitattributes instead.
 *.bip   filter=lfs diff=lfs merge=lfs -text

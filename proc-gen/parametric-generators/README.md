@@ -42,7 +42,6 @@ no external JS dependencies — everything is native browser APIs (Canvas,
 |---|---|
 | `index.html` | The whole app. |
 | `CHANGELOG.md` | Version history + iteration notes (replaces the old `toolkit_N.html` scheme). |
-| HANDOFF_BRIEF_v2 (kept privately) | Architecture, design-system rationale, known issues, and roadmap. Read this before making changes. |
 
 ## Iterating on this tool
 
@@ -52,7 +51,7 @@ no external JS dependencies — everything is native browser APIs (Canvas,
   (`paramgen-vN`).
 - Adding a new overlay asset is a single object in the `ASSETS` array — the grids,
   palette wiring, sliders, and export all pick it up from the manifest
-  automatically (see handoff brief §4). Give it a `tags: { fn: [...], vibe: [...] }`
+  automatically. Give it a `tags: { fn: [...], vibe: [...] }`
   field too (1–2 tags per axis, 3 max) — the FN/VIBE chip bar and filtered grid
   are generic over `TAG_AXES`/`TAG_ICONS`, so a tagged asset shows up in filter
   results with no other wiring. New tag values need a `TAG_ICONS` entry (16×16,
